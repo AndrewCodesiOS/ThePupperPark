@@ -619,56 +619,61 @@
         <div class="tab-content" id="tab-treats">
           <div class="shop-card">
             <div class="shop-info">
+              <h3>Pup Cups</h3>
+              <p>90s per use (max 7.5m) | +35% Bone Value (1.35x) on all digs &amp; grass taps.</p>
+              <div class="treat-roi" id="roiTreatCup">Needs 667+ 🦴/min to profit</div>
+            </div>
+            <button type="button" class="action-btn" id="btnTreatCup">
+              <span class="btn-name">Feed Pup Cups</span>
+              <span class="btn-cost" id="costTreatCup">350 🦴</span>
+            </button>
+          </div>
+
+          <div class="shop-card">
+            <div class="shop-info">
               <h3>XP Biscuits</h3>
-              <p>20s per stack (+8% XP per stack, up to 1.40x at 5x; price caps at 6,000 🦴).</p>
+              <p>60s per use (max 5m) | 2.0x XP (+100%) on all digs &amp; pets to level pups fast.</p>
+              <div class="treat-roi utility" id="roiTreatXp">2.0x XP on all digs &amp; pets | Best for leveling pups</div>
             </div>
             <button type="button" class="action-btn" id="btnTreatXp">
               <span class="btn-name">Give Biscuits</span>
-              <span class="btn-cost" id="costTreatXp">120 🦴</span>
+              <span class="btn-cost" id="costTreatXp">400 🦴</span>
             </button>
           </div>
 
           <div class="shop-card">
             <div class="shop-info">
               <h3>Peanut Butter Kongs</h3>
-              <p>15s per stack of 100% ✨ Magic Bones on digs &amp; taps (up to 5x; price caps at 9,000 🦴).</p>
+              <p>20s per use (max 100s) | Bonus +1 ✨ Magic Bone on every dig &amp; tap alongside regular bones.</p>
+              <div class="treat-roi utility" id="roiTreatKong">Est. ~16 ✨ from pack | +1 ✨ per tap</div>
             </div>
             <button type="button" class="action-btn" id="btnTreatKong">
-              <span class="btn-name">Toss Treats</span>
-              <span class="btn-cost" id="costTreatKong">180 🦴</span>
-            </button>
-          </div>
-
-          <div class="shop-card">
-            <div class="shop-info">
-              <h3>Pup Cups</h3>
-              <p>60s per stack (+8% bone value per stack on digs &amp; taps, up to 1.40x at 5x; price caps at 12,000 🦴).</p>
-            </div>
-            <button type="button" class="action-btn" id="btnTreatCup">
-              <span class="btn-name">Feed Pup Cups</span>
-              <span class="btn-cost" id="costTreatCup">260 🦴</span>
+              <span class="btn-name">Toss Kongs</span>
+              <span class="btn-cost" id="costTreatKong">1,200 🦴</span>
             </button>
           </div>
 
           <div class="shop-card">
             <div class="shop-info">
               <h3>Jumbo Meaty Bones</h3>
-              <p>60s per stack (+10% dig payout per stack, up to 1.50x at 5x) + jump celebration (price caps at 15,000 🦴).</p>
+              <p>90s per use (max 7.5m) | +50% Dig Payout (1.50x) + pack jump celebration.</p>
+              <div class="treat-roi" id="roiTreatFeast">Needs 2,000+ 🦴/min to profit</div>
             </div>
             <button type="button" class="action-btn" id="btnTreatFeast">
               <span class="btn-name">Serve Feast</span>
-              <span class="btn-cost" id="costTreatFeast">380 🦴</span>
+              <span class="btn-cost" id="costTreatFeast">1,500 🦴</span>
             </button>
           </div>
 
           <div class="shop-card">
             <div class="shop-info">
               <h3>Bacon Chew Stick</h3>
-              <p>60s per stack (+12% dig payout per stack, up to 1.60x at 5x; price caps at 18,000 🦴).</p>
+              <p>60s per use (max 5m) | Park Frenzy: +35% walk &amp; dig pace + 35% dig payout (1.82x rate).</p>
+              <div class="treat-roi" id="roiTreatBacon">Needs 4,255+ 🦴/min to profit</div>
             </div>
             <button type="button" class="action-btn" id="btnTreatBacon">
-              <span class="btn-name">Give Treats</span>
-              <span class="btn-cost" id="costTreatBacon">520 🦴</span>
+              <span class="btn-name">Give Bacon</span>
+              <span class="btn-cost" id="costTreatBacon">3,500 🦴</span>
             </button>
           </div>
         </div>
@@ -823,10 +828,10 @@
           <div class="shop-card shop-card-vertical" style="border-color: rgba(255, 234, 167, 0.45);">
             <div class="shop-info">
               <h3 style="color: var(--gold);">Testing Sandbox</h3>
-              <p>Reset park to a fresh Biscuit starter with max Bones (250,000 🦴) and 20,000 Magic Bones ✨.</p>
+              <p>Reset park to a fresh Biscuit starter with max Bones (1,000,000 🦴) and 20,000 Magic Bones ✨.</p>
             </div>
             <button type="button" id="btnTestResetMax" class="action-btn" style="background: linear-gradient(135deg, #f39c12 0%, #f1c40f 100%); color: #15112e; width: 100%; min-width: unset; padding: 10px;">
-              <span class="btn-name" style="color: #15112e;">Test Reset (250k 🦴 | 20k ✨)</span>
+              <span class="btn-name" style="color: #15112e;">Test Reset (1M 🦴 | 20k ✨)</span>
             </button>
           </div>
 
@@ -937,7 +942,7 @@
   <div id="boneCapModal" class="modal" style="display: none;">
     <div class="modal-window offline-box" style="max-width: 380px;">
       <h2 style="color: #ffeaa7;">🦴 Max Bone Cap Reached!</h2>
-      <p id="boneCapModalText">Congratulations! You reached the maximum cap of 250,000 Bones. Spend some bones on dogs, toys, or treats to collect more bones!</p>
+      <p id="boneCapModalText">Congratulations! You reached the maximum cap of 1,000,000 Bones. Spend some bones on dogs, toys, or treats to collect more bones!</p>
       <button type="button" id="btnCloseBoneCap" class="action-btn" style="width:100%;">Got It!</button>
     </div>
   </div>

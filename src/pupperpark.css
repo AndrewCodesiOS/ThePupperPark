@@ -1120,6 +1120,26 @@ input:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
+.treat-roi {
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+  color: #9ba8bd;
+}
+
+.treat-roi.positive {
+  color: var(--mint);
+}
+
+.treat-roi.caution {
+  color: #9ba8bd;
+}
+
+.treat-roi.utility {
+  color: var(--gold);
+}
+
 .action-btn {
   background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
   border: none;
