@@ -1,0 +1,32 @@
+{
+  "id": "./",
+  "name": "PupperPark",
+  "short_name": "PupperPark",
+  "description": "An isometric idle dog park game. Recruit pups, dig for bones, discover treasures, and decorate your park.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0d0b1a",
+  "theme_color": "#0d0b1a",
+  "icons": [
+    {
+      "src": "./parkicon192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./parkicon512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./parkicon512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

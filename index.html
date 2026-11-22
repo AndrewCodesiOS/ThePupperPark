@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="PupperPark" />
+  <meta name="theme-color" content="#0d0b1a" />
+  <title>PupperPark</title>
+  <meta name="description" content="An isometric idle dog park game where you recruit pups, dig for bones and magic treats, discover rare treasures, and decorate your park." />
+  <meta property="og:title" content="PupperPark" />
+  <meta property="og:description" content="An isometric idle dog park game where you recruit pups, dig for bones and magic treats, discover rare treasures, and decorate your park." />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" type="image/png" sizes="192x192" href="./parkicon192.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="./parkicon192.png" />
+  <link rel="apple-touch-icon" sizes="512x512" href="./parkicon512.png" />
+</head>
+<body>
+
+  <!-- Top Left Currency HUD + Active Buffs -->
+  <div id="topHud">
+    <div class="hud-counters">
+      <div class="currency-pill">
+        <span class="bone-icon" aria-hidden="true">🦴</span>
+        <span id="boneCount" class="hud-value">0</span>
+        <span class="hud-rate" id="bpsCount">avg 1/dig</span>
+      </div>
+      <div class="currency-pill">
+        <span class="bone-icon" aria-hidden="true">✨</span>
+        <span id="magicBoneCount" class="hud-value">0</span>
+      </div>
+    </div>
+    <div id="activeBuffsBar" class="active-buffs-bar" aria-live="polite"></div>
+  </div>
+
+  <!-- Top Center Weather & Pack Mood Bar -->
+  <div id="weatherTopBar" class="weather-top-bar">
+    <div class="top-center-chips">
+      <button type="button" id="weatherBadge" class="weather-chip-btn" aria-expanded="false" aria-controls="weatherPopover" title="Current park weather">
+        <span id="weatherBadgeIcon" aria-hidden="true">☀️</span>
+        <span id="weatherBadgeText">Sunny | +12% Speed</span>
+      </button>
+      <button type="button" id="moodBadge" class="mood-chip-btn mood-cozy" aria-expanded="false" aria-controls="moodPopover" title="Pack Happiness">
+        <span id="moodBadgeIcon" aria-hidden="true">😌</span>
+        <span id="moodBadgeText">Cozy | 35%</span>
+      </button>
+    </div>
+    <div id="weatherPopover" class="weather-popover" style="display: none;" role="region" aria-label="Park Weather Forecast">
+      <div class="weather-popover-head">
+        <strong id="weatherPopoverTitle">☀️ Sunny</strong>
+        <span id="weatherPopoverMod" class="weather-popover-mod">+12% Dig Speed</span>
+      </div>
+      <p id="weatherPopoverDesc" class="weather-popover-desc">Warm sunbeams energize the pack to dig 12% faster.</p>
+      <div id="weatherSkyStatus" class="weather-sky-status">🌅 Sunrise | 🌕 Full Moon</div>
+      <div class="weather-popover-foot">
+        <span id="weatherCountdown">Next change in --m</span>
+        <span id="weatherNextPreview">Next: 🍃 Windy</span>
+      </div>
+    </div>
+    <div id="moodPopover" class="weather-popover mood-popover" style="display: none;" role="region" aria-label="Pack Happiness Details">
+      <div class="weather-popover-head">
+        <strong id="moodPopoverTitle">😌 Cozy (35%)</strong>
+        <span id="moodPopoverBonus" class="weather-popover-mod">Baseline</span>
+      </div>
+      <div class="mood-meter-track mood-meter-track-sm">
+        <div id="moodPopoverFill" class="mood-meter-fill" style="width: 35%;"></div>
+        <div id="moodPopoverFloor" class="mood-floor-marker" style="left: 35%;" title="Cozy Floor"></div>
+      </div>
+      <p id="moodPopoverDesc" class="weather-popover-desc">Pet pups, give treats, play with toys, and place decor to lift morale with zero penalties.</p>
+      <div class="weather-popover-foot">
+        <span id="moodPopoverFloorLabel">Cozy floor: 35%</span>
+        <button type="button" id="btnOpenMoodBreakdown" class="mood-popover-link">View Breakdown</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top Right Utility Controls -->
+  <div id="topRightHud">
+    <button type="button" id="btnQuickMute" class="hud-icon-btn" aria-label="Toggle sound effects" title="Toggle sound">
+      <svg id="iconSoundOn" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+      <svg id="iconSoundOff" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+    </button>
+    <button type="button" id="btnQuickHelp" class="hud-icon-btn" aria-label="How to play" title="How to play">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    </button>
+  </div>
+
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- Subtle First-Visit Control Hint (auto-hides after first interaction) -->
+  <div id="onboardingHint" class="onboarding-hint" style="display: none;">
+    Tap grass to dig | Tap pups to pet | Swipe to spin | Pinch to zoom
+  </div>
+
+  <!-- Placement Helper Banner -->
+  <div id="placementBanner" class="placement-banner" style="display: none;">
+    <span id="placementBannerText">Tap any park tile to place your decoration!</span>
+    <button type="button" id="btnCancelPlacement" class="placement-cancel-btn">Cancel</button>
+  </div>
+
+  <!-- Bottom Right Mini Bar -->
+  <div id="bottomBar">
+    <div class="mini-stat" title="Active pups in park">🐕 <span id="miniDogs">1/6</span></div>
+    <button type="button" id="btnWhistle" class="whistle-btn" aria-label="Whistle to gather pack" title="Call pack together">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+      <span>Call</span>
+    </button>
+    <button type="button" id="btnOpenMenu" class="menu-toggle-btn">▲ Menu</button>
+  </div>
+
+  <!-- Bottom Slide-Up & Draggable Menu Drawer -->
+  <div id="gameModal" class="drawer-overlay" style="display: none;">
+    <div class="drawer-window" id="drawerWindow">
+      <div class="drawer-handle-bar" id="drawerHandle" title="Drag down to close"></div>
+      <div class="modal-header">
+        <div class="modal-tabs" role="tablist">
+          <button type="button" class="tab-btn active" data-tab="tab-roster">Roster</button>
+          <button type="button" class="tab-btn" data-tab="tab-dogs">Dogs</button>
+          <button type="button" class="tab-btn" data-tab="tab-toys">Toys</button>
+          <button type="button" class="tab-btn" data-tab="tab-treats">Treats</button>
+          <button type="button" class="tab-btn" data-tab="tab-perks">Treasures</button>
+          <button type="button" class="tab-btn" data-tab="tab-decor">Decor</button>
+          <button type="button" class="tab-btn" data-tab="tab-stats">Stats</button>
+          <button type="button" class="tab-btn" data-tab="tab-settings">Settings</button>
+        </div>
+        <button type="button" id="btnCloseMenu" class="close-btn" aria-label="Close menu">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Roster Tab -->
+        <div class="tab-content active" id="tab-roster">
+          <div id="packMoodCard" class="mood-summary-card">
+            <div class="mood-summary-head">
+              <div>
+                <h3 class="mood-summary-title">Pack Happiness</h3>
+                <div id="rosterMoodEffects" class="mood-summary-sub">Base cozy mood | Floor 35%</div>
+              </div>
+              <div id="rosterMoodTier" class="mood-summary-value">😌 Cozy | 35%</div>
+            </div>
+            <div class="mood-meter-track">
+              <div id="rosterMoodFill" class="mood-meter-fill" style="width: 35%;"></div>
+              <div id="rosterMoodFloorMark" class="mood-floor-marker" style="left: 35%;" title="Cozy Floor"></div>
+            </div>
+            <div class="mood-pillars-grid">
+              <div class="mood-pillar"><span>Petting</span><strong id="moodSourcePetting">Ready (+5)</strong></div>
+              <div class="mood-pillar"><span>Treats</span><strong id="moodSourceTreats">Ready (+8 each)</strong></div>
+              <div class="mood-pillar"><span>Toys</span><strong id="moodSourceToys">+0% floor</strong></div>
+              <div class="mood-pillar"><span>Decor</span><strong id="moodSourceDecor">+0% floor</strong></div>
+            </div>
+          </div>
+          <div id="retireNotice" class="retire-notice" style="display:none;"></div>
+          <div id="rosterListContainer" class="roster-list"></div>
+        </div>
+
+        <!-- Dogs Tab (8 Breeds) -->
+        <div class="tab-content" id="tab-dogs">
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>Australian Shepherd</h3>
+              <p>Starter | 0.95x Bone Yield | 1.0x Pack Growth | 1.1x walk | Steady baseline digger.</p>
+              <div class="shop-owned">Owned: <span id="countAussie">1</span></div>
+            </div>
+            <button type="button" class="action-btn" id="btnSummonAussie">
+              <span class="btn-name">Recruit</span>
+              <span class="btn-cost" id="costAussie">20 🦴</span>
+            </button>
+          </div>
+
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>Beagle</h3>
+              <p>Tracker | 1.35x Bone Yield | 1.12x Pack Growth | +1.0% ✨ magic &amp; strong nose.</p>
+              <div class="shop-owned">Owned: <span id="countBeagle">0</span></div>
+            </div>
+            <button type="button" class="action-btn" id="btnSummonBeagle">
+              <span class="btn-name">Recruit</span>
+              <span class="btn-cost" id="costBeagle">120 🦴</span>
+            </button>
+          </div>
+
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>Border Collie</h3>
+              <p>Swift Digger | 1.05x Bone Yield | 1.1x Pack Growth | 1.2x walk | +1.5% ✨ magic &amp; quick digs.</p>
+              <div class="shop-owned">Owned: <span id="countCollie">0</span></div>
+            </div>
+            <button type="button" class="action-btn" id="btnSummonCollie">
+              <span class="btn-name">Recruit</span>
+              <span class="btn-cost" id="costCollie">340 🦴</span>
+            </button>
+          </div>
+
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>Siberian Husky</h3>
+              <p>Sprinter | 1.15x Bone Yield | 1.15x Pack Growth | 1.25x walk | +15% XP &amp; +2.0% ✨ magic.</p>
+              <div class="shop-owned">Owned: <span id="countHusky">0</span></div>
+            </div>
+            <button type="button" class="action-btn" id="btnSummonHusky">
+              <span class="btn-name">Recruit</span>
+              <span class="btn-cost" id="costHusky">850 🦴</span>
+            </button>
+          </div>
+
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>Golden Retriever</h3>
+              <p>Bone Magnet | 1.65x Bone Yield | 1.2x Pack Growth | +3.0% ✨ magic &amp; big payouts.</p>
+              <div class="shop-owned">Owned: <span id="countGolden">0</span></div>
+            </div>
+            <button type="button" class="action-btn" id="btnSummonGolden">
+              <span class="btn-name">Recruit</span>
+              <span class="btn-cost" id="costGolden">2,100 🦴</span>
+            </button>
+          </div>
+
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>German Shepherd</h3>
+              <p>Pack Captain | 1.25x Bone Yield | 1.25x Pack Growth | +12% XP &amp; +3.5% ✨ magic.</p>
+              <div class="shop-owned">Owned: <span id="countShepherd">0</span></div>
+            </div>
+            <button type="button" class="action-btn" id="btnSummonShepherd">
+              <span class="btn-name">Recruit</span>
+              <span class="btn-cost" id="costShepherd">4,800 🦴</span>
+            </button>
+          </div>
+
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>Shiba Inu</h3>
+              <p>Treasure Seeker | 1.2x Bone Yield | 1.2x Pack Growth | High treasure odds &amp; +5.5% ✨ magic.</p>
+              <div class="shop-owned">Owned: <span id="countShiba">0</span></div>
+            </div>
+            <button type="button" class="action-btn" id="btnSummonShiba">
+              <span class="btn-name">Recruit</span>
+              <span class="btn-cost" id="costShiba">10,500 🦴</span>
+            </button>
+          </div>
+
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>Labrador Retriever</h3>
+              <p>Master Retriever | 1.8x Bone Yield | 1.32x Pack Growth | +20% XP &amp; +5.0% ✨ magic.</p>
+              <div class="shop-owned">Owned: <span id="countLabrador">0</span></div>
+            </div>
+            <button type="button" class="action-btn" id="btnSummonLabrador">
+              <span class="btn-name">Recruit</span>
+              <span class="btn-cost" id="costLabrador">22,000 🦴</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Toys Tab -->
+        <div class="tab-content" id="tab-toys">
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>Tennis Ball <span id="ballCurrentBoost" class="toy-live-badge">+0 | 1</span></h3>
+              <p>+1 Dig Power per buy, up to max 25 (price caps at 10,000 🦴).</p>
+            </div>
+            <button type="button" class="action-btn" id="btnToyBones">
+              <span class="btn-name">Get Toy</span>
+              <span class="btn-cost" id="costToyBones">35 🦴</span>
+            </button>
+          </div>
+
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>Rubber Duck <span id="duckCurrentBoost" class="toy-live-badge">+0% | 10%</span></h3>
+              <p>Boosts offline dig bone yield (+2% per toy, up to 60%; price caps at 15,000 🦴).</p>
+            </div>
+            <button type="button" class="action-btn" id="btnToyIdle">
+              <span class="btn-name">Get Toy</span>
+              <span class="btn-cost" id="costToyIdle">250 🦴</span>
+            </button>
+          </div>
+
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>Frisbee <span id="frisbeeCurrentBoost" class="toy-live-badge">+0% | 100%</span></h3>
+              <p>Boosts the pack's dig multiplier by +3% per buy, up to 1.80x (price caps at 20,000 🦴).</p>
+            </div>
+            <button type="button" class="action-btn" id="btnToySpeed">
+              <span class="btn-name">Get Toy</span>
+              <span class="btn-cost" id="costToySpeed">500 🦴</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Treats Tab -->
+        <div class="tab-content" id="tab-treats">
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>XP Biscuits</h3>
+              <p>20s per stack (+8% XP per stack, up to 1.40x at 5x; price caps at 6,000 🦴).</p>
+            </div>
+            <button type="button" class="action-btn" id="btnTreatXp">
+              <span class="btn-name">Give Biscuits</span>
+              <span class="btn-cost" id="costTreatXp">120 🦴</span>
+            </button>
+          </div>
+
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>Peanut Butter Kongs</h3>
+              <p>15s per stack of 100% ✨ Magic Bones on digs &amp; taps (up to 5x; price caps at 9,000 🦴).</p>
+            </div>
+            <button type="button" class="action-btn" id="btnTreatKong">
+              <span class="btn-name">Toss Treats</span>
+              <span class="btn-cost" id="costTreatKong">180 🦴</span>
+            </button>
+          </div>
+
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>Pup Cups</h3>
+              <p>60s per stack (+8% bone value per stack on digs &amp; taps, up to 1.40x at 5x; price caps at 12,000 🦴).</p>
+            </div>
+            <button type="button" class="action-btn" id="btnTreatCup">
+              <span class="btn-name">Feed Pup Cups</span>
+              <span class="btn-cost" id="costTreatCup">260 🦴</span>
+            </button>
+          </div>
+
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>Jumbo Meaty Bones</h3>
+              <p>60s per stack (+10% dig payout per stack, up to 1.50x at 5x) + jump celebration (price caps at 15,000 🦴).</p>
+            </div>
+            <button type="button" class="action-btn" id="btnTreatFeast">
+              <span class="btn-name">Serve Feast</span>
+              <span class="btn-cost" id="costTreatFeast">380 🦴</span>
+            </button>
+          </div>
+
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>Bacon Chew Stick</h3>
+              <p>60s per stack (+12% dig payout per stack, up to 1.60x at 5x; price caps at 18,000 🦴).</p>
+            </div>
+            <button type="button" class="action-btn" id="btnTreatBacon">
+              <span class="btn-name">Give Treats</span>
+              <span class="btn-cost" id="costTreatBacon">520 🦴</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Treasures Tab -->
+        <div class="tab-content" id="tab-perks">
+          <div class="shop-card" style="border-color: rgba(241, 196, 15, 0.55);">
+            <div class="shop-info">
+              <h3 style="color: #f1c40f;">Active Treasures Collection</h3>
+              <p>Treasures discovered by your pack boost dig payouts, magic chance, or scaling.</p>
+              <div class="shop-owned">Unlocked Treasures: <span id="perkCountDisplay">0</span></div>
+            </div>
+          </div>
+          <div id="perkListContainer" class="perk-list-container"></div>
+        </div>
+
+        <!-- Decor Tab -->
+        <div class="tab-content" id="tab-decor">
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>Park Tree</h3>
+              <p>Shady park tree. Each placed tree gives +3% pup XP. (Max 3)</p>
+              <div class="shop-owned">Owned: <span id="ownedDecorTree">0</span> | Placed: <span id="countDecorTree">0</span> / 3</div>
+            </div>
+            <div class="decor-btn-group">
+              <button type="button" class="action-btn decor-action-btn" id="btnBuyDecorTree">
+                <span class="btn-name">Buy Tree</span>
+                <span class="btn-cost">500 ✨</span>
+              </button>
+              <button type="button" class="action-btn decor-action-btn" id="btnPlaceDecorTree">
+                <span class="btn-name">Place</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>Flower Patch</h3>
+              <p>Vibrant wildflowers. Each placed patch gives +2% ✨ Magic Bone chance. (Max 5)</p>
+              <div class="shop-owned">Owned: <span id="ownedDecorFlowers">0</span> | Placed: <span id="countDecorFlowers">0</span> / 5</div>
+            </div>
+            <div class="decor-btn-group">
+              <button type="button" class="action-btn decor-action-btn" id="btnBuyDecorFlowers">
+                <span class="btn-name">Buy Flowers</span>
+                <span class="btn-cost">250 ✨</span>
+              </button>
+              <button type="button" class="action-btn decor-action-btn" id="btnPlaceDecorFlowers">
+                <span class="btn-name">Place</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>Water Fountain</h3>
+              <p>Shimmering centerpiece. Each placed fountain gives +5% bone payout. (Max 2)</p>
+              <div class="shop-owned">Owned: <span id="ownedDecorFountain">0</span> | Placed: <span id="countDecorFountain">0</span> / 2</div>
+            </div>
+            <div class="decor-btn-group">
+              <button type="button" class="action-btn decor-action-btn" id="btnBuyDecorFountain">
+                <span class="btn-name">Buy Fountain</span>
+                <span class="btn-cost">1,000 ✨</span>
+              </button>
+              <button type="button" class="action-btn decor-action-btn" id="btnPlaceDecorFountain">
+                <span class="btn-name">Place</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="shop-card shop-card-vertical">
+            <div class="shop-info">
+              <h3>Clear Park Layout</h3>
+              <p>Remove all placed decorations back to your inventory so you can rearrange them.</p>
+            </div>
+            <button type="button" id="btnClearDecor" class="action-btn" style="width: 100%; min-width: unset; padding: 10px;">
+              <span class="btn-name">Clear All Decor</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Stats Tab -->
+        <div class="tab-content" id="tab-stats">
+          <div class="stats-grid">
+            <div class="stat-box"><span>Dig Power</span> <strong id="statDigPower">1</strong></div>
+            <div class="stat-box"><span>Dig Multiplier</span> <strong id="statSpeed">1.0x</strong></div>
+            <div class="stat-box"><span>Magic Chance</span> <strong id="statChance">22%</strong></div>
+            <div class="stat-box"><span>Lifetime Bones</span> <strong id="statLifetimeBones">0</strong></div>
+            <div class="stat-box"><span>Decor Bonus</span> <strong id="statDecorBonus">None yet</strong></div>
+            <div class="stat-box"><span>Offline Rate</span> <strong id="statOfflineRate">10%</strong></div>
+            <div class="stat-box"><span>Park Weather</span> <strong id="statWeather">☀️ Sunny</strong></div>
+            <div class="stat-box"><span>Pack Happiness</span> <strong id="statHappiness">😌 Cozy (35%)</strong></div>
+          </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div class="tab-content" id="tab-settings">
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>Sound Effects</h3>
+              <p>Play synthesized barks, digs, chimes, and toy squeaks.</p>
+            </div>
+            <button type="button" id="btnToggleSound" class="action-btn">
+              <span class="btn-name">Audio</span>
+              <span id="soundSettingLabel" class="btn-cost">ON</span>
+            </button>
+          </div>
+
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>Ambient Sounds</h3>
+              <p>Play gentle birdsong, soft breeze, and distant park atmosphere.</p>
+            </div>
+            <button type="button" id="btnToggleAmbient" class="action-btn">
+              <span class="btn-name">Ambience</span>
+              <span id="ambientSettingLabel" class="btn-cost">ON</span>
+            </button>
+          </div>
+
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>Haptic Feedback</h3>
+              <p>Subtle vibration pulse on mobile when petting pups or finding treasures.</p>
+            </div>
+            <button type="button" id="btnToggleHaptics" class="action-btn">
+              <span class="btn-name">Haptics</span>
+              <span id="hapticsSettingLabel" class="btn-cost">ON</span>
+            </button>
+          </div>
+
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>Dog Name Tags</h3>
+              <p>Display each dog's name floating above them in the park.</p>
+            </div>
+            <button type="button" id="btnToggleNameTags" class="action-btn">
+              <span class="btn-name">Name Tags</span>
+              <span id="nameTagSettingLabel" class="btn-cost">ON</span>
+            </button>
+          </div>
+
+          <div class="shop-card">
+            <div class="shop-info">
+              <h3>How to Play</h3>
+              <p>View controls for digging, petting pups, spinning, and offline rewards.</p>
+            </div>
+            <button type="button" id="btnOpenHelp" class="action-btn">
+              <span class="btn-name">Guide</span>
+              <span class="btn-cost">Controls</span>
+            </button>
+          </div>
+
+          <div class="shop-card shop-card-vertical" style="border-color: rgba(255, 118, 117, 0.5);">
+            <div class="shop-info">
+              <h3 style="color: #ff7675;">Danger Zone</h3>
+              <p>Wipe all progress, dogs, treasures, and bones to start fresh from day one.</p>
+            </div>
+            <button type="button" id="btnResetProgress" class="action-btn" style="background: linear-gradient(135deg, #d63031 0%, #ff7675 100%); width: 100%; min-width: unset; padding: 10px;">
+              <span class="btn-name">Reset All Progress</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- How to Play Modal -->
+  <div id="helpModal" class="modal" style="display: none;">
+    <div class="modal-window help-modal-window">
+      <div class="reroll-modal-header">
+        <h2>How to Play PupperPark</h2>
+        <button type="button" id="btnCloseHelp" class="close-btn" aria-label="Close guide">✕</button>
+      </div>
+      <div class="help-list">
+        <div class="help-row"><strong>Tap Grass</strong><span>Drop extra Bones 🦴 or rare Magic Bones ✨ yourself.</span></div>
+        <div class="help-row"><strong>Tap a Pup</strong><span>Pet them for hearts, a happy bark, and bonus XP.</span></div>
+        <div class="help-row"><strong>Swipe &amp; Pinch</strong><span>Drag left/right to rotate the park; pinch to zoom in or out.</span></div>
+        <div class="help-row"><strong>Call Pack</strong><span>Hold on a tile (1s) or tap Call to gather your pups together.</span></div>
+        <div class="help-row"><strong>Decor &amp; Toys</strong><span>Placed decor grants permanent XP, Magic, and Bone bonuses; toys boost digs &amp; offline yield.</span></div>
+        <div class="help-row"><strong>Hourly Weather</strong><span>Weather shifts every hour with atmospheric effects and perks (tap the weather badge for details).</span></div>
+        <div class="help-row"><strong>Pack Happiness</strong><span>Pet pups, toss treats, own toys, and place decor to lift mood for cozy bonuses with zero penalties.</span></div>
+      </div>
+      <button type="button" id="btnConfirmHelp" class="action-btn" style="width: 100%; padding: 11px;">Got It</button>
+    </div>
+  </div>
+
+  <!-- Reroll Dog Traits & Shiny Chance Modal -->
+  <div id="rerollModal" class="modal" style="display: none;">
+    <div class="modal-window reroll-modal-window">
+      <div class="reroll-modal-header">
+        <h2>🎲 Stats &amp; Shiny Chance Reroll</h2>
+        <button type="button" id="btnCloseRerollModal" class="close-btn" aria-label="Close reroll modal">✕</button>
+      </div>
+
+      <div id="rerollDogSummary" class="reroll-dog-summary"></div>
+      <div id="rerollCurrentStats" class="reroll-stats-grid"></div>
+      <p id="rerollRulesText" class="reroll-rules-text"></p>
+
+      <div id="rerollResultBanner" class="reroll-result-banner" style="display: none;"></div>
+
+      <div class="reroll-actions">
+        <button type="button" id="btnConfirmReroll" class="action-btn reroll-purchase-btn">
+          <span class="btn-name">Reroll Stats &amp; Shiny</span>
+          <span class="btn-cost" id="rerollCostLabel">25 ✨</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Treasure Draft Modal -->
+  <div id="perkModal" class="modal" style="display: none;">
+    <div class="modal-window perk-modal-window">
+      <h2 style="color: #f1c40f; margin-bottom: 4px;">Rare Treasure Found!</h2>
+      <p style="color: #dcdde1; font-size: 0.85rem; margin-bottom: 12px;">Your pack uncovered a hidden treasure chest! Choose 1 of 3 treasures to claim:</p>
+      <div id="perkChoices"></div>
+    </div>
+  </div>
+
+  <!-- Retire Dog Confirmation Modal -->
+  <div id="retireConfirmModal" class="modal" style="display: none;">
+    <div class="modal-window offline-box" style="max-width: 360px;">
+      <h2 style="color: #ffeaa7;">Retire Pup?</h2>
+      <p id="retireConfirmText">Are you sure you want to retire this pup?</p>
+      <div style="display: flex; gap: 10px; margin-top: 15px;">
+        <button type="button" id="btnCancelRetire" class="action-btn" style="background: rgba(255,255,255,0.12); flex: 1;">Cancel</button>
+        <button type="button" id="btnConfirmRetire" class="action-btn" style="background: linear-gradient(135deg, #e17055 0%, #fdcb6e 100%); flex: 1;">Retire</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Clear Decor Confirmation Modal -->
+  <div id="clearDecorConfirmModal" class="modal" style="display: none;">
+    <div class="modal-window offline-box" style="max-width: 360px;">
+      <h2>Clear Park Decor?</h2>
+      <p>Are you sure you want to remove all placed decorations from your park? They will be returned to your inventory.</p>
+      <div style="display: flex; gap: 10px; margin-top: 15px;">
+        <button type="button" id="btnCancelClearDecor" class="action-btn" style="background: rgba(255,255,255,0.12); flex: 1;">Cancel</button>
+        <button type="button" id="btnConfirmClearDecor" class="action-btn" style="flex: 1;">Yes, Clear</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reset Confirmation Modal -->
+  <div id="resetConfirmModal" class="modal" style="display: none;">
+    <div class="modal-window offline-box" style="max-width: 360px;">
+      <h2 style="color: #ff7675;">Reset Progress?</h2>
+      <p>Are you sure you want to wipe all your data? This action cannot be undone!</p>
+      <div style="display: flex; gap: 10px; margin-top: 15px;">
+        <button type="button" id="btnCancelReset" class="action-btn" style="background: rgba(255,255,255,0.12); flex: 1;">Cancel</button>
+        <button type="button" id="btnConfirmReset" class="action-btn" style="background: linear-gradient(135deg, #d63031 0%, #ff7675 100%); flex: 1;">Yes, Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bone Cap Congratulations Modal -->
+  <div id="boneCapModal" class="modal" style="display: none;">
+    <div class="modal-window offline-box" style="max-width: 380px;">
+      <h2 style="color: #ffeaa7;">🦴 Max Bone Cap Reached!</h2>
+      <p id="boneCapModalText">Congratulations! You reached the maximum cap of 250,000 Bones. Spend some bones on dogs, toys, or treats to collect more bones!</p>
+      <button type="button" id="btnCloseBoneCap" class="action-btn" style="width:100%;">Got It!</button>
+    </div>
+  </div>
+
+  <!-- Offline Progress Modal -->
+  <div id="offlineModal" class="modal" style="display: none;">
+    <div class="modal-window offline-box">
+      <h2>Welcome Back!</h2>
+      <p>While you were away, your pack kept digging in the magical park.</p>
+      <div id="offlineEarnings" class="offline-highlight">Earned 0 Bones!</div>
+      <button type="button" id="btnCloseOffline" class="action-btn" style="width:100%;">Awesome!</button>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var isDev = Boolean(document.querySelector('script[src="/src/main.tsx"]'));
+      if (isDev && 'serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.getRegistrations().then(function (regs) {
+          return Promise.all(regs.map(function (r) { return r.unregister(); }));
+        }).then(function () {
+          if ('caches' in window) {
+            return caches.keys().then(function (keys) {
+              return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+            });
+          }
+        }).then(function () {
+          if (!sessionStorage.getItem('pp_sw_cleared')) {
+            sessionStorage.setItem('pp_sw_cleared', '1');
+            window.location.reload();
+          }
+        });
+      }
+    })();
+  </script>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+</html>

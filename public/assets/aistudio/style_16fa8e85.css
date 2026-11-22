@@ -1,0 +1,928 @@
+:root {
+  --bg-void: #0d0b1a;
+  --bg-deep: #15112e;
+  --bg-elevated: #221b44;
+  --bg-card: rgba(28, 23, 52, 0.85);
+  --bg-hud: rgba(18, 15, 38, 0.85);
+  --accent: #6c5ce7;
+  --accent-strong: #4834d4;
+  --accent-soft: #a29bfe;
+  --gold: #ffeaa7;
+  --mint: #55efc4;
+  --green: #2ed573;
+  --border-subtle: rgba(108, 92, 231, 0.35);
+  --border-hud: rgba(108, 92, 231, 0.6);
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+html, body {
+  background: var(--bg-void);
+  color: #fff;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  position: fixed;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-text-size-adjust: none;
+}
+
+/* Top Left Currency HUD */
+#topHud {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top));
+  left: max(16px, env(safe-area-inset-left));
+  z-index: 10;
+  display: flex;
+  gap: 12px;
+}
+
+.currency-pill {
+  background: var(--bg-hud);
+  border: 1.5px solid var(--border-hud);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  padding: 8px 16px;
+  border-radius: 30px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  backdrop-filter: blur(6px);
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.bone-icon {
+  font-size: 1.1rem;
+}
+
+.rate-pill {
+  background: rgba(46, 213, 115, 0.2);
+  border: 1px solid rgba(46, 213, 115, 0.4);
+  color: var(--green);
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 12px;
+  margin-left: 4px;
+}
+
+/* Canvas Area - Disables browser pinch-zoom and default touch gestures */
+#gameCanvas {
+  width: 100%;
+  height: 100dvh;
+  display: block;
+  cursor: grab;
+  touch-action: none;
+  -webkit-touch-callout: none;
+  background: radial-gradient(circle at center, #1b1734 0%, var(--bg-void) 100%);
+}
+
+#gameCanvas:active {
+  cursor: grabbing;
+}
+
+/* Bottom Right Mini Bar */
+#bottomBar {
+  position: fixed;
+  bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  right: calc(12px + env(safe-area-inset-right, 0px));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-hud);
+  border: 1.5px solid var(--border-hud);
+  padding: 8px 14px;
+  border-radius: 20px;
+  z-index: 10;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+.mini-stat {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #dcdde1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.menu-toggle-btn {
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+  border: none;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 6px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.1s, filter 0.2s;
+  box-shadow: 0 4px 12px rgba(108, 92, 231, 0.4);
+}
+
+.menu-toggle-btn:hover {
+  filter: brightness(1.15);
+  transform: translateY(-1px);
+}
+
+/* Slide-Up Bottom Drawer Menu */
+.drawer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.drawer-window {
+  background: linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg-deep) 100%);
+  border-top: 2px solid var(--accent);
+  width: 100%;
+  max-height: 45dvh;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.6);
+  pointer-events: auto;
+  transition: transform 0.15s ease-out;
+}
+
+.drawer-window.is-dragging {
+  transition: none;
+}
+
+/* Extended interactive hit-area for easy menu dragging */
+.drawer-handle-bar {
+  position: relative;
+  width: 100px;
+  height: 24px;
+  align-self: center;
+  cursor: ns-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+  touch-action: none;
+}
+
+.drawer-handle-bar::after {
+  content: '';
+  width: 50px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 3px;
+  transition: background 0.2s;
+}
+
+.drawer-handle-bar:hover::after {
+  background: var(--gold);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 20px;
+  border-bottom: 1px solid rgba(108, 92, 231, 0.3);
+}
+
+.modal-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+}
+
+.tab-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--accent-soft);
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.tab-btn.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent-soft);
+  box-shadow: 0 4px 12px rgba(108, 92, 231, 0.4);
+}
+
+.close-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #fff;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.close-btn:hover {
+  background: #ff7675;
+}
+
+.modal-body {
+  padding: 14px 20px;
+  overflow-y: auto;
+  flex: 1;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(108, 92, 231, 0.5) transparent;
+}
+
+.tab-content {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tab-content.active {
+  display: flex;
+}
+
+/* Shop Cards inside Menu */
+.shop-card {
+  background: rgba(28, 23, 52, 0.8);
+  border: 1px solid rgba(108, 92, 231, 0.3);
+  padding: 10px 16px;
+  border-radius: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Compact Roster Cards */
+.roster-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  padding: 10px 14px;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.roster-card.is-favorite {
+  border-color: rgba(255, 234, 167, 0.55);
+}
+
+.roster-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.roster-top {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.roster-name-input {
+  width: 100%;
+  min-width: 0;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(13, 11, 26, 0.55);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.roster-name-input:focus {
+  outline: none;
+  border-color: var(--accent-soft);
+}
+
+.roster-xp-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.roster-xp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00b894 0%, var(--mint) 100%);
+  border-radius: 999px;
+  transition: width 0.2s ease;
+}
+
+.roster-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.roster-chip {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #dcdde1;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 8px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.roster-chip strong {
+  color: var(--gold);
+}
+
+.roster-chip em {
+  font-style: normal;
+  color: var(--mint);
+  font-weight: 800;
+  margin-left: 2px;
+}
+
+.roster-chip.roster-fav-chip {
+  background: rgba(255, 234, 167, 0.16);
+  border-color: rgba(255, 234, 167, 0.45);
+  color: var(--gold);
+}
+
+.roster-lvl-chip.shiny {
+  border-color: rgba(255, 234, 167, 0.45);
+}
+
+.roster-roll-chip.grade-standard strong {
+  color: #dcdde1;
+}
+
+.roster-roll-chip.grade-sharp strong {
+  color: #74b9ff;
+}
+
+.roster-roll-chip.grade-prime strong {
+  color: var(--mint);
+}
+
+.roster-roll-chip.grade-max strong {
+  color: var(--gold);
+}
+
+/* Keep right column anchored to top-right for favorite star, bottom-right for retire */
+.roster-right-action {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-end;
+  align-self: stretch;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.fav-star-btn {
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1.5px solid rgba(255, 255, 255, 0.22);
+  color: #b2bec3;
+  border-radius: 12px;
+  font-size: 1.45rem;
+  line-height: 1;
+  cursor: pointer;
+  margin-bottom: auto;
+  flex-shrink: 0;
+  transition: transform 0.1s, background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.fav-star-btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 234, 167, 0.65);
+}
+
+.fav-star-btn.active {
+  background: rgba(255, 234, 167, 0.22);
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.reroll-dice-btn {
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(162, 155, 254, 0.14);
+  border: 1.5px solid rgba(162, 155, 254, 0.45);
+  color: #fff;
+  border-radius: 12px;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.1s, background 0.2s, border-color 0.2s;
+}
+
+.reroll-dice-btn:hover {
+  transform: translateY(-1px);
+  background: rgba(162, 155, 254, 0.26);
+  border-color: var(--gold);
+}
+
+.retire-pill-btn {
+  background: linear-gradient(135deg, #e17055 0%, #d63031 100%);
+  border: none;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.74rem;
+  padding: 6px 11px;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: transform 0.1s, filter 0.2s, opacity 0.2s;
+  white-space: nowrap;
+}
+
+.retire-pill-btn:hover:not(:disabled):not([aria-disabled="true"]) {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+/* Two-line Option B Retire Pill (soft warm gold/amber) */
+.retire-pill-btn.retire-pill-two-line {
+  background: linear-gradient(135deg, rgba(246, 185, 59, 0.24) 0%, rgba(229, 142, 38, 0.28) 100%);
+  border: 1px solid rgba(255, 234, 167, 0.48);
+  color: var(--gold);
+  padding: 6px 11px;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-width: 78px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+}
+
+.retire-pill-btn.retire-pill-two-line:hover:not(:disabled):not([aria-disabled="true"]) {
+  background: linear-gradient(135deg, rgba(246, 185, 59, 0.34) 0%, rgba(229, 142, 38, 0.38) 100%);
+  border-color: var(--gold);
+  filter: none;
+  transform: translateY(-1px);
+}
+
+/* Disabled Retire state (e.g., while pup is Favorited) */
+.retire-pill-btn:disabled,
+.retire-pill-btn[aria-disabled="true"],
+.retire-pill-btn.retire-pill-two-line:disabled,
+.retire-pill-btn.retire-pill-two-line[aria-disabled="true"] {
+  opacity: 0.38;
+  cursor: not-allowed;
+  filter: grayscale(0.65);
+  transform: none;
+  box-shadow: none;
+}
+
+.retire-line-top {
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: #fff;
+}
+
+.retire-line-sub {
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--gold);
+}
+
+/* Vertical layout variant for cards like Clear Park and Danger Zone */
+.shop-card-vertical {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.shop-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.shop-info h3 {
+  color: var(--gold);
+  font-size: 0.95rem;
+  margin-bottom: 2px;
+}
+
+.shop-info p {
+  color: #b2bec3;
+  font-size: 0.75rem;
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+
+.shop-owned {
+  font-size: 0.75rem;
+  color: var(--accent-soft);
+  font-weight: 700;
+}
+
+.action-btn {
+  background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
+  border: none;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 100px;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0, 184, 148, 0.3);
+  transition: transform 0.1s, filter 0.2s;
+}
+
+#tab-treats .action-btn {
+  min-width: 116px;
+}
+
+.action-btn:hover:not(:disabled) {
+  filter: brightness(1.1);
+  transform: translateY(-2px);
+}
+
+.action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(0.5);
+}
+
+.btn-name {
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: #fff;
+}
+
+.btn-cost {
+  font-size: 0.75rem;
+  color: var(--gold);
+  font-weight: 800;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
+/* Decor Tab Button Sizing and Group Layout */
+.decor-btn-group {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+  width: 215px;
+}
+
+.decor-action-btn {
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  text-align: center;
+  justify-content: center;
+  padding: 8px 6px;
+  white-space: nowrap;
+}
+
+.decor-action-btn .btn-name {
+  font-size: 0.75rem;
+}
+
+.decor-action-btn .btn-cost {
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+/* Narrow / Portrait Viewport Adjustments */
+@media (max-width: 540px) {
+  .modal-header {
+    padding: 8px 12px;
+    gap: 8px;
+  }
+
+  .modal-body {
+    padding: 12px 14px;
+  }
+
+  .roster-card {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  #tab-decor .shop-card {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px 14px;
+    gap: 10px;
+  }
+
+  #tab-decor .shop-info p {
+    line-height: 1.35;
+  }
+
+  #tab-decor .decor-btn-group {
+    width: 100%;
+    gap: 8px;
+  }
+
+  #tab-decor .decor-action-btn {
+    padding: 8px 10px;
+  }
+}
+
+/* Stats Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.stat-box {
+  background: rgba(28, 23, 52, 0.8);
+  border: 1px solid rgba(108, 92, 231, 0.3);
+  padding: 10px 14px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.8rem;
+  color: #b2bec3;
+}
+
+.stat-box strong {
+  color: var(--gold);
+  font-size: 1rem;
+}
+
+/* Modals Overlay (toggled via JS .style.display = 'flex' / 'none') */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(13, 11, 26, 0.75);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 200;
+  backdrop-filter: blur(6px);
+  pointer-events: auto;
+}
+
+.modal-window.offline-box {
+  max-width: 380px;
+  height: auto;
+  padding: 30px;
+  text-align: center;
+  border-radius: 20px;
+  border: 2px solid var(--accent);
+  background: linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg-deep) 100%);
+  pointer-events: auto;
+}
+
+.offline-box h2 {
+  color: var(--gold);
+  margin-bottom: 10px;
+}
+
+.offline-box p {
+  color: #dcdde1;
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+}
+
+.offline-highlight {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--mint);
+  background: rgba(0, 0, 0, 0.3);
+  padding: 10px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+/* Reroll Modal Styles */
+.reroll-modal-window {
+  width: 92%;
+  max-width: 420px;
+  padding: 22px;
+  border-radius: 20px;
+  border: 2px solid var(--accent-soft);
+  background: linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg-deep) 100%);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.75);
+  pointer-events: auto;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.reroll-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.reroll-modal-header h2 {
+  color: var(--gold);
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.reroll-dog-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+  color: #fff;
+}
+
+.reroll-meta-pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #dcdde1;
+}
+
+.reroll-meta-pill.is-shiny {
+  background: rgba(255, 234, 167, 0.2);
+  color: var(--gold);
+  border: 1px solid rgba(255, 234, 167, 0.5);
+}
+
+.reroll-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.reroll-stat-line {
+  background: rgba(13, 11, 26, 0.55);
+  border: 1px solid rgba(108, 92, 231, 0.3);
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.74rem;
+  color: #b2bec3;
+}
+
+.reroll-stat-line strong {
+  color: var(--gold);
+  font-size: 0.85rem;
+}
+
+.reroll-rules-text {
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: #dcdde1;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.reroll-result-banner {
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  font-weight: 700;
+}
+
+.reroll-result-banner.upgraded {
+  background: rgba(0, 184, 148, 0.18);
+  border: 1px solid rgba(85, 239, 196, 0.6);
+  color: var(--mint);
+}
+
+.reroll-result-banner.kept {
+  background: rgba(255, 234, 167, 0.14);
+  border: 1px solid rgba(255, 234, 167, 0.45);
+  color: var(--gold);
+}
+
+.reroll-result-banner.shiny-hit {
+  border-color: var(--gold);
+  box-shadow: 0 0 18px rgba(255, 234, 167, 0.35);
+}
+
+.reroll-shiny-callout {
+  margin-top: 6px;
+  color: var(--gold);
+  font-size: 0.86rem;
+}
+
+.reroll-actions {
+  display: flex;
+  justify-content: stretch;
+  margin-top: 2px;
+}
+
+.reroll-purchase-btn {
+  width: 100%;
+  padding: 10px 14px;
+}
+
+/* Readable Perk Draft Modal Styles */
+.perk-modal-window {
+  width: 90%;
+  max-width: 440px;
+  padding: 24px;
+  border-radius: 20px;
+  border: 2px solid #f1c40f;
+  background: linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg-deep) 100%);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+  pointer-events: auto;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#perkChoices {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.perk-choice-btn {
+  background: rgba(28, 23, 52, 0.95);
+  border: 1.5px solid rgba(108, 92, 231, 0.6);
+  border-radius: 14px;
+  padding: 14px 16px;
+  width: 100%;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: transform 0.1s, border-color 0.2s, background 0.2s;
+  text-align: left;
+}
+
+.perk-choice-btn:hover {
+  border-color: #f1c40f;
+  background: rgba(45, 38, 80, 0.95);
+  transform: translateY(-2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "PupperPark",
+  "description": "An isometric idle dog park game where you recruit pups, dig for bones and magic treats, discover rare treasures, and decorate your park.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

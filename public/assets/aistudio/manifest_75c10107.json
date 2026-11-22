@@ -1,0 +1,24 @@
+{
+  "name": "PupperPark",
+  "short_name": "PupperPark",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0d0b1a",
+  "theme_color": "#0d0b1a",
+  "icons": [
+    {
+      "src": "./parkicon192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./parkicon512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

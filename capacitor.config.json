@@ -1,0 +1,12 @@
+{
+  "appId": "com.pupperpark.game",
+  "appName": "PupperPark",
+  "webDir": "dist",
+  "android": {
+    "backgroundColor": "#0d0b1a",
+    "allowMixedContent": false
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}
