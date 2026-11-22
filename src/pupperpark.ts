@@ -1308,7 +1308,7 @@ export function initPupperPark(): void {
     };
   }
 
-  function addPackHappiness(delta: number, announceTierUp = true): void {
+  function addPackHappiness(delta: number, _announceTierUp = true): void {
     const floor = getCozyFloor();
     const prev = Math.max(floor, Math.min(HAPPINESS_MAX, Number(state.packHappiness) || floor));
     const prevTier = getHappinessTierIndex(prev);
@@ -1317,16 +1317,6 @@ export function initPupperPark(): void {
 
     const nextTier = getHappinessTierIndex(next);
     if (nextTier !== prevTier) {
-      if (announceTierUp && nextTier > prevTier) {
-        const info = getPackHappinessInfo();
-        addFloatingText(viewportW / 2, Math.max(108, viewportH * 0.19), `${info.icon} Pack is ${info.name}! (${info.bonusSummary})`, '#ffeaa7');
-        if (info.tier === 'ecstatic') {
-          sfx.shiny();
-        } else {
-          sfx.gather();
-        }
-        triggerHaptic(16);
-      }
       updateUI();
     } else if (Math.round(next) !== Math.round(prev)) {
       refreshMoodHUD();
