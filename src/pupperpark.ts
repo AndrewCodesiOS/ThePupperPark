@@ -5030,11 +5030,15 @@ export function initPupperPark(): void {
         c.fillRect(-11.8 - legSwing, -3.5, 3.3, sightLegH);
         c.fillRect(6.8 + legSwing, -3.5, 3.3, sightLegH);
         // Delicate silky feathering behind legs
-        c.fillStyle = silkBright;
+        c.fillStyle = this.isShiny ? coat : silkBright;
         c.beginPath();
         c.ellipse(-12.2 - legSwing, isSleeping ? -1.2 : 1.0, 1.5, isSleeping ? 2.2 : 4.6, 0.12, 0, Math.PI * 2);
         c.ellipse(6.3 + legSwing, isSleeping ? -1.2 : 1.0, 1.4, isSleeping ? 2.2 : 4.2, 0.12, 0, Math.PI * 2);
         c.fill();
+        if (this.isShiny) {
+          c.fillStyle = silkBright;
+          c.fill();
+        }
 
         // Long, low, silky feathered Borzoi S-curve tail
         const wag = isSleeping ? tailWag : Math.sin(this.wagPhase * 1.8) * 2.8 * moodWagAmp;
@@ -5062,13 +5066,22 @@ export function initPupperPark(): void {
         c.fill();
 
         // Deep noble sighthound ribcage & silky chest plume
-        c.fillStyle = silkBright;
+        c.fillStyle = this.isShiny ? coat : silkBright;
         c.beginPath();
         c.ellipse(5.8, isSleeping ? -7.4 : -9.4, 6.2, 7.0, 0.18, 0, Math.PI * 2);
         c.fill();
+        if (this.isShiny) {
+          c.fillStyle = silkBright;
+          c.fill();
+        }
+        c.fillStyle = this.isShiny ? coat : silkBright;
         c.beginPath();
         c.ellipse(8.8, isSleeping ? -9.5 : -12.6, 4.4, 6.2, 0.25, 0, Math.PI * 2);
         c.fill();
+        if (this.isShiny) {
+          c.fillStyle = silkBright;
+          c.fill();
+        }
 
         // Warm champagne-fawn silky saddle patches across arched back & rump
         c.fillStyle = fawn;
@@ -5093,13 +5106,17 @@ export function initPupperPark(): void {
         c.fill();
 
         // Swept-back silky fawn rose ear
-        c.fillStyle = deepFawn;
+        c.fillStyle = this.isShiny ? coat : deepFawn;
         c.beginPath();
         c.moveTo(isSleeping ? 6.4 : 7.6, isSleeping ? -14.8 : -20.4);
         c.quadraticCurveTo(isSleeping ? 1.8 : 2.6, isSleeping ? -13.0 : -17.6, isSleeping ? 4.4 : 5.6, isSleeping ? -10.2 : -14.2);
         c.quadraticCurveTo(isSleeping ? 7.6 : 9.0, isSleeping ? -11.6 : -16.2, isSleeping ? 8.6 : 10.0, isSleeping ? -14.4 : -19.8);
         c.closePath();
         c.fill();
+        if (this.isShiny) {
+          c.fillStyle = deepFawn;
+          c.fill();
+        }
 
         // ICONIC ULTRA-LONG gently arched Borzoi Roman snout!
         c.fillStyle = coat;
