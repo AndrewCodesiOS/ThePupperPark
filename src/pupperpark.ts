@@ -1351,33 +1351,56 @@ export function initPupperPark(): void {
     name: string;
     icon: string;
   } {
-    const SYNODIC_MONTH_MS = 29.53058867 * 86400000;
+    const SYNODIC_MONTH_DAYS = 29.53058867;
+    const SYNODIC_MONTH_MS = SYNODIC_MONTH_DAYS * 86400000;
     const KNOWN_NEW_MOON_MS = Date.UTC(2000, 0, 6, 18, 14, 0);
+
+    // Continuous lunar phase for smooth sky moon terminator & illumination
     const raw = (nowMs - KNOWN_NEW_MOON_MS) / SYNODIC_MONTH_MS;
     const phase = ((raw % 1) + 1) % 1;
     const illumination = 0.5 * (1 - Math.cos(phase * Math.PI * 2));
 
+    // Anchor named phase to the local calendar day (local noon) so it never flips mid-day
+    const localDate = new Date(nowMs);
+    const localNoonMs = new Date(
+      localDate.getFullYear(),
+      localDate.getMonth(),
+      localDate.getDate(),
+      12,
+      0,
+      0,
+      0
+    ).getTime();
+    const dayRaw = (localNoonMs - KNOWN_NEW_MOON_MS) / SYNODIC_MONTH_MS;
+    const dayPhase = ((dayRaw % 1) + 1) % 1;
+
+    // Primary phases (New, First Quarter, Full, Last Quarter) span the 1 calendar day containing the exact phase instant
+    const primaryHalfWindow = 0.5 / SYNODIC_MONTH_DAYS;
+
     let name = 'New Moon';
     let icon = '🌑';
-    if (phase >= 0.0625 && phase < 0.1875) {
+    if (dayPhase < primaryHalfWindow || dayPhase >= 1 - primaryHalfWindow) {
+      name = 'New Moon';
+      icon = '🌑';
+    } else if (dayPhase < 0.25 - primaryHalfWindow) {
       name = 'Waxing Crescent';
       icon = '🌒';
-    } else if (phase >= 0.1875 && phase < 0.3125) {
+    } else if (dayPhase < 0.25 + primaryHalfWindow) {
       name = 'First Quarter';
       icon = '🌓';
-    } else if (phase >= 0.3125 && phase < 0.4375) {
+    } else if (dayPhase < 0.5 - primaryHalfWindow) {
       name = 'Waxing Gibbous';
       icon = '🌔';
-    } else if (phase >= 0.4375 && phase < 0.5625) {
+    } else if (dayPhase < 0.5 + primaryHalfWindow) {
       name = 'Full Moon';
       icon = '🌕';
-    } else if (phase >= 0.5625 && phase < 0.6875) {
+    } else if (dayPhase < 0.75 - primaryHalfWindow) {
       name = 'Waning Gibbous';
       icon = '🌖';
-    } else if (phase >= 0.6875 && phase < 0.8125) {
+    } else if (dayPhase < 0.75 + primaryHalfWindow) {
       name = 'Last Quarter';
       icon = '🌗';
-    } else if (phase >= 0.8125 && phase < 0.9375) {
+    } else {
       name = 'Waning Crescent';
       icon = '🌘';
     }
