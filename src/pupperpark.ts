@@ -1592,6 +1592,45 @@ export function initPupperPark(): void {
     return total / state.roster.length;
   }
 
+  function getEstimatedPackRates(): { bonesPerMin: number; magicPerHour: number } {
+    if (!state.roster || state.roster.length === 0) return { bonesPerMin: 0, magicPerHour: 0 };
+    const cupMult = getActiveCupMult();
+    const packDigMult = getDigMultiplier();
+    const { workBonus, magicBonus } = getPerkMultipliers();
+    const decorMagic = getDecorBonuses().magicAdd;
+    const weather = getCurrentWeather();
+    const moodInfo = getPackHappinessInfo();
+
+    const visualPace = Math.min(1.6, 1 + Math.log1p(Math.max(0, workBonus - 1)) * 0.25) * weather.digSpeedMult * moodInfo.paceMult;
+    const sleepDetours = 0.28 / 0.72;
+    const avgIdleSec = 1.2 / visualPace;
+    const avgSleepOverheadSec = sleepDetours * (4.6 + 1.4 / visualPace);
+
+    let bonesPerMin = 0;
+    let magicPerHour = 0;
+    state.roster.forEach(entry => {
+      const stats = getEffectiveBreedStats(entry);
+      const levelMult = getDogLevelBonusMult(entry);
+      const rawBones = state.digPower * stats.boneYield * levelMult * cupMult * packDigMult;
+      const bonesPerRegularDig = Math.max(1, Math.round(rawBones * 10) / 10);
+
+      const avgWalkSec = 2.92 / (Math.max(0.5, stats.walkMult || 1.1) * visualPace);
+      const avgDigSec = (stats.digSec || 1.5) / visualPace;
+      const cycleSec = avgIdleSec + avgSleepOverheadSec + avgWalkSec + avgDigSec;
+      const digsPerMin = 60 / Math.max(0.5, cycleSec);
+
+      const magicChanceTotal = Math.min(
+        0.9,
+        state.magicChance + magicBonus + decorMagic + weather.magicAdd + moodInfo.magicAdd + (stats.magicBonus || 0)
+      );
+      const regularShare = Math.max(0, 1 - magicChanceTotal);
+      bonesPerMin += digsPerMin * regularShare * bonesPerRegularDig;
+      magicPerHour += digsPerMin * 60 * magicChanceTotal;
+    });
+
+    return { bonesPerMin, magicPerHour };
+  }
+
   function estimateOfflineDigs(seconds: number): number {
     if (!state.roster || state.roster.length === 0 || seconds <= 0) return 0;
     const { workBonus } = getPerkMultipliers();
@@ -1801,8 +1840,14 @@ export function initPupperPark(): void {
         if (typeof state.hapticsEnabled !== 'boolean') {
           state.hapticsEnabled = true;
         }
+        const hasExistingProgress =
+          (Number(state.lifetimeBones) || 0) > 0 ||
+          (Array.isArray(state.roster) && state.roster.length > 1) ||
+          (Array.isArray(state.placedDecorations) && state.placedDecorations.length > 0);
         if (typeof state.hasSeenHint !== 'boolean') {
-          state.hasSeenHint = false;
+          state.hasSeenHint = hasExistingProgress;
+        } else if (!state.hasSeenHint && hasExistingProgress) {
+          state.hasSeenHint = true;
         }
         if (typeof state.cameraAngle !== 'number' || Number.isNaN(state.cameraAngle)) {
           state.cameraAngle = 0;
@@ -2061,6 +2106,7 @@ export function initPupperPark(): void {
 
   document.getElementById('btnOpenMenu')?.addEventListener('click', () => {
     initAudio();
+    dismissOnboardingHint();
     if (gameModal) {
       gameModal.style.display = 'flex';
     }
@@ -2151,6 +2197,10 @@ export function initPupperPark(): void {
       requestSave();
     }
   }
+
+  document.getElementById('onboardingHint')?.addEventListener('click', () => {
+    dismissOnboardingHint();
+  });
 
   function toggleFavoriteDog(dogId: string): void {
     initAudio();
@@ -2833,7 +2883,7 @@ export function initPupperPark(): void {
       soundEnabled: state.soundEnabled,
       ambientEnabled: state.ambientEnabled,
       hapticsEnabled: state.hapticsEnabled,
-      hasSeenHint: true,
+      hasSeenHint: false,
       cameraAngle: 0,
       zoomLevel: 1,
       digPower: BASE_DIG_POWER,
@@ -3016,6 +3066,7 @@ export function initPupperPark(): void {
   }
 
   document.getElementById('btnWhistle')?.addEventListener('click', () => {
+    dismissOnboardingHint();
     const center = gridToScreen(GRID_SIZE / 2, GRID_SIZE / 2);
     gatherPackAt(GRID_SIZE / 2, GRID_SIZE / 2, center.x, center.y);
   });
@@ -3038,6 +3089,7 @@ export function initPupperPark(): void {
     e.preventDefault();
     const factor = e.deltaY > 0 ? 0.92 : 1.08;
     userZoom = Math.max(0.75, Math.min(1.65, userZoom * factor));
+    dismissOnboardingHint();
     requestSave();
   }, { passive: false });
 
@@ -3089,6 +3141,7 @@ export function initPupperPark(): void {
       const pts = Array.from(activePointers.values());
       const dist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
       userZoom = Math.max(0.75, Math.min(1.65, pinchStartZoom * (dist / pinchStartDist)));
+      dismissOnboardingHint();
       requestSave();
       return;
     }
@@ -5805,6 +5858,21 @@ export function initPupperPark(): void {
 
     refreshTreatButtonTimers();
 
+    const packRates = getEstimatedPackRates();
+    const statBonesPerMinEl = document.getElementById('statBonesPerMin');
+    if (statBonesPerMinEl) {
+      const formattedBpm = packRates.bonesPerMin >= 100
+        ? Math.round(packRates.bonesPerMin).toLocaleString()
+        : packRates.bonesPerMin.toFixed(1);
+      statBonesPerMinEl.textContent = `~${formattedBpm} 🦴`;
+    }
+    const statMagicPerHourEl = document.getElementById('statMagicPerHour');
+    if (statMagicPerHourEl) {
+      const formattedMph = packRates.magicPerHour >= 10
+        ? Math.round(packRates.magicPerHour).toLocaleString()
+        : packRates.magicPerHour.toFixed(1);
+      statMagicPerHourEl.textContent = `~${formattedMph} ✨`;
+    }
     const statDigPowerEl = document.getElementById('statDigPower');
     if (statDigPowerEl) statDigPowerEl.textContent = String(Number(state.digPower.toFixed(1)));
     const statSpeedEl = document.getElementById('statSpeed');
@@ -5966,11 +6034,6 @@ export function initPupperPark(): void {
     if (decorSourceEl) {
       decorSourceEl.textContent = decorFloor > 0 ? `+${decorFloor}% floor` : 'None placed';
     }
-
-    const statHappinessEl = document.getElementById('statHappiness');
-    if (statHappinessEl) {
-      statHappinessEl.textContent = `${info.icon} ${info.name} (${info.roundedPct}%)`;
-    }
   }
 
   function refreshWeatherHUD(): void {
@@ -6000,11 +6063,6 @@ export function initPupperPark(): void {
     if (popSky) popSky.textContent = `${tod.icon} ${tod.name} | ${moon.icon} ${moon.name}`;
     if (popCount) popCount.textContent = formatWeatherCountdown(msRemaining);
     if (popNext) popNext.textContent = `Next: ${next.icon} ${next.name}`;
-
-    const statWeatherEl = document.getElementById('statWeather');
-    if (statWeatherEl) {
-      statWeatherEl.textContent = `${weather.icon} ${weather.name} (${weather.shortMod})`;
-    }
   }
 
   function closeWeatherPopover(): void {
