@@ -138,9 +138,11 @@ export function initPupperPark(): void {
     collie: 'Collie',
     dachshund: 'Dachshund',
     husky: 'Husky',
+    dalmatian: 'Dalmatian',
     golden: 'Golden',
     samoyed: 'Samoyed',
     shepherd: 'Shepherd',
+    borzoi: 'Borzoi',
     shiba: 'Shiba',
     labrador: 'Labrador',
     bernese: 'Bernese'
@@ -468,9 +470,11 @@ export function initPupperPark(): void {
         collie: 470,
         dachshund: 560,
         husky: 540,
+        dalmatian: 445,
         golden: 390,
         samoyed: 410,
         shepherd: 350,
+        borzoi: 315,
         shiba: 580,
         labrador: 370,
         bernese: 295
@@ -568,12 +572,14 @@ export function initPupperPark(): void {
     collie:    { rank: 4,  cost: 340,   costMult: 1.24, priceCap: 6500,   walkMult: 1.20, digSec: 1.35, payoutMult: 1.05, scalingMult: 1.10, xpMult: 1.10, magicBonus: 0.015, treasureChance: 0.00008 },
     dachshund: { rank: 5,  cost: 560,   costMult: 1.25, priceCap: 9500,   walkMult: 1.15, digSec: 1.25, payoutMult: 1.22, scalingMult: 1.14, xpMult: 1.10, magicBonus: 0.022, treasureChance: 0.00024 },
     husky:     { rank: 6,  cost: 850,   costMult: 1.26, priceCap: 13000,  walkMult: 1.25, digSec: 1.65, payoutMult: 1.15, scalingMult: 1.15, xpMult: 1.15, magicBonus: 0.020, treasureChance: 0.00008 },
-    golden:    { rank: 7,  cost: 2100,  costMult: 1.28, priceCap: 26000,  walkMult: 1.05, digSec: 1.75, payoutMult: 1.65, scalingMult: 1.20, xpMult: 1.08, magicBonus: 0.030, treasureChance: 0.00008 },
-    samoyed:   { rank: 8,  cost: 3200,  costMult: 1.29, priceCap: 36000,  walkMult: 1.12, digSec: 1.60, payoutMult: 1.55, scalingMult: 1.24, xpMult: 1.22, magicBonus: 0.042, treasureChance: 0.00016 },
-    shepherd:  { rank: 9,  cost: 4800,  costMult: 1.30, priceCap: 48000,  walkMult: 1.15, digSec: 1.65, payoutMult: 1.25, scalingMult: 1.25, xpMult: 1.12, magicBonus: 0.035, treasureChance: 0.00008 },
-    shiba:     { rank: 10, cost: 10500, costMult: 1.32, priceCap: 80000,  walkMult: 1.10, digSec: 1.70, payoutMult: 1.20, scalingMult: 1.20, xpMult: 1.12, magicBonus: 0.055, treasureChance: 0.00064 },
-    labrador:  { rank: 11, cost: 22000, costMult: 1.34, priceCap: 125000, walkMult: 1.20, digSec: 1.50, payoutMult: 1.80, scalingMult: 1.32, xpMult: 1.20, magicBonus: 0.050, treasureChance: 0.00012 },
-    bernese:   { rank: 12, cost: 42000, costMult: 1.35, priceCap: 190000, walkMult: 1.10, digSec: 1.45, payoutMult: 2.10, scalingMult: 1.40, xpMult: 1.25, magicBonus: 0.065, treasureChance: 0.00032 }
+    dalmatian: { rank: 7,  cost: 1450,  costMult: 1.27, priceCap: 19500,  walkMult: 1.24, digSec: 1.45, payoutMult: 1.40, scalingMult: 1.18, xpMult: 1.16, magicBonus: 0.026, treasureChance: 0.00012 },
+    golden:    { rank: 8,  cost: 2100,  costMult: 1.28, priceCap: 26000,  walkMult: 1.05, digSec: 1.75, payoutMult: 1.65, scalingMult: 1.20, xpMult: 1.08, magicBonus: 0.030, treasureChance: 0.00008 },
+    samoyed:   { rank: 9,  cost: 3200,  costMult: 1.29, priceCap: 36000,  walkMult: 1.12, digSec: 1.60, payoutMult: 1.55, scalingMult: 1.24, xpMult: 1.22, magicBonus: 0.042, treasureChance: 0.00016 },
+    shepherd:  { rank: 10, cost: 4800,  costMult: 1.30, priceCap: 48000,  walkMult: 1.15, digSec: 1.65, payoutMult: 1.25, scalingMult: 1.25, xpMult: 1.12, magicBonus: 0.035, treasureChance: 0.00008 },
+    borzoi:    { rank: 11, cost: 7500,  costMult: 1.31, priceCap: 64000,  walkMult: 1.30, digSec: 1.55, payoutMult: 1.45, scalingMult: 1.26, xpMult: 1.18, magicBonus: 0.048, treasureChance: 0.00024 },
+    shiba:     { rank: 12, cost: 10500, costMult: 1.32, priceCap: 80000,  walkMult: 1.10, digSec: 1.70, payoutMult: 1.20, scalingMult: 1.20, xpMult: 1.12, magicBonus: 0.055, treasureChance: 0.00064 },
+    labrador:  { rank: 13, cost: 22000, costMult: 1.34, priceCap: 125000, walkMult: 1.20, digSec: 1.50, payoutMult: 1.80, scalingMult: 1.32, xpMult: 1.20, magicBonus: 0.050, treasureChance: 0.00012 },
+    bernese:   { rank: 14, cost: 42000, costMult: 1.35, priceCap: 190000, walkMult: 1.10, digSec: 1.45, payoutMult: 2.10, scalingMult: 1.40, xpMult: 1.25, magicBonus: 0.065, treasureChance: 0.00032 }
   };
 
   const PERK_POOL: PerkItem[] = [
@@ -605,7 +611,6 @@ export function initPupperPark(): void {
   }
 
   function normalizeBreedKey(breed: string): string {
-    if (breed === 'dalmatian') return 'labrador';
     return BREED_CONFIG[breed] ? breed : 'aussie';
   }
 
@@ -666,7 +671,7 @@ export function initPupperPark(): void {
     namePool: [],
     dogs: {
       aussie: 1, corgi: 0, beagle: 0, collie: 0, dachshund: 0, husky: 0,
-      golden: 0, samoyed: 0, shepherd: 0, shiba: 0, labrador: 0, bernese: 0
+      dalmatian: 0, golden: 0, samoyed: 0, shepherd: 0, borzoi: 0, shiba: 0, labrador: 0, bernese: 0
     },
     shinyDogs: [],
     roster: [],
@@ -2876,7 +2881,7 @@ export function initPupperPark(): void {
     if (resetConfirmModal) resetConfirmModal.style.display = 'none';
   });
 
-  document.getElementById('btnConfirmReset')?.addEventListener('click', () => {
+  function performReset(startingBones = 0, startingMagicBones = 0): void {
     initAudio();
     localStorage.removeItem('pupperpark_save');
     pendingRetireDogId = null;
@@ -2887,16 +2892,18 @@ export function initPupperPark(): void {
     userZoom = 1;
     const starterShinyRoll = rollStarterShiny();
     const resetNow = Date.now();
+    const clampedBones = Math.max(0, Math.min(MAX_BONES, Math.floor(startingBones)));
+    const clampedMagic = Math.max(0, Math.floor(startingMagicBones));
 
     state = {
-      bones: 0,
-      lifetimeBones: 0,
-      magicBones: 0,
+      bones: clampedBones,
+      lifetimeBones: clampedBones + clampedMagic,
+      magicBones: clampedMagic,
       nextNameIndex: 1,
       namePool: buildShuffledNamePool(new Set(['biscuit'])),
       dogs: {
         aussie: 1, corgi: 0, beagle: 0, collie: 0, dachshund: 0, husky: 0,
-        golden: 0, samoyed: 0, shepherd: 0, shiba: 0, labrador: 0, bernese: 0
+        dalmatian: 0, golden: 0, samoyed: 0, shepherd: 0, borzoi: 0, shiba: 0, labrador: 0, bernese: 0
       },
       shinyDogs: [],
       roster: [createRosterEntry('aussie', starterShinyRoll.isShiny, starterShinyRoll.shinyColor, 'Biscuit')],
@@ -2909,15 +2916,15 @@ export function initPupperPark(): void {
       soundEnabled: state.soundEnabled,
       ambientEnabled: state.ambientEnabled,
       hapticsEnabled: state.hapticsEnabled,
-      hasSeenHint: false,
+      hasSeenHint: clampedBones > 0 || clampedMagic > 0,
       cameraAngle: 0,
       zoomLevel: 1,
       digPower: BASE_DIG_POWER,
       speedMultiplier: BASE_SPEED_MULTIPLIER,
       idleMultiplier: BASE_IDLE_MULTIPLIER,
       magicChance: 0.22,
-      boneCapEverShown: false,
-      boneCapReachedNotified: false,
+      boneCapEverShown: clampedBones >= MAX_BONES,
+      boneCapReachedNotified: clampedBones >= MAX_BONES,
       kongTimer: 0,
       baconTimer: 0,
       pupCupTimer: 0,
@@ -2939,6 +2946,7 @@ export function initPupperPark(): void {
       lastSaveTime: resetNow
     };
 
+    syncBreedCountsFromRoster();
     initDefaultCosts();
 
     rebuildCanvasDogsFromRoster();
@@ -2960,6 +2968,15 @@ export function initPupperPark(): void {
     updateUI();
     renderRosterTab();
     saveGameAt(resetNow);
+  }
+
+  document.getElementById('btnConfirmReset')?.addEventListener('click', () => {
+    performReset(0, 0);
+  });
+
+  document.getElementById('btnTestResetMax')?.addEventListener('click', () => {
+    performReset(MAX_BONES, 20000);
+    sfx.upgrade();
   });
 
   function getViewportSize(): { width: number; height: number } {
@@ -4159,88 +4176,157 @@ export function initPupperPark(): void {
           c.fill();
         }
       } else if (this.breed === 'shepherd') {
-        const saddleCol = this.isShiny ? this.shinyColor : '#d35400';
-        const darkCol = this.isShiny ? this.shinyColor : '#2c3e50';
-        const tanAccent = this.isShiny ? this.shinyColor : '#e67e22';
+        const tanCoat = this.isShiny ? this.shinyColor : '#d6994c';
+        const tanChest = this.isShiny ? this.shinyColor : '#e6b874';
+        const saddleBlack = this.isShiny ? '#262b36' : '#1b1e24';
+        const darkTrim = this.isShiny ? '#343b4a' : '#2d323c';
+        const earInner = this.isShiny ? 'rgba(255,255,255,0.28)' : '#b47438';
 
-        c.fillStyle = darkCol;
-        c.fillRect(-12 - legSwing, -2.5, 4.2, isSleeping ? 4 : 6);
-        c.fillRect(7 + legSwing, -2.5, 4.2, isSleeping ? 4 : 6);
-        c.fillStyle = tanAccent;
-        c.fillRect(-12 - legSwing, isSleeping ? 1.5 : 2, 4.2, isSleeping ? 2 : 5);
-        c.fillRect(7 + legSwing, isSleeping ? 1.5 : 2, 4.2, isSleeping ? 2 : 5);
+        // Sturdy tan legs with dark upper thigh / hock markings
+        c.fillStyle = darkTrim;
+        c.fillRect(-12.2 - legSwing, -3, 4.4, isSleeping ? 3.5 : 4.8);
+        c.fillStyle = tanCoat;
+        c.fillRect(-12.2 - legSwing, isSleeping ? 0.5 : 1.4, 4.4, isSleeping ? 3 : 6.2);
+        c.fillRect(7.2 + legSwing, -3, 4.4, isSleeping ? 4.5 : 10.6);
+        c.fillStyle = tanChest;
+        c.fillRect(-12.2 - legSwing, pawY, 4.4, pawHeight);
+        c.fillRect(7.2 + legSwing, pawY, 4.4, pawHeight);
 
-        const wag = isSleeping ? tailWag : Math.sin(this.wagPhase * 2) * 3.2 * moodWagAmp;
+        // Low-sweeping bushy black-tipped sable tail
+        const wag = isSleeping ? tailWag : Math.sin(this.wagPhase * 2) * 3.0 * moodWagAmp;
         c.save();
-        c.strokeStyle = darkCol;
-        c.lineWidth = 5.5;
+        c.strokeStyle = tanCoat;
+        c.lineWidth = 5.6;
         c.lineCap = 'round';
         c.beginPath();
-        c.moveTo(-14.5, isSleeping ? -7.5 : -9.5);
-        c.quadraticCurveTo(isSleeping ? -19 : -22, (isSleeping ? -7.5 : -11) + wag, isSleeping ? -21.5 : -25, (isSleeping ? -4.5 : -5) + wag * 0.5);
+        c.moveTo(-14.5, isSleeping ? -7.2 : -9.2);
+        c.quadraticCurveTo(isSleeping ? -19.5 : -22.5, (isSleeping ? -6.8 : -8.5) + wag * 0.8, isSleeping ? -22 : -26, (isSleeping ? -3.8 : -4.2) + wag * 0.5);
+        c.stroke();
+        c.strokeStyle = saddleBlack;
+        c.lineWidth = 4.6;
+        c.beginPath();
+        c.moveTo(-16.5, isSleeping ? -7.4 : -9.3);
+        c.quadraticCurveTo(isSleeping ? -20 : -23, (isSleeping ? -7.2 : -9.0) + wag * 0.8, isSleeping ? -22.2 : -26.2, (isSleeping ? -4.0 : -4.5) + wag * 0.5);
         c.stroke();
         c.restore();
 
-        c.fillStyle = saddleCol;
+        // Athletic sloped German Shepherd torso (golden-tan base)
+        c.fillStyle = tanCoat;
         c.beginPath();
-        c.ellipse(-1, isSleeping ? -8 : -10, isSleeping ? 13.5 : 15.5, (isSleeping ? 7.6 : 8.8) + sleepBreath * 0.2, -0.06, 0, Math.PI * 2);
+        c.ellipse(-1, isSleeping ? -8.2 : -10.2, isSleeping ? 14 : 16, (isSleeping ? 7.6 : 8.9) + sleepBreath * 0.2, -0.09, 0, Math.PI * 2);
         c.fill();
 
-        c.fillStyle = darkCol;
+        // Warm tan chest ruff & lighter belly
+        c.fillStyle = tanChest;
         c.beginPath();
-        c.ellipse(-2, isSleeping ? -10 : -12.5, 12.5, 4.8, -0.05, 0, Math.PI * 2);
+        c.ellipse(8.2, isSleeping ? -7.5 : -9.2, 5.6, 6.2, 0.16, 0, Math.PI * 2);
+        c.fill();
+        c.beginPath();
+        c.ellipse(-0.5, isSleeping ? -4.6 : -6, 10.5, 3.2, -0.04, 0, Math.PI * 2);
         c.fill();
 
-        c.fillStyle = saddleCol;
+        // Iconic broad jet-black saddle blanket draping over back & shoulders
+        c.fillStyle = saddleBlack;
         c.beginPath();
-        c.arc(isSleeping ? 9.5 : 11, isSleeping ? -12.5 : -17.5, 7.4, 0, Math.PI * 2);
+        c.ellipse(-2.5, isSleeping ? -10.6 : -13.2, isSleeping ? 11.4 : 12.6, isSleeping ? 4.8 : 5.6, -0.09, 0, Math.PI * 2);
+        c.fill();
+        c.beginPath();
+        c.ellipse(-1.5, isSleeping ? -8.6 : -10.6, 8.2, 4.4, -0.06, 0, Math.PI * 2);
+        c.fill();
+        // Subtle dark neck-ridge & shoulder wrap
+        c.beginPath();
+        c.ellipse(5.5, isSleeping ? -11.2 : -14.2, 5.2, 3.2, 0.28, 0, Math.PI * 2);
         c.fill();
 
-        c.fillStyle = darkCol;
+        // Back tall pointed German Shepherd ear
+        c.fillStyle = darkTrim;
         c.beginPath();
-        c.moveTo(6.5, isSleeping ? -16.5 : -21);
-        c.lineTo(8.5, isSleeping ? -19.5 : -30.5);
-        c.lineTo(13, isSleeping ? -16 : -20.5);
+        c.moveTo(10.5, isSleeping ? -16 : -21);
+        c.lineTo(13.6, isSleeping ? -21.2 : -31.2);
+        c.lineTo(15.6, isSleeping ? -15.8 : -20.5);
         c.closePath();
         c.fill();
 
-        c.fillStyle = tanAccent;
+        // Noble sculpted head (golden tan with dark forehead bridge)
+        c.fillStyle = tanCoat;
         c.beginPath();
-        c.moveTo(8, isSleeping ? -17 : -21.5);
-        c.lineTo(9.2, isSleeping ? -18.5 : -27.5);
-        c.lineTo(11.5, isSleeping ? -16.5 : -21);
+        c.arc(isSleeping ? 9.8 : 11.4, isSleeping ? -12.6 : -17.8, 7.2, 0, Math.PI * 2);
+        c.fill();
+
+        // Warm tan cheek fluff
+        c.fillStyle = tanChest;
+        c.beginPath();
+        c.ellipse(isSleeping ? 10.2 : 11.6, isSleeping ? -10.4 : -15.2, 5.2, 3.3, 0.1, 0, Math.PI * 2);
+        c.fill();
+
+        // Dark forehead widow's-peak mask bridge
+        c.fillStyle = saddleBlack;
+        c.beginPath();
+        c.ellipse(isSleeping ? 11.6 : 13.4, isSleeping ? -15.2 : -20.8, 4.8, 2.7, 0.22, 0, Math.PI * 2);
+        c.fill();
+
+        // Front tall proud upright German Shepherd ear with warm tan interior
+        c.fillStyle = saddleBlack;
+        c.beginPath();
+        c.moveTo(6.0, isSleeping ? -16.2 : -21.2);
+        c.lineTo(8.2, isSleeping ? -22 : -32.2);
+        c.lineTo(12.6, isSleeping ? -16 : -20.8);
+        c.closePath();
+        c.fill();
+        c.fillStyle = earInner;
+        c.beginPath();
+        c.moveTo(7.4, isSleeping ? -16.6 : -21.8);
+        c.lineTo(8.7, isSleeping ? -20.4 : -29.0);
+        c.lineTo(11.1, isSleeping ? -16.5 : -21.4);
         c.closePath();
         c.fill();
 
-        c.fillStyle = darkCol;
+        // Classic strong tapered black German Shepherd muzzle mask
+        c.fillStyle = saddleBlack;
         c.beginPath();
-        c.moveTo(11, isSleeping ? -13.5 : -17);
-        c.lineTo(isSleeping ? 19.5 : 21.5, isSleeping ? -11.2 : -15.5);
-        c.lineTo(isSleeping ? 18.5 : 20.5, isSleeping ? -9.5 : -12.5);
-        c.lineTo(11, isSleeping ? -9.5 : -12);
+        c.moveTo(isSleeping ? 12.2 : 13.8, isSleeping ? -14.2 : -18.8);
+        c.lineTo(isSleeping ? 20.6 : 22.8, isSleeping ? -11.8 : -16.2);
+        c.lineTo(isSleeping ? 19.8 : 21.8, isSleeping ? -9.6 : -13.2);
+        c.lineTo(isSleeping ? 12.0 : 13.6, isSleeping ? -9.8 : -13.6);
         c.closePath();
         c.fill();
 
-        c.fillStyle = '#11161d';
+        // Subtle tan lower jaw chin
+        c.fillStyle = tanChest;
         c.beginPath();
-        c.arc(isSleeping ? 19.3 : 21.3, isSleeping ? -11 : -14.8, 1.7, 0, Math.PI * 2);
+        c.ellipse(isSleeping ? 15.8 : 17.6, isSleeping ? -9.8 : -13.5, 3.4, 1.35, 0.05, 0, Math.PI * 2);
+        c.fill();
+
+        // Glossy black nose
+        c.fillStyle = '#0c0e12';
+        c.beginPath();
+        c.arc(isSleeping ? 20.8 : 22.9, isSleeping ? -11.5 : -15.7, 1.8, 0, Math.PI * 2);
         c.fill();
 
         if (isSleeping) {
-          c.strokeStyle = '#1e272e';
+          c.strokeStyle = '#1e1e1e';
           c.lineWidth = 1.5;
           c.lineCap = 'round';
           c.beginPath();
-          c.arc(13, -13, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
+          c.arc(13.5, -13.2, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
           c.stroke();
         } else {
-          c.fillStyle = '#f9ca24';
+          // Intelligent dark-amber eye with subtle dark rim & crisp white glint
+          c.fillStyle = saddleBlack;
           c.beginPath();
-          c.arc(14.5, -18, 1.55, 0, Math.PI * 2);
+          c.arc(14.8, -18.3, 1.9, 0, Math.PI * 2);
           c.fill();
-          c.fillStyle = '#1e272e';
+          c.fillStyle = '#5c3317';
           c.beginPath();
-          c.arc(14.7, -18, 0.8, 0, Math.PI * 2);
+          c.arc(14.9, -18.3, 1.35, 0, Math.PI * 2);
+          c.fill();
+          c.fillStyle = '#11161d';
+          c.beginPath();
+          c.arc(15.0, -18.3, 0.75, 0, Math.PI * 2);
+          c.fill();
+          c.fillStyle = '#ffffff';
+          c.beginPath();
+          c.arc(15.3, -18.8, 0.5, 0, Math.PI * 2);
           c.fill();
         }
       } else if (this.breed === 'beagle') {
@@ -4813,6 +4899,258 @@ export function initPupperPark(): void {
           c.fillStyle = '#ffffff';
           c.beginPath();
           c.arc(15.6, -18.7, 0.6, 0, Math.PI * 2);
+          c.fill();
+        }
+      } else if (this.breed === 'dalmatian') {
+        const coat = this.isShiny ? this.shinyColor : '#fafcff';
+        const shade = this.isShiny ? 'rgba(0, 0, 0, 0.10)' : '#dde4ee';
+        const spot = '#191d24';
+        const tallLegH = isSleeping ? 4.4 : 11.2;
+
+        // Sleek athletic spotted Dalmatian legs
+        c.fillStyle = coat;
+        c.fillRect(-11.4 - legSwing, -3.2, 4.0, tallLegH);
+        c.fillRect(6.6 + legSwing, -3.2, 4.0, tallLegH);
+        c.fillStyle = spot;
+        c.beginPath();
+        c.arc(-9.6 - legSwing, isSleeping ? 0.2 : 1.6, 1.25, 0, Math.PI * 2);
+        c.arc(8.6 + legSwing, isSleeping ? 0.5 : 3.2, 1.2, 0, Math.PI * 2);
+        c.fill();
+
+        // Tapered whip-like spotted tail
+        const wag = isSleeping ? tailWag : Math.sin(this.wagPhase * 2.5) * 3.6 * moodWagAmp;
+        c.save();
+        c.strokeStyle = coat;
+        c.lineWidth = 3.6;
+        c.lineCap = 'round';
+        c.beginPath();
+        c.moveTo(-14.2, isSleeping ? -8.2 : -10.2);
+        c.quadraticCurveTo(isSleeping ? -19 : -22.2, (isSleeping ? -10 : -14.8) + wag, isSleeping ? -21.2 : -25.2, (isSleeping ? -11 : -16.8) + wag * 0.7);
+        c.stroke();
+        c.fillStyle = spot;
+        c.beginPath();
+        c.arc(isSleeping ? -18.2 : -21.2, (isSleeping ? -9.6 : -14.0) + wag * 0.8, 1.35, 0, Math.PI * 2);
+        c.arc(isSleeping ? -20.5 : -24.2, (isSleeping ? -10.6 : -16.2) + wag * 0.72, 1.15, 0, Math.PI * 2);
+        c.fill();
+        c.restore();
+
+        // Sleek athletic Dalmatian torso
+        c.fillStyle = shade;
+        c.beginPath();
+        c.ellipse(-1, isSleeping ? -7.8 : -9.8, isSleeping ? 13.8 : 15.6, (isSleeping ? 7.2 : 8.2) + sleepBreath * 0.2, -0.04, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = coat;
+        c.beginPath();
+        c.ellipse(-1, isSleeping ? -8.4 : -10.4, isSleeping ? 13.6 : 15.4, (isSleeping ? 6.8 : 7.8) + sleepBreath * 0.2, -0.04, 0, Math.PI * 2);
+        c.fill();
+
+        // Crisp polka-dot Dalmatian coat spots
+        c.fillStyle = spot;
+        const bodySpots: Array<[number, number, number]> = [
+          [-10.2, isSleeping ? -9.4 : -11.8, 2.2],
+          [-6.4, isSleeping ? -6.6 : -8.2, 1.7],
+          [-4.2, isSleeping ? -11.4 : -14.0, 2.4],
+          [-0.8, isSleeping ? -8.0 : -9.8, 1.9],
+          [2.8, isSleeping ? -10.8 : -13.2, 2.1],
+          [4.2, isSleeping ? -6.4 : -8.0, 1.5],
+          [-9.0, isSleeping ? -6.2 : -7.6, 1.35],
+          [7.4, isSleeping ? -8.8 : -10.8, 1.65]
+        ];
+        bodySpots.forEach(([sx, sy, sr]) => {
+          c.beginPath();
+          c.arc(sx, sy, sr, 0, Math.PI * 2);
+          c.fill();
+        });
+
+        // Sculpted white head
+        c.fillStyle = coat;
+        c.beginPath();
+        c.arc(isSleeping ? 9.8 : 11.4, isSleeping ? -12.6 : -17.6, 6.8, 0, Math.PI * 2);
+        c.fill();
+
+        // Clean tapered snout
+        c.fillStyle = coat;
+        c.beginPath();
+        c.ellipse(isSleeping ? 15.2 : 17.2, isSleeping ? -11.0 : -15.4, 5.2, 3.2, 0.04, 0, Math.PI * 2);
+        c.fill();
+
+        // Forehead & cheek tiny spots
+        c.fillStyle = spot;
+        c.beginPath();
+        c.arc(isSleeping ? 11.6 : 13.2, isSleeping ? -16.0 : -21.2, 1.5, 0, Math.PI * 2);
+        c.arc(isSleeping ? 15.6 : 17.4, isSleeping ? -9.8 : -14.0, 1.05, 0, Math.PI * 2);
+        c.fill();
+
+        // High-set spotted velvety floppy Dalmatian ear
+        c.fillStyle = coat;
+        c.beginPath();
+        c.moveTo(6.6, isSleeping ? -15.6 : -20.6);
+        c.quadraticCurveTo(4.0, isSleeping ? -11.2 : -15.0, 7.2, isSleeping ? -8.8 : -11.8);
+        c.quadraticCurveTo(10.6, isSleeping ? -11.0 : -14.8, 10.2, isSleeping ? -15.4 : -20.2);
+        c.closePath();
+        c.fill();
+        c.fillStyle = spot;
+        c.beginPath();
+        c.arc(7.4, isSleeping ? -13.6 : -17.8, 1.9, 0, Math.PI * 2);
+        c.arc(6.8, isSleeping ? -10.6 : -14.0, 1.45, 0, Math.PI * 2);
+        c.fill();
+
+        // Glossy black nose
+        c.fillStyle = '#0f1217';
+        c.beginPath();
+        c.arc(isSleeping ? 19.8 : 21.8, isSleeping ? -11.4 : -15.8, 1.7, 0, Math.PI * 2);
+        c.fill();
+
+        if (isSleeping) {
+          c.strokeStyle = '#1e1e1e';
+          c.lineWidth = 1.5;
+          c.lineCap = 'round';
+          c.beginPath();
+          c.arc(13.2, -13.0, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
+          c.stroke();
+        } else {
+          c.fillStyle = '#14171c';
+          c.beginPath();
+          c.arc(14.4, -18.0, 1.6, 0, Math.PI * 2);
+          c.fill();
+          c.fillStyle = '#ffffff';
+          c.beginPath();
+          c.arc(14.8, -18.5, 0.55, 0, Math.PI * 2);
+          c.fill();
+        }
+      } else if (this.breed === 'borzoi') {
+        const coat = this.isShiny ? this.shinyColor : '#faf3e8';
+        const fawn = this.isShiny ? 'rgba(0, 0, 0, 0.14)' : '#d2a16b';
+        const deepFawn = this.isShiny ? 'rgba(0, 0, 0, 0.22)' : '#b47f47';
+        const silkBright = this.isShiny ? 'rgba(255, 255, 255, 0.30)' : '#fffdf9';
+        const sightLegH = isSleeping ? 4.4 : 12.2;
+
+        // Tall, slender feathered sighthound legs
+        c.fillStyle = coat;
+        c.fillRect(-11.8 - legSwing, -3.5, 3.3, sightLegH);
+        c.fillRect(6.8 + legSwing, -3.5, 3.3, sightLegH);
+        // Delicate silky feathering behind legs
+        c.fillStyle = silkBright;
+        c.beginPath();
+        c.ellipse(-12.2 - legSwing, isSleeping ? -1.2 : 1.0, 1.5, isSleeping ? 2.2 : 4.6, 0.12, 0, Math.PI * 2);
+        c.ellipse(6.3 + legSwing, isSleeping ? -1.2 : 1.0, 1.4, isSleeping ? 2.2 : 4.2, 0.12, 0, Math.PI * 2);
+        c.fill();
+
+        // Long, low, silky feathered Borzoi S-curve tail
+        const wag = isSleeping ? tailWag : Math.sin(this.wagPhase * 1.8) * 2.8 * moodWagAmp;
+        c.save();
+        c.strokeStyle = coat;
+        c.lineWidth = 4.6;
+        c.lineCap = 'round';
+        c.beginPath();
+        c.moveTo(-14.6, isSleeping ? -7.8 : -10.0);
+        c.bezierCurveTo(
+          isSleeping ? -19.5 : -21.8, (isSleeping ? -6.5 : -7.0) + wag * 0.6,
+          isSleeping ? -21.8 : -25.2, (isSleeping ? -3.0 : -1.5) + wag * 0.8,
+          isSleeping ? -24.5 : -28.6, (isSleeping ? -4.2 : -4.2) + wag * 0.5
+        );
+        c.stroke();
+        c.strokeStyle = silkBright;
+        c.lineWidth = 2.4;
+        c.stroke();
+        c.restore();
+
+        // Graceful arched sighthound back + deep chest + tucked waist
+        c.fillStyle = coat;
+        c.beginPath();
+        c.ellipse(-1.2, isSleeping ? -8.6 : -11.0, isSleeping ? 14.0 : 16.0, (isSleeping ? 6.8 : 7.8) + sleepBreath * 0.2, -0.08, 0, Math.PI * 2);
+        c.fill();
+
+        // Deep noble sighthound ribcage & silky chest plume
+        c.fillStyle = silkBright;
+        c.beginPath();
+        c.ellipse(5.8, isSleeping ? -7.4 : -9.4, 6.2, 7.0, 0.18, 0, Math.PI * 2);
+        c.fill();
+        c.beginPath();
+        c.ellipse(8.8, isSleeping ? -9.5 : -12.6, 4.4, 6.2, 0.25, 0, Math.PI * 2);
+        c.fill();
+
+        // Warm champagne-fawn silky saddle patches across arched back & rump
+        c.fillStyle = fawn;
+        c.beginPath();
+        c.ellipse(-4.5, isSleeping ? -10.8 : -13.8, 8.6, 4.4, -0.1, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = deepFawn;
+        c.beginPath();
+        c.ellipse(-5.8, isSleeping ? -11.6 : -14.8, 5.4, 2.4, -0.1, 0, Math.PI * 2);
+        c.fill();
+
+        // Slender graceful Borzoi neck rising to aristocratic head
+        c.fillStyle = coat;
+        c.beginPath();
+        c.ellipse(isSleeping ? 9.6 : 11.4, isSleeping ? -12.8 : -18.2, 5.6, 5.0, -0.12, 0, Math.PI * 2);
+        c.fill();
+
+        // Soft fawn crown & cheek shading
+        c.fillStyle = fawn;
+        c.beginPath();
+        c.ellipse(isSleeping ? 9.0 : 10.6, isSleeping ? -14.2 : -19.8, 4.2, 2.7, -0.15, 0, Math.PI * 2);
+        c.fill();
+
+        // Swept-back silky fawn rose ear
+        c.fillStyle = deepFawn;
+        c.beginPath();
+        c.moveTo(isSleeping ? 6.4 : 7.6, isSleeping ? -14.8 : -20.4);
+        c.quadraticCurveTo(isSleeping ? 1.8 : 2.6, isSleeping ? -13.0 : -17.6, isSleeping ? 4.4 : 5.6, isSleeping ? -10.2 : -14.2);
+        c.quadraticCurveTo(isSleeping ? 7.6 : 9.0, isSleeping ? -11.6 : -16.2, isSleeping ? 8.6 : 10.0, isSleeping ? -14.4 : -19.8);
+        c.closePath();
+        c.fill();
+
+        // ICONIC ULTRA-LONG gently arched Borzoi Roman snout!
+        c.fillStyle = coat;
+        c.beginPath();
+        c.moveTo(isSleeping ? 11.8 : 13.6, isSleeping ? -15.6 : -21.2);
+        c.quadraticCurveTo(
+          isSleeping ? 19.6 : 21.8, isSleeping ? -15.4 : -20.6,
+          isSleeping ? 25.4 : 28.0, isSleeping ? -11.2 : -15.4
+        );
+        c.lineTo(isSleeping ? 24.4 : 26.8, isSleeping ? -9.5 : -13.6);
+        c.quadraticCurveTo(
+          isSleeping ? 18.2 : 20.2, isSleeping ? -10.4 : -14.8,
+          isSleeping ? 11.6 : 13.2, isSleeping ? -10.4 : -15.2
+        );
+        c.closePath();
+        c.fill();
+
+        // Subtle silky highlight along bridge of the long snoot
+        c.strokeStyle = silkBright;
+        c.lineWidth = 1.3;
+        c.lineCap = 'round';
+        c.beginPath();
+        c.moveTo(isSleeping ? 14.0 : 15.8, isSleeping ? -14.8 : -20.2);
+        c.quadraticCurveTo(
+          isSleeping ? 19.4 : 21.4, isSleeping ? -14.4 : -19.5,
+          isSleeping ? 23.6 : 26.0, isSleeping ? -11.6 : -16.0
+        );
+        c.stroke();
+
+        // Crisp black nose at the very tip of the long snoot
+        c.fillStyle = '#11141a';
+        c.beginPath();
+        c.arc(isSleeping ? 25.5 : 28.0, isSleeping ? -10.8 : -15.0, 1.65, 0, Math.PI * 2);
+        c.fill();
+
+        if (isSleeping) {
+          c.strokeStyle = '#2d3436';
+          c.lineWidth = 1.4;
+          c.lineCap = 'round';
+          c.beginPath();
+          c.arc(13.2, -13.6, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
+          c.stroke();
+        } else {
+          // Dark expressive almond sighthound eye
+          c.fillStyle = '#181b22';
+          c.beginPath();
+          c.ellipse(14.4, -18.8, 1.75, 1.35, -0.1, 0, Math.PI * 2);
+          c.fill();
+          c.fillStyle = '#ffffff';
+          c.beginPath();
+          c.arc(14.8, -19.2, 0.5, 0, Math.PI * 2);
           c.fill();
         }
       }
@@ -5462,9 +5800,11 @@ export function initPupperPark(): void {
   document.getElementById('btnSummonCollie')?.addEventListener('click', () => recruitDog('collie'));
   document.getElementById('btnSummonDachshund')?.addEventListener('click', () => recruitDog('dachshund'));
   document.getElementById('btnSummonHusky')?.addEventListener('click', () => recruitDog('husky'));
+  document.getElementById('btnSummonDalmatian')?.addEventListener('click', () => recruitDog('dalmatian'));
   document.getElementById('btnSummonGolden')?.addEventListener('click', () => recruitDog('golden'));
   document.getElementById('btnSummonSamoyed')?.addEventListener('click', () => recruitDog('samoyed'));
   document.getElementById('btnSummonShepherd')?.addEventListener('click', () => recruitDog('shepherd'));
+  document.getElementById('btnSummonBorzoi')?.addEventListener('click', () => recruitDog('borzoi'));
   document.getElementById('btnSummonShiba')?.addEventListener('click', () => recruitDog('shiba'));
   document.getElementById('btnSummonLabrador')?.addEventListener('click', () => recruitDog('labrador'));
   document.getElementById('btnSummonBernese')?.addEventListener('click', () => recruitDog('bernese'));
