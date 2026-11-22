@@ -129,6 +129,7 @@ export function initPupperPark(): void {
   const STARTER_SHINY_ODDS = 1 / 325;
   const SPAWN_SHINY_ODDS = 1 / 650;
   const REROLL_SHINY_ODDS = 1 / 1300;
+  const SHINY_MAGIC_BONE_BONUS = 1;
   const REROLL_STEP_COST = 25;
   const SHINY_PALETTES = ['#f1c40f', '#e67e22', '#e84393', '#00cec9', '#fd79a8'];
 
@@ -169,7 +170,7 @@ export function initPupperPark(): void {
     'Bandit', 'Mochi', 'Koda', 'Nova', 'Rusty', 'Zelda',
     'Bagel', 'Sprout', 'Pepper', 'Casper', 'Tilly', 'Felix',
     'Honey', 'Buster', 'Dottie', 'Rocco', 'Cleo', 'Marley',
-    'Aspen', 'Bennie'
+    'Aspen', 'Bennie', 'Franklin', 'Flora'
   ];
 
   function drawRoundedRect(
@@ -1666,13 +1667,14 @@ export function initPupperPark(): void {
         0.9,
         state.magicChance + magicBonus + decorMagic + weather.magicAdd + moodInfo.magicAdd + (stats.magicBonus || 0)
       );
+      const magicPerDrop = 1 + (entry.isShiny ? SHINY_MAGIC_BONE_BONUS : 0);
       if (kongActive) {
         bonesPerMin += digsPerMin * bonesPerRegularDig;
-        magicPerHour += digsPerMin * 60;
+        magicPerHour += digsPerMin * 60 * magicPerDrop;
       } else {
         const regularShare = Math.max(0, 1 - magicChanceTotal);
         bonesPerMin += digsPerMin * regularShare * bonesPerRegularDig;
-        magicPerHour += digsPerMin * 60 * magicChanceTotal;
+        magicPerHour += digsPerMin * 60 * magicChanceTotal * magicPerDrop;
       }
     });
 
@@ -2308,7 +2310,7 @@ export function initPupperPark(): void {
       rerollDogSummary.innerHTML = `
         <strong>${entry.name}</strong>
         <span class="reroll-meta-text">${breedName} | Lv. ${entry.level}</span>
-        <span class="reroll-meta-text ${entry.isShiny ? 'is-shiny' : ''}">${entry.isShiny ? '✨ Shiny' : 'Standard Coat'}</span>
+        <span class="reroll-meta-text ${entry.isShiny ? 'is-shiny' : ''}">${entry.isShiny ? `✨ Shiny (+${SHINY_MAGIC_BONE_BONUS} ✨/drop)` : 'Standard Coat'}</span>
       `;
     }
 
@@ -2323,7 +2325,7 @@ export function initPupperPark(): void {
 
     if (rerollRulesText) {
       rerollRulesText.textContent =
-        `Rerolls for ${entry.name} cost 25 → 50 → 75 → 100 (+25 per reroll on this dog; currently reroll #${dogRerolls + 1}). Higher-rated previous stats are kept if not beaten, and non-shiny pups have a 1-in-1,300 chance to become ✨ Shiny (vs. 1-in-650 at spawn).`;
+        `Rerolls for ${entry.name} cost 25 → 50 → 75 → 100 (+25 per reroll on this dog; currently reroll #${dogRerolls + 1}). Higher-rated previous stats are kept if not beaten, and non-shiny pups have a 1-in-1,300 chance to become ✨ Shiny (+${SHINY_MAGIC_BONE_BONUS} bonus Magic Bone per ✨ drop).`;
     }
 
     if (rerollResultBanner) {
@@ -2635,6 +2637,7 @@ export function initPupperPark(): void {
         <span>Bone Yield <strong>${stats.boneYield.toFixed(2)}x</strong> <em>(+${stats.bonusPayout.toFixed(2)})</em> <span class="lvl-bonus">(+${levelBonusPct}% Lv.)</span></span>
         <span>Pack Growth <strong>${stats.packGrowth.toFixed(2)}x</strong> <em>(+${stats.bonusScaling.toFixed(2)})</em></span>
         <span>XP <strong>${stats.quickLearner.toFixed(2)}x</strong> <em>(+${stats.bonusXp.toFixed(2)})</em></span>
+        ${entry.isShiny ? `<span class="lvl-bonus">Shiny <strong>+${SHINY_MAGIC_BONE_BONUS} ✨</strong></span>` : ''}
         <span>${isMaxLevel ? `<strong>Max Lv.</strong>` : `Next Lv. <strong>${Math.floor(entry.xp)}/${xpNeeded}</strong>`}</span>
       `;
 
@@ -3681,7 +3684,8 @@ export function initPupperPark(): void {
       const levelMult = getDogLevelBonusMult(entry);
       const rawAmount = state.digPower * stats.boneYield * levelMult * cupMult * packDigMult;
       const amount = Math.max(1, Math.round(rawAmount * 10) / 10);
-      const boneValue = this.isMagicDig ? 1 : amount;
+      const magicYield = 1 + (this.isShiny ? SHINY_MAGIC_BONE_BONUS : 0);
+      const boneValue = this.isMagicDig ? magicYield : amount;
       const pos = gridToScreen(this.gx, this.gy);
 
       if (entry) {
@@ -3738,7 +3742,7 @@ export function initPupperPark(): void {
           groundY: pos.y + 4,
           age: 0,
           isMagic: true,
-          value: 1
+          value: magicYield
         });
       }
     }
@@ -6075,7 +6079,7 @@ export function initPupperPark(): void {
     }
 
     const kongRates = getEstimatedPackRates({ kongActive: true });
-    const estKongPackMagic = Math.max(1, Math.round((kongRates.digsPerMin / 60) * TREAT_CONFIG.treatKong.duration));
+    const estKongPackMagic = Math.max(1, Math.round((kongRates.magicPerHour / 3600) * TREAT_CONFIG.treatKong.duration));
     setRoiLine('roiTreatKong', `Est. ~${estKongPackMagic} ✨ from pack | +1 ✨ per tap`, 'utility');
 
     setRoiLine('roiTreatXp', '2.0x XP on all digs & pets | Best for leveling pups', 'utility');
@@ -7560,9 +7564,10 @@ export function initPupperPark(): void {
 
           if (Math.hypot(targetX - b.x, targetY - b.y) < 18) {
             if (b.isMagic) {
-              addMagicBones(1);
+              const magicAmt = Math.max(1, Math.round(b.value || 1));
+              addMagicBones(magicAmt);
               sfx.magicCollect();
-              addFloatingText(targetX + 54, targetY, '+1 ✨', '#ffeaa7');
+              addFloatingText(targetX + 54, targetY, `+${magicAmt} ✨`, '#ffeaa7');
             } else {
               const added = addRegularBones(b.value);
               sfx.collect();
