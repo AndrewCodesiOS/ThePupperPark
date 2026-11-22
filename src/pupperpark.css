@@ -38,9 +38,10 @@ html, body {
   background: var(--bg-void);
   color: #f8f9fc;
   overflow: hidden;
+  position: fixed;
+  inset: 0;
   width: 100%;
   height: 100%;
-  position: fixed;
   touch-action: manipulation;
   -webkit-user-select: none;
   user-select: none;
@@ -368,8 +369,10 @@ input:focus-visible {
 
 /* Canvas Area */
 #gameCanvas {
+  position: fixed;
+  inset: 0;
   width: 100%;
-  height: 100dvh;
+  height: 100%;
   display: block;
   cursor: grab;
   touch-action: none;

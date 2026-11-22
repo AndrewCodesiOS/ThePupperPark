@@ -2963,12 +2963,21 @@ export function initPupperPark(): void {
   });
 
   function getViewportSize(): { width: number; height: number } {
-    const vv = window.visualViewport;
-    const rawW = vv && typeof vv.width === 'number' && vv.width > 0 ? vv.width : window.innerWidth;
-    const rawH = vv && typeof vv.height === 'number' && vv.height > 0 ? vv.height : window.innerHeight;
+    const rect = canvas.getBoundingClientRect();
+    const docEl = document.documentElement;
+    const rawW = Math.max(
+      rect.width || 0,
+      window.innerWidth || 0,
+      docEl ? docEl.clientWidth : 0
+    );
+    const rawH = Math.max(
+      rect.height || 0,
+      window.innerHeight || 0,
+      docEl ? docEl.clientHeight : 0
+    );
     return {
-      width: Math.max(240, Math.round(rawW || 360)),
-      height: Math.max(240, Math.round(rawH || 640))
+      width: Math.max(240, Math.ceil(rawW || 360)),
+      height: Math.max(240, Math.ceil(rawH || 640))
     };
   }
 
@@ -2979,8 +2988,6 @@ export function initPupperPark(): void {
     viewportH = height;
     canvas.width = Math.round(width * dpr);
     canvas.height = Math.round(height * dpr);
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     // Auto-fit the 7x7 isometric island comfortably inside narrow portrait phones
@@ -2991,10 +2998,19 @@ export function initPupperPark(): void {
     originX = viewportW / 2;
     originY = viewportH / 2 + 8;
   }
+
   window.addEventListener('resize', resize);
-  window.addEventListener('orientationchange', resize);
+  window.addEventListener('orientationchange', () => {
+    resize();
+    setTimeout(resize, 150);
+  });
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', resize);
+    window.visualViewport.addEventListener('scroll', resize);
+  }
+  if (typeof ResizeObserver !== 'undefined') {
+    const ro = new ResizeObserver(() => resize());
+    ro.observe(document.documentElement);
   }
   resize();
 
@@ -6553,10 +6569,22 @@ export function initPupperPark(): void {
       ctx.clearRect(0, 0, viewportW, viewportH);
 
       // Dynamic Time-of-Day + Weather Skybox Backdrop
+      const skyTopStr = rgbaStr(skyTop, 1);
+      const skyBotStr = rgbaStr(skyBot, 1);
+      const skyBotRgb = `rgb(${Math.round(skyBot[0])}, ${Math.round(skyBot[1])}, ${Math.round(skyBot[2])})`;
+      const skyTopRgb = `rgb(${Math.round(skyTop[0])}, ${Math.round(skyTop[1])}, ${Math.round(skyTop[2])})`;
+      if (document.documentElement.dataset.skyBot !== skyBotRgb) {
+        document.documentElement.dataset.skyBot = skyBotRgb;
+        document.documentElement.style.backgroundColor = skyBotRgb;
+        document.body.style.backgroundColor = skyBotRgb;
+        const themeMeta = document.querySelector('meta[name="theme-color"]');
+        if (themeMeta) themeMeta.setAttribute('content', skyTopRgb);
+      }
+
       const skyGrad = ctx.createLinearGradient(0, 0, 0, viewportH);
-      skyGrad.addColorStop(0, rgbaStr(skyTop, 1));
+      skyGrad.addColorStop(0, skyTopStr);
       skyGrad.addColorStop(0.54, rgbaStr(skyMid, 1));
-      skyGrad.addColorStop(1, rgbaStr(skyBot, 1));
+      skyGrad.addColorStop(1, skyBotStr);
       ctx.fillStyle = skyGrad;
       ctx.fillRect(0, 0, viewportW, viewportH);
 
