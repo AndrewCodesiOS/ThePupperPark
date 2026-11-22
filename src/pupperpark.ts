@@ -117,6 +117,7 @@ export function initPupperPark(): void {
     treatBacon: { baseCost: 520, costMult: 1.35, priceCap: 18000, duration: 60, perStackBonus: 0.12 }
   };
 
+  const STARTER_SHINY_ODDS = 1 / 325;
   const SPAWN_SHINY_ODDS = 1 / 650;
   const REROLL_SHINY_ODDS = 1 / 1300;
   const REROLL_STEP_COST = 25;
@@ -146,7 +147,7 @@ export function initPupperPark(): void {
   };
 
   const DEFAULT_PUP_NAMES = [
-    'Biscuit', 'Scout', 'Max', 'Rover', 'Waffles', 'Buddy',
+    'Scout', 'Max', 'Rover', 'Waffles', 'Buddy',
     'Maple', 'Ziggy', 'Otis', 'Penny', 'Bramble', 'Toby',
     'Sunny', 'Nora', 'Rosie', 'Finn',
     'Clover', 'Milo', 'Daisy', 'Charlie', 'Luna', 'Bear',
@@ -613,6 +614,7 @@ export function initPupperPark(): void {
     lifetimeBones: number;
     magicBones: number;
     nextNameIndex: number;
+    namePool?: string[];
     dogs: Record<string, number>;
     shinyDogs: Array<{ breed: string; color: string | null }>;
     roster: RosterEntry[];
@@ -661,6 +663,7 @@ export function initPupperPark(): void {
     lifetimeBones: 0,
     magicBones: 0,
     nextNameIndex: 1,
+    namePool: [],
     dogs: {
       aussie: 1, corgi: 0, beagle: 0, collie: 0, dachshund: 0, husky: 0,
       golden: 0, samoyed: 0, shepherd: 0, shiba: 0, labrador: 0, bernese: 0
@@ -742,45 +745,54 @@ export function initPupperPark(): void {
     };
   }
 
-  function getNextLoopingPupName(breed: string): string {
-    const totalNames = DEFAULT_PUP_NAMES.length;
-    if (
-      typeof state.nextNameIndex !== 'number' ||
-      Number.isNaN(state.nextNameIndex) ||
-      !Number.isFinite(state.nextNameIndex) ||
-      state.nextNameIndex < 0
-    ) {
-      state.nextNameIndex = Array.isArray(state.roster) ? state.roster.length % totalNames : 0;
+  function buildShuffledNamePool(excludeLower?: Set<string>): string[] {
+    const pool = DEFAULT_PUP_NAMES
+      .map(n => n.trim())
+      .filter(n => n && (!excludeLower || !excludeLower.has(n.toLowerCase())));
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = pool[i];
+      pool[i] = pool[j];
+      pool[j] = tmp;
     }
+    return pool;
+  }
 
-    const startIndex = Math.floor(state.nextNameIndex) % totalNames;
+  function getNextLoopingPupName(breed: string): string {
     const activeNames = new Set(
       (Array.isArray(state.roster) ? state.roster : [])
         .map(d => (typeof d.name === 'string' ? d.name.trim().toLowerCase() : ''))
         .filter(Boolean)
     );
 
+    if (!Array.isArray(state.namePool)) {
+      state.namePool = buildShuffledNamePool(activeNames);
+    }
+
     let chosen: string | null = null;
-    for (let offset = 0; offset < totalNames; offset++) {
-      const idx = (startIndex + offset) % totalNames;
-      const candidate = DEFAULT_PUP_NAMES[idx].trim();
-      if (!activeNames.has(candidate.toLowerCase())) {
-        chosen = candidate;
-        state.nextNameIndex = (idx + 1) % totalNames;
-        break;
+    for (let attempt = 0; attempt < 2 && !chosen; attempt++) {
+      if (state.namePool.length === 0) {
+        state.namePool = buildShuffledNamePool(activeNames);
+      }
+      while (state.namePool.length > 0) {
+        const candidate = String(state.namePool.pop() || '').trim();
+        if (candidate && !activeNames.has(candidate.toLowerCase())) {
+          chosen = candidate;
+          break;
+        }
       }
     }
 
     if (!chosen) {
-      chosen = DEFAULT_PUP_NAMES[startIndex].trim();
-      state.nextNameIndex = (startIndex + 1) % totalNames;
+      const fallback = DEFAULT_PUP_NAMES.find(n => !activeNames.has(n.trim().toLowerCase()));
+      chosen = fallback ? fallback.trim() : DEFAULT_PUP_NAMES[Math.floor(Math.random() * DEFAULT_PUP_NAMES.length)].trim();
     }
 
     return chosen || (BREED_LABELS[breed] || 'Pup');
   }
 
   function rollStarterShiny(): { isShiny: boolean; shinyColor: string | null } {
-    const isShiny = Math.random() < SPAWN_SHINY_ODDS;
+    const isShiny = Math.random() < STARTER_SHINY_ODDS;
     const shinyColor = isShiny
       ? SHINY_PALETTES[Math.floor(Math.random() * SHINY_PALETTES.length)]
       : null;
@@ -1918,13 +1930,14 @@ export function initPupperPark(): void {
       }
     }
 
-    if (!Array.isArray(state.roster) || state.roster.length === 0) {
+    if (saved && (!Array.isArray(state.roster) || state.roster.length === 0)) {
       state.roster = [];
       Object.keys(state.dogs || {}).forEach(rawBreed => {
         const breed = normalizeBreedKey(rawBreed);
         const count = state.dogs[rawBreed] || 0;
         for (let i = 0; i < count; i++) {
-          state.roster.push(createRosterEntry(breed, false, null));
+          const isStarterSlot = state.roster.length === 0 && breed === 'aussie';
+          state.roster.push(createRosterEntry(breed, false, null, isStarterSlot ? 'Biscuit' : null));
         }
       });
       (state.shinyDogs || []).forEach(shiny => {
@@ -1943,6 +1956,18 @@ export function initPupperPark(): void {
     if (state.roster.length === 0) {
       const starterShinyRoll = rollStarterShiny();
       state.roster.push(createRosterEntry('aussie', starterShinyRoll.isShiny, starterShinyRoll.shinyColor, 'Biscuit'));
+      state.namePool = buildShuffledNamePool(new Set(['biscuit']));
+    }
+
+    if (!Array.isArray(state.namePool)) {
+      const activeNames = new Set(
+        state.roster
+          .map(d => (typeof d.name === 'string' ? d.name.trim().toLowerCase() : ''))
+          .filter(Boolean)
+      );
+      state.namePool = buildShuffledNamePool(activeNames);
+    } else {
+      state.namePool = state.namePool.filter(n => typeof n === 'string' && n.trim().toLowerCase() !== 'biscuit');
     }
 
     if (typeof state.nextNameIndex !== 'number' || Number.isNaN(state.nextNameIndex) || state.nextNameIndex < 0) {
@@ -2868,6 +2893,7 @@ export function initPupperPark(): void {
       lifetimeBones: 0,
       magicBones: 0,
       nextNameIndex: 1,
+      namePool: buildShuffledNamePool(new Set(['biscuit'])),
       dogs: {
         aussie: 1, corgi: 0, beagle: 0, collie: 0, dachshund: 0, husky: 0,
         golden: 0, samoyed: 0, shepherd: 0, shiba: 0, labrador: 0, bernese: 0
