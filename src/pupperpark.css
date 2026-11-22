@@ -255,7 +255,8 @@ input:focus-visible {
     padding: 6px 10px;
   }
 
-  .placement-banner {
+  .placement-banner,
+  .tile-paint-bar {
     top: max(144px, calc(env(safe-area-inset-top) + 136px));
   }
 }
@@ -441,6 +442,98 @@ input:focus-visible {
   cursor: pointer;
   white-space: nowrap;
   touch-action: manipulation;
+}
+
+#gameCanvas.is-painting-tiles {
+  cursor: crosshair;
+}
+
+/* Floating Tile Paint Toolbar */
+.tile-paint-bar {
+  position: fixed;
+  top: max(76px, calc(env(safe-area-inset-top) + 64px));
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(24, 19, 52, 0.94);
+  border: 1.5px solid var(--mint);
+  padding: 6px 8px;
+  border-radius: 18px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.58);
+  max-width: calc(100vw - 20px);
+}
+
+.tile-paint-brushes {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tile-paint-brushes::-webkit-scrollbar {
+  display: none;
+}
+
+.tile-brush-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
+  color: #dbe3f0;
+  font-weight: 700;
+  font-size: 0.76rem;
+  padding: 6px 11px;
+  min-height: 34px;
+  border-radius: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  touch-action: manipulation;
+  transition: transform 0.12s, background-color 0.14s, border-color 0.14s, color 0.14s;
+}
+
+.tile-brush-btn:active {
+  transform: scale(0.95);
+}
+
+.tile-brush-btn.active {
+  background: rgba(85, 239, 196, 0.18);
+  border-color: var(--mint);
+  color: #fff;
+  box-shadow: 0 0 0 1px rgba(85, 239, 196, 0.25);
+}
+
+.tile-brush-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  flex-shrink: 0;
+}
+
+.tile-paint-done-btn {
+  background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
+  border: none;
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.78rem;
+  padding: 6px 14px;
+  min-height: 34px;
+  border-radius: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  touch-action: manipulation;
+  box-shadow: 0 3px 10px rgba(0, 184, 148, 0.32);
+}
+
+.tile-paint-done-btn:active {
+  transform: scale(0.95);
 }
 
 /* Bottom Right Mini Bar */
@@ -1576,6 +1669,174 @@ input:focus-visible {
   border-color: #f1c40f;
   background: rgba(45, 38, 80, 0.95);
   transform: translateY(-2px);
+}
+
+/* Decor Sub-Tabs & Ground Tile Swatches */
+.decor-subtabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 14px;
+  background: rgba(13, 11, 26, 0.56);
+  border: 1px solid var(--border-subtle);
+}
+
+.decor-subtab-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #a9b4c9;
+  font-weight: 700;
+  font-size: 0.82rem;
+  padding: 8px 10px;
+  min-height: 38px;
+  border-radius: 10px;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.decor-subtab-btn.active {
+  background: rgba(108, 92, 231, 0.34);
+  border-color: rgba(162, 155, 254, 0.55);
+  color: #fff;
+}
+
+.decor-subtab-panel {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.decor-subtab-panel.active {
+  display: flex;
+}
+
+.tile-info-banner {
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: rgba(85, 239, 196, 0.08);
+  border: 1px solid rgba(85, 239, 196, 0.25);
+  color: #c8f7ea;
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+.shop-card-slide {
+  border-color: rgba(52, 152, 219, 0.48);
+  background: linear-gradient(135deg, rgba(24, 54, 88, 0.52) 0%, rgba(28, 22, 54, 0.92) 65%);
+}
+
+.shop-card-gold {
+  border-color: rgba(255, 215, 0, 0.45);
+  background: linear-gradient(135deg, rgba(58, 45, 16, 0.48) 0%, rgba(28, 22, 54, 0.92) 65%);
+}
+
+.landmark-toggle-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.landmark-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 11px;
+  min-height: 40px;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(13, 11, 26, 0.52);
+  color: #cbd5e1;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+  touch-action: manipulation;
+  transition: border-color 0.15s, background-color 0.15s, transform 0.12s;
+}
+
+.landmark-toggle-btn:active {
+  transform: scale(0.97);
+}
+
+.landmark-toggle-btn.is-on {
+  border-color: rgba(85, 239, 196, 0.42);
+  background: rgba(85, 239, 196, 0.1);
+  color: #f8f9fc;
+}
+
+.landmark-toggle-btn.is-off {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(13, 11, 26, 0.36);
+  color: #8b97ad;
+}
+
+.landmark-toggle-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.landmark-toggle-state {
+  font-size: 0.71rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  color: var(--mint);
+}
+
+.landmark-toggle-btn.is-off .landmark-toggle-state {
+  color: #8b97ad;
+}
+
+.landmark-toggle-note {
+  width: 100%;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #fab1a0;
+  line-height: 1.35;
+}
+
+.tile-swatch {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  flex-shrink: 0;
+  border: 1.5px solid rgba(255, 255, 255, 0.24);
+  box-shadow: inset 0 1px 4px rgba(255, 255, 255, 0.22), 0 4px 10px rgba(0, 0, 0, 0.32);
+}
+
+.swatch-grass {
+  background:
+    radial-gradient(circle at 30% 35%, rgba(168, 255, 120, 0.45) 0 18%, transparent 19%),
+    linear-gradient(135deg, #4cd137 0%, #3ca62d 100%);
+}
+
+.swatch-cobble {
+  background:
+    radial-gradient(ellipse at 28% 30%, #c8beb0 0 22%, transparent 25%),
+    radial-gradient(ellipse at 72% 32%, #a8a298 0 21%, transparent 24%),
+    radial-gradient(ellipse at 32% 72%, #b5ab9e 0 22%, transparent 25%),
+    radial-gradient(ellipse at 74% 70%, #9b958b 0 21%, transparent 24%),
+    #6d6861;
+}
+
+.swatch-sand {
+  background:
+    radial-gradient(circle at 26% 68%, rgba(188, 149, 96, 0.75) 0 6%, transparent 7%),
+    radial-gradient(circle at 74% 34%, rgba(255, 244, 214, 0.65) 0 7%, transparent 8%),
+    linear-gradient(145deg, #f3d69c 0%, #e1b86d 65%, #cfa154 100%);
+}
+
+.swatch-clover {
+  background:
+    radial-gradient(circle at 28% 34%, #fffef5 0 7%, transparent 8%),
+    radial-gradient(circle at 72% 66%, #ffeaa7 0 7%, transparent 8%),
+    radial-gradient(circle at 64% 28%, #1e8449 0 16%, transparent 17%),
+    linear-gradient(135deg, #27ae60 0%, #1d8a4b 100%);
 }
 
 @media (prefers-reduced-motion: reduce) {

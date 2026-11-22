@@ -102,6 +102,29 @@
     <button type="button" id="btnCancelPlacement" class="placement-cancel-btn">Cancel</button>
   </div>
 
+  <!-- Tile Paint Toolbar -->
+  <div id="tilePaintBar" class="tile-paint-bar" style="display: none;" role="toolbar" aria-label="Ground tile paint brushes">
+    <div class="tile-paint-brushes">
+      <button type="button" class="tile-brush-btn active" data-tile-brush="grass">
+        <span class="tile-brush-dot swatch-grass"></span>
+        <span>Grass</span>
+      </button>
+      <button type="button" class="tile-brush-btn" data-tile-brush="cobble" style="display: none;">
+        <span class="tile-brush-dot swatch-cobble"></span>
+        <span>Cobble</span>
+      </button>
+      <button type="button" class="tile-brush-btn" data-tile-brush="sand" style="display: none;">
+        <span class="tile-brush-dot swatch-sand"></span>
+        <span>Sand</span>
+      </button>
+      <button type="button" class="tile-brush-btn" data-tile-brush="clover" style="display: none;">
+        <span class="tile-brush-dot swatch-clover"></span>
+        <span>Clover</span>
+      </button>
+    </div>
+    <button type="button" id="btnDoneTilePaint" class="tile-paint-done-btn">Done</button>
+  </div>
+
   <!-- Bottom Right Mini Bar -->
   <div id="bottomBar">
     <div class="mini-stat" title="Active pups in park">🐕 <span id="miniDogs">1/6</span></div>
@@ -692,65 +715,237 @@
 
         <!-- Decor Tab -->
         <div class="tab-content" id="tab-decor">
-          <div class="shop-card">
-            <div class="shop-info">
-              <h3>Park Tree</h3>
-              <p>Shady park tree. Each placed tree gives +3% pup XP. (Max 3)</p>
-              <div class="shop-owned">Owned: <span id="ownedDecorTree">0</span> | Placed: <span id="countDecorTree">0</span> / 3</div>
+          <div class="decor-subtabs" role="tablist" aria-label="Decor categories">
+            <button type="button" class="decor-subtab-btn active" data-decor-subtab="decor-sub-items" aria-selected="true">Park Decor</button>
+            <button type="button" class="decor-subtab-btn" data-decor-subtab="decor-sub-tiles" aria-selected="false">Ground Tiles</button>
+          </div>
+
+          <div class="decor-subtab-panel active" id="decor-sub-items">
+            <div class="shop-card">
+              <div class="shop-info">
+                <h3>Flower Patch</h3>
+                <p>Vibrant wildflowers. Each placed patch gives +2% ✨ Magic Bone chance | +1.5 Cozy Floor. (Max 5)</p>
+                <div class="shop-owned">Owned: <span id="ownedDecorFlowers">0</span> | Placed: <span id="countDecorFlowers">0</span> / 5</div>
+              </div>
+              <div class="decor-btn-group">
+                <button type="button" class="action-btn decor-action-btn" id="btnBuyDecorFlowers">
+                  <span class="btn-name">Buy Flowers</span>
+                  <span class="btn-cost">250 ✨</span>
+                </button>
+                <button type="button" class="action-btn decor-action-btn" id="btnPlaceDecorFlowers">
+                  <span class="btn-name">Place</span>
+                </button>
+              </div>
             </div>
-            <div class="decor-btn-group">
-              <button type="button" class="action-btn decor-action-btn" id="btnBuyDecorTree">
-                <span class="btn-name">Buy Tree</span>
-                <span class="btn-cost">500 ✨</span>
-              </button>
-              <button type="button" class="action-btn decor-action-btn" id="btnPlaceDecorTree">
-                <span class="btn-name">Place</span>
+
+            <div class="shop-card">
+              <div class="shop-info">
+                <h3>Fire Hydrant</h3>
+                <p>Classic neighborhood hydrant. Each placed hydrant gives +3% pack walk &amp; dig pace | +2 Cozy Floor. (Max 3)</p>
+                <div class="shop-owned">Owned: <span id="ownedDecorHydrant">0</span> | Placed: <span id="countDecorHydrant">0</span> / 3</div>
+              </div>
+              <div class="decor-btn-group">
+                <button type="button" class="action-btn decor-action-btn" id="btnBuyDecorHydrant">
+                  <span class="btn-name">Buy Hydrant</span>
+                  <span class="btn-cost">350 ✨</span>
+                </button>
+                <button type="button" class="action-btn decor-action-btn" id="btnPlaceDecorHydrant">
+                  <span class="btn-name">Place</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="shop-card">
+              <div class="shop-info">
+                <h3>Park Tree</h3>
+                <p>Shady park tree. Each placed tree gives +3% pup XP | +2 Cozy Floor. (Max 3)</p>
+                <div class="shop-owned">Owned: <span id="ownedDecorTree">0</span> | Placed: <span id="countDecorTree">0</span> / 3</div>
+              </div>
+              <div class="decor-btn-group">
+                <button type="button" class="action-btn decor-action-btn" id="btnBuyDecorTree">
+                  <span class="btn-name">Buy Tree</span>
+                  <span class="btn-cost">500 ✨</span>
+                </button>
+                <button type="button" class="action-btn decor-action-btn" id="btnPlaceDecorTree">
+                  <span class="btn-name">Place</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="shop-card">
+              <div class="shop-info">
+                <h3>Warm Lamp Post</h3>
+                <p>Victorian lantern that glows warmly in Twilight &amp; Rain. +2.5% ✨ Magic chance | +2% bone payout | +3 Cozy Floor. (Max 4)</p>
+                <div class="shop-owned">Owned: <span id="ownedDecorLamp">0</span> | Placed: <span id="countDecorLamp">0</span> / 4</div>
+              </div>
+              <div class="decor-btn-group">
+                <button type="button" class="action-btn decor-action-btn" id="btnBuyDecorLamp">
+                  <span class="btn-name">Buy Lamp</span>
+                  <span class="btn-cost">800 ✨</span>
+                </button>
+                <button type="button" class="action-btn decor-action-btn" id="btnPlaceDecorLamp">
+                  <span class="btn-name">Place</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="shop-card">
+              <div class="shop-info">
+                <h3>Water Fountain</h3>
+                <p>Sculpted 3-tier marble centerpiece. Each placed fountain gives +5% bone payout | +4 Cozy Floor. (Max 2)</p>
+                <div class="shop-owned">Owned: <span id="ownedDecorFountain">0</span> | Placed: <span id="countDecorFountain">0</span> / 2</div>
+              </div>
+              <div class="decor-btn-group">
+                <button type="button" class="action-btn decor-action-btn" id="btnBuyDecorFountain">
+                  <span class="btn-name">Buy Fountain</span>
+                  <span class="btn-cost">1,000 ✨</span>
+                </button>
+                <button type="button" class="action-btn decor-action-btn" id="btnPlaceDecorFountain">
+                  <span class="btn-name">Place</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="shop-card shop-card-slide">
+              <div class="shop-info">
+                <h3>Dog Slide</h3>
+                <p>Grand 2-tile playground slide! Pups climb &amp; zoom down for bonus XP &amp; mood. +8% pup XP | +12 Cozy Floor. (Max 1)</p>
+                <div class="shop-owned">Owned: <span id="ownedDecorSlide">0</span> | Placed: <span id="countDecorSlide">0</span> / 1</div>
+              </div>
+              <div class="decor-btn-group">
+                <button type="button" class="action-btn decor-action-btn" id="btnBuyDecorSlide">
+                  <span class="btn-name">Buy Slide</span>
+                  <span class="btn-cost">1,500 ✨</span>
+                </button>
+                <button type="button" class="action-btn decor-action-btn" id="btnPlaceDecorSlide">
+                  <span class="btn-name">Place</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="shop-card shop-card-gold">
+              <div class="shop-info">
+                <h3>Golden Fire Hydrant</h3>
+                <p>Prestige 24k gold park monument. Gives +10% bone payout | +5% pack pace | +5% ✨ Magic chance | +8 Cozy Floor. (Max 1)</p>
+                <div class="shop-owned">Owned: <span id="ownedDecorGoldenHydrant">0</span> | Placed: <span id="countDecorGoldenHydrant">0</span> / 1</div>
+              </div>
+              <div class="decor-btn-group">
+                <button type="button" class="action-btn decor-action-btn" id="btnBuyDecorGoldenHydrant">
+                  <span class="btn-name">Buy Golden</span>
+                  <span class="btn-cost">2,500 ✨</span>
+                </button>
+                <button type="button" class="action-btn decor-action-btn" id="btnPlaceDecorGoldenHydrant">
+                  <span class="btn-name">Place</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="shop-card shop-card-vertical">
+              <div class="shop-info">
+                <h3>Park Landmarks</h3>
+                <p>Hide or restore the starting tree and glowing mushrooms to open tiles for custom decor.</p>
+              </div>
+              <div class="landmark-toggle-grid">
+                <button type="button" class="landmark-toggle-btn is-on" id="btnToggleStarterTree">
+                  <span class="landmark-toggle-label">Starter Tree</span>
+                  <span class="landmark-toggle-state">Shown</span>
+                </button>
+                <button type="button" class="landmark-toggle-btn is-on" id="btnToggleMushroom0">
+                  <span class="landmark-toggle-label">Lavender Shrooms</span>
+                  <span class="landmark-toggle-state">Shown</span>
+                </button>
+                <button type="button" class="landmark-toggle-btn is-on" id="btnToggleMushroom1">
+                  <span class="landmark-toggle-label">Rose Shrooms</span>
+                  <span class="landmark-toggle-state">Shown</span>
+                </button>
+                <button type="button" class="landmark-toggle-btn is-on" id="btnToggleMushroom2">
+                  <span class="landmark-toggle-label">Mint Shrooms</span>
+                  <span class="landmark-toggle-state">Shown</span>
+                </button>
+                <button type="button" class="landmark-toggle-btn is-on" id="btnToggleMushroom3">
+                  <span class="landmark-toggle-label">Gold Shrooms</span>
+                  <span class="landmark-toggle-state">Shown</span>
+                </button>
+              </div>
+              <div id="landmarkToggleNote" class="landmark-toggle-note" style="display: none;"></div>
+            </div>
+
+            <div class="shop-card shop-card-vertical">
+              <div class="shop-info">
+                <h3>Clear Park Layout</h3>
+                <p>Remove all placed decorations back to your inventory without changing painted ground tiles.</p>
+              </div>
+              <button type="button" id="btnClearDecor" class="action-btn" style="width: 100%; min-width: unset; padding: 10px;">
+                <span class="btn-name">Clear All Decor</span>
               </button>
             </div>
           </div>
 
-          <div class="shop-card">
-            <div class="shop-info">
-              <h3>Flower Patch</h3>
-              <p>Vibrant wildflowers. Each placed patch gives +2% ✨ Magic Bone chance. (Max 5)</p>
-              <div class="shop-owned">Owned: <span id="ownedDecorFlowers">0</span> | Placed: <span id="countDecorFlowers">0</span> / 5</div>
+          <div class="decor-subtab-panel" id="decor-sub-tiles">
+            <div class="tile-info-banner">
+              Purely cosmetic ground styles | Unlock once with ✨ Magic Bones and tap or drag to paint freely across your park.
             </div>
-            <div class="decor-btn-group">
-              <button type="button" class="action-btn decor-action-btn" id="btnBuyDecorFlowers">
-                <span class="btn-name">Buy Flowers</span>
-                <span class="btn-cost">250 ✨</span>
-              </button>
-              <button type="button" class="action-btn decor-action-btn" id="btnPlaceDecorFlowers">
-                <span class="btn-name">Place</span>
-              </button>
-            </div>
-          </div>
 
-          <div class="shop-card">
-            <div class="shop-info">
-              <h3>Water Fountain</h3>
-              <p>Shimmering centerpiece. Each placed fountain gives +5% bone payout. (Max 2)</p>
-              <div class="shop-owned">Owned: <span id="ownedDecorFountain">0</span> | Placed: <span id="countDecorFountain">0</span> / 2</div>
-            </div>
-            <div class="decor-btn-group">
-              <button type="button" class="action-btn decor-action-btn" id="btnBuyDecorFountain">
-                <span class="btn-name">Buy Fountain</span>
-                <span class="btn-cost">1,000 ✨</span>
-              </button>
-              <button type="button" class="action-btn decor-action-btn" id="btnPlaceDecorFountain">
-                <span class="btn-name">Place</span>
+            <div class="shop-card">
+              <div class="tile-swatch swatch-cobble" aria-hidden="true"></div>
+              <div class="shop-info">
+                <h3>Cobblestone Path</h3>
+                <p>Sunlit warm-slate flagstones for winding walkways and plaza squares.</p>
+                <div class="shop-owned" id="statusTileCobble">Locked | One-time unlock</div>
+              </div>
+              <button type="button" class="action-btn" id="btnTileCobble">
+                <span class="btn-name">Unlock</span>
+                <span class="btn-cost">300 ✨</span>
               </button>
             </div>
-          </div>
 
-          <div class="shop-card shop-card-vertical">
-            <div class="shop-info">
-              <h3>Clear Park Layout</h3>
-              <p>Remove all placed decorations back to your inventory so you can rearrange them.</p>
+            <div class="shop-card">
+              <div class="tile-swatch swatch-sand" aria-hidden="true"></div>
+              <div class="shop-info">
+                <h3>Sandy Dig Pit</h3>
+                <p>Soft wind-swept golden sand speckled with smooth beach pebbles.</p>
+                <div class="shop-owned" id="statusTileSand">Locked | One-time unlock</div>
+              </div>
+              <button type="button" class="action-btn" id="btnTileSand">
+                <span class="btn-name">Unlock</span>
+                <span class="btn-cost">300 ✨</span>
+              </button>
             </div>
-            <button type="button" id="btnClearDecor" class="action-btn" style="width: 100%; min-width: unset; padding: 10px;">
-              <span class="btn-name">Clear All Decor</span>
-            </button>
+
+            <div class="shop-card">
+              <div class="tile-swatch swatch-clover" aria-hidden="true"></div>
+              <div class="shop-info">
+                <h3>Clover Meadow</h3>
+                <p>Lush deep-emerald clover turf dotted with tiny white blossoms.</p>
+                <div class="shop-owned" id="statusTileClover">Locked | One-time unlock</div>
+              </div>
+              <button type="button" class="action-btn" id="btnTileClover">
+                <span class="btn-name">Unlock</span>
+                <span class="btn-cost">300 ✨</span>
+              </button>
+            </div>
+
+            <div class="shop-card">
+              <div class="tile-swatch swatch-grass" aria-hidden="true"></div>
+              <div class="shop-info">
+                <h3>Lush Grass</h3>
+                <p>Classic park lawn with soft grass tufts. Always free to paint back over custom tiles.</p>
+                <div class="shop-owned" id="statusTileGrass">Unlocked | Free brush</div>
+              </div>
+              <button type="button" class="action-btn" id="btnTileGrass">
+                <span class="btn-name">Paint</span>
+              </button>
+            </div>
+
+            <div class="shop-card shop-card-vertical">
+              <div class="shop-info">
+                <h3>Reset Ground to Grass</h3>
+                <p>Restore all painted ground tiles back to Lush Grass without removing placed decor. (<span id="countPaintedTiles">0</span> painted)</p>
+              </div>
+              <button type="button" id="btnClearTiles" class="action-btn" style="width: 100%; min-width: unset; padding: 10px;">
+                <span class="btn-name">Reset All Tiles</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -922,6 +1117,18 @@
       <div style="display: flex; gap: 10px; margin-top: 15px;">
         <button type="button" id="btnCancelClearDecor" class="action-btn" style="background: rgba(255,255,255,0.12); flex: 1;">Cancel</button>
         <button type="button" id="btnConfirmClearDecor" class="action-btn" style="flex: 1;">Yes, Clear</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reset Ground Tiles Confirmation Modal -->
+  <div id="clearTilesConfirmModal" class="modal" style="display: none;">
+    <div class="modal-window offline-box" style="max-width: 360px;">
+      <h2>Reset Ground to Grass?</h2>
+      <p>Restore all painted ground tiles back to Lush Grass? Your unlocked tile styles and placed decorations will remain untouched.</p>
+      <div style="display: flex; gap: 10px; margin-top: 15px;">
+        <button type="button" id="btnCancelClearTiles" class="action-btn" style="background: rgba(255,255,255,0.12); flex: 1;">Cancel</button>
+        <button type="button" id="btnConfirmClearTiles" class="action-btn" style="flex: 1;">Yes, Reset</button>
       </div>
     </div>
   </div>

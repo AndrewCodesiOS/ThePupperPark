@@ -25,8 +25,25 @@ export interface PerkItem {
   magicAdd?: number;
 }
 
+export type DecorType =
+  | 'tree'
+  | 'flowers'
+  | 'fountain'
+  | 'hydrant'
+  | 'slide'
+  | 'lamp'
+  | 'goldenHydrant';
+
+export type CustomTileStyle = 'cobble' | 'sand' | 'clover';
+export type TileStyle = 'grass' | CustomTileStyle;
+
+export interface StarterPropsState {
+  showTree: boolean;
+  showMushrooms: [boolean, boolean, boolean, boolean];
+}
+
 export interface PlacedDecor {
-  type: 'tree' | 'flowers' | 'fountain';
+  type: DecorType;
   gx: number;
   gy: number;
 }
@@ -92,9 +109,193 @@ export function initPupperPark(): void {
   const BONUS_XP_MAX = 0.15;
   const TIMED_TREAT_MAX_STACKS = 5;
 
-  const DECOR_TREE_XP_BONUS = 0.03;
-  const DECOR_FLOWER_MAGIC_BONUS = 0.02;
-  const DECOR_FOUNTAIN_PAYOUT_BONUS = 0.05;
+  const DOGHOUSE_TILE = { gx: 1, gy: 1 };
+  const STARTER_TREE_TILE = { gx: 5, gy: 1 };
+
+  const DECOR_TYPES: DecorType[] = [
+    'flowers',
+    'hydrant',
+    'tree',
+    'lamp',
+    'fountain',
+    'slide',
+    'goldenHydrant'
+  ];
+
+  const DECOR_CONFIG: Record<DecorType, {
+    cost: number;
+    max: number;
+    tileWidth: number;
+    buyLabel: string;
+    placePrompt: string;
+    ownedId: string;
+    countId: string;
+    buyBtnId: string;
+    placeBtnId: string;
+    xpBonus: number;
+    magicBonus: number;
+    payoutBonus: number;
+    paceBonus: number;
+    cozyFloor: number;
+  }> = {
+    flowers: {
+      cost: 250,
+      max: 5,
+      tileWidth: 1,
+      buyLabel: 'Buy Flowers',
+      placePrompt: 'Tap an open park tile to place your flower patch!',
+      ownedId: 'ownedDecorFlowers',
+      countId: 'countDecorFlowers',
+      buyBtnId: 'btnBuyDecorFlowers',
+      placeBtnId: 'btnPlaceDecorFlowers',
+      xpBonus: 0,
+      magicBonus: 0.02,
+      payoutBonus: 0,
+      paceBonus: 0,
+      cozyFloor: 1.5
+    },
+    hydrant: {
+      cost: 350,
+      max: 3,
+      tileWidth: 1,
+      buyLabel: 'Buy Hydrant',
+      placePrompt: 'Tap an open park tile to place your fire hydrant!',
+      ownedId: 'ownedDecorHydrant',
+      countId: 'countDecorHydrant',
+      buyBtnId: 'btnBuyDecorHydrant',
+      placeBtnId: 'btnPlaceDecorHydrant',
+      xpBonus: 0,
+      magicBonus: 0,
+      payoutBonus: 0,
+      paceBonus: 0.03,
+      cozyFloor: 2.0
+    },
+    tree: {
+      cost: 500,
+      max: 3,
+      tileWidth: 1,
+      buyLabel: 'Buy Tree',
+      placePrompt: 'Tap an open park tile to place your tree!',
+      ownedId: 'ownedDecorTree',
+      countId: 'countDecorTree',
+      buyBtnId: 'btnBuyDecorTree',
+      placeBtnId: 'btnPlaceDecorTree',
+      xpBonus: 0.03,
+      magicBonus: 0,
+      payoutBonus: 0,
+      paceBonus: 0,
+      cozyFloor: 2.0
+    },
+    lamp: {
+      cost: 800,
+      max: 4,
+      tileWidth: 1,
+      buyLabel: 'Buy Lamp',
+      placePrompt: 'Tap an open park tile to place your warm lamp post!',
+      ownedId: 'ownedDecorLamp',
+      countId: 'countDecorLamp',
+      buyBtnId: 'btnBuyDecorLamp',
+      placeBtnId: 'btnPlaceDecorLamp',
+      xpBonus: 0,
+      magicBonus: 0.025,
+      payoutBonus: 0.02,
+      paceBonus: 0,
+      cozyFloor: 3.0
+    },
+    fountain: {
+      cost: 1000,
+      max: 2,
+      tileWidth: 1,
+      buyLabel: 'Buy Fountain',
+      placePrompt: 'Tap an open park tile to place your fountain!',
+      ownedId: 'ownedDecorFountain',
+      countId: 'countDecorFountain',
+      buyBtnId: 'btnBuyDecorFountain',
+      placeBtnId: 'btnPlaceDecorFountain',
+      xpBonus: 0,
+      magicBonus: 0,
+      payoutBonus: 0.05,
+      paceBonus: 0,
+      cozyFloor: 4.0
+    },
+    slide: {
+      cost: 1500,
+      max: 1,
+      tileWidth: 2,
+      buyLabel: 'Buy Slide',
+      placePrompt: 'Tap an open spot (2 tiles side-by-side) for your Dog Slide!',
+      ownedId: 'ownedDecorSlide',
+      countId: 'countDecorSlide',
+      buyBtnId: 'btnBuyDecorSlide',
+      placeBtnId: 'btnPlaceDecorSlide',
+      xpBonus: 0.08,
+      magicBonus: 0,
+      payoutBonus: 0,
+      paceBonus: 0,
+      cozyFloor: 12.0
+    },
+    goldenHydrant: {
+      cost: 2500,
+      max: 1,
+      tileWidth: 1,
+      buyLabel: 'Buy Golden',
+      placePrompt: 'Tap an open park tile to place your Golden Fire Hydrant!',
+      ownedId: 'ownedDecorGoldenHydrant',
+      countId: 'countDecorGoldenHydrant',
+      buyBtnId: 'btnBuyDecorGoldenHydrant',
+      placeBtnId: 'btnPlaceDecorGoldenHydrant',
+      xpBonus: 0,
+      magicBonus: 0.05,
+      payoutBonus: 0.10,
+      paceBonus: 0.05,
+      cozyFloor: 8.0
+    }
+  };
+
+  const TILE_UNLOCK_COST = 300;
+  const CUSTOM_TILE_STYLES: CustomTileStyle[] = ['cobble', 'sand', 'clover'];
+  const CUSTOM_TILE_CONFIG: Record<CustomTileStyle, {
+    name: string;
+    btnId: string;
+    statusId: string;
+  }> = {
+    cobble: { name: 'Cobblestone Path', btnId: 'btnTileCobble', statusId: 'statusTileCobble' },
+    sand: { name: 'Sandy Dig Pit', btnId: 'btnTileSand', statusId: 'statusTileSand' },
+    clover: { name: 'Clover Meadow', btnId: 'btnTileClover', statusId: 'statusTileClover' }
+  };
+  const TILE_RIPPLE_COLORS: Record<TileStyle, string> = {
+    grass: '#55efc4',
+    cobble: '#dcd6cb',
+    sand: '#f6d38b',
+    clover: '#7bed9f'
+  };
+
+  function createEmptyDecorInventory(): Record<DecorType, number> {
+    return {
+      tree: 0,
+      flowers: 0,
+      fountain: 0,
+      hydrant: 0,
+      slide: 0,
+      lamp: 0,
+      goldenHydrant: 0
+    };
+  }
+
+  function createDefaultStarterProps(): StarterPropsState {
+    return {
+      showTree: true,
+      showMushrooms: [true, true, true, true]
+    };
+  }
+
+  function createDefaultUnlockedTiles(): Record<CustomTileStyle, boolean> {
+    return {
+      cobble: false,
+      sand: false,
+      clover: false
+    };
+  }
 
   const HAPPINESS_BASE_FLOOR = 35;
   const HAPPINESS_MAX = 100;
@@ -634,10 +835,15 @@ export function initPupperPark(): void {
     shinyDogs: Array<{ breed: string; color: string | null }>;
     roster: RosterEntry[];
     perks: PerkItem[];
-    decorInventory: { tree: number; flowers: number; fountain: number };
+    decorInventory: Record<DecorType, number>;
     placedDecorations: PlacedDecor[];
+    starterProps: StarterPropsState;
     isPlacingDecor: boolean;
-    activeDecorType: 'tree' | 'flowers' | 'fountain' | null;
+    activeDecorType: DecorType | null;
+    unlockedTiles: Record<CustomTileStyle, boolean>;
+    tileMap: Record<string, CustomTileStyle>;
+    isPaintingTiles: boolean;
+    activeTileBrush: TileStyle;
     showNameTags: boolean;
     soundEnabled: boolean;
     ambientEnabled: boolean;
@@ -686,10 +892,15 @@ export function initPupperPark(): void {
     shinyDogs: [],
     roster: [],
     perks: [],
-    decorInventory: { tree: 0, flowers: 0, fountain: 0 },
+    decorInventory: createEmptyDecorInventory(),
     placedDecorations: [],
+    starterProps: createDefaultStarterProps(),
     isPlacingDecor: false,
     activeDecorType: null,
+    unlockedTiles: createDefaultUnlockedTiles(),
+    tileMap: {},
+    isPaintingTiles: false,
+    activeTileBrush: 'grass',
     showNameTags: true,
     soundEnabled: true,
     ambientEnabled: true,
@@ -739,24 +950,51 @@ export function initPupperPark(): void {
   initDefaultCosts();
 
   function getDecorBonuses(): {
+    counts: Record<DecorType, number>;
     treeCount: number;
     flowerCount: number;
     fountainCount: number;
     xpMult: number;
     magicAdd: number;
     payoutMult: number;
+    paceMult: number;
+    cozyFloorBonus: number;
   } {
     const placed = Array.isArray(state.placedDecorations) ? state.placedDecorations : [];
-    const treeCount = placed.filter(d => d.type === 'tree').length;
-    const flowerCount = placed.filter(d => d.type === 'flowers').length;
-    const fountainCount = placed.filter(d => d.type === 'fountain').length;
+    const counts = createEmptyDecorInventory();
+    placed.forEach(d => {
+      if (d && d.type in counts) {
+        counts[d.type] += 1;
+      }
+    });
+
+    let xpBonus = 0;
+    let magicAdd = 0;
+    let payoutBonus = 0;
+    let paceBonus = 0;
+    let cozyFloor = 0;
+
+    DECOR_TYPES.forEach(type => {
+      const n = counts[type];
+      if (n <= 0) return;
+      const cfg = DECOR_CONFIG[type];
+      xpBonus += n * cfg.xpBonus;
+      magicAdd += n * cfg.magicBonus;
+      payoutBonus += n * cfg.payoutBonus;
+      paceBonus += n * cfg.paceBonus;
+      cozyFloor += n * cfg.cozyFloor;
+    });
+
     return {
-      treeCount,
-      flowerCount,
-      fountainCount,
-      xpMult: 1 + treeCount * DECOR_TREE_XP_BONUS,
-      magicAdd: flowerCount * DECOR_FLOWER_MAGIC_BONUS,
-      payoutMult: 1 + fountainCount * DECOR_FOUNTAIN_PAYOUT_BONUS
+      counts,
+      treeCount: counts.tree,
+      flowerCount: counts.flowers,
+      fountainCount: counts.fountain,
+      xpMult: 1 + xpBonus,
+      magicAdd,
+      payoutMult: 1 + payoutBonus,
+      paceMult: 1 + paceBonus,
+      cozyFloorBonus: Math.round(cozyFloor * 10) / 10
     };
   }
 
@@ -1212,8 +1450,7 @@ export function initPupperPark(): void {
   }
 
   function getDecorFloorBonus(): number {
-    const { treeCount, flowerCount, fountainCount } = getDecorBonuses();
-    return Math.round((treeCount * 2 + flowerCount * 1.5 + fountainCount * 4) * 10) / 10;
+    return getDecorBonuses().cozyFloorBonus;
   }
 
   function getCozyFloor(): number {
@@ -1639,11 +1876,12 @@ export function initPupperPark(): void {
     const baconPaceMult = getActiveBaconPaceMult(overrides?.baconActive);
     const kongActive = typeof overrides?.kongActive === 'boolean' ? overrides.kongActive : state.kongTimer > 0;
     const { workBonus, magicBonus } = getPerkMultipliers();
-    const decorMagic = getDecorBonuses().magicAdd;
+    const decorBonuses = getDecorBonuses();
+    const decorMagic = decorBonuses.magicAdd;
     const weather = getCurrentWeather();
     const moodInfo = getPackHappinessInfo();
 
-    const visualPace = Math.min(1.6, 1 + Math.log1p(Math.max(0, workBonus - 1)) * 0.25) * weather.digSpeedMult * moodInfo.paceMult * baconPaceMult;
+    const visualPace = Math.min(1.6, 1 + Math.log1p(Math.max(0, workBonus - 1)) * 0.25) * weather.digSpeedMult * moodInfo.paceMult * baconPaceMult * decorBonuses.paceMult;
     const sleepDetours = 0.28 / 0.72;
     const avgIdleSec = 1.2 / visualPace;
     const avgSleepOverheadSec = sleepDetours * (4.6 / baconPaceMult + 1.4 / visualPace);
@@ -1800,12 +2038,96 @@ export function initPupperPark(): void {
     return BASE_TILE_H * getScale();
   }
 
-  const mushrooms = [
-    { gx: 2.2, gy: 2.2, color: '#a29bfe', glow: 'rgba(162, 155, 254, 0.38)' },
-    { gx: 4.8, gy: 2.4, color: '#fd79a8', glow: 'rgba(253, 121, 168, 0.38)' },
-    { gx: 2.4, gy: 4.8, color: '#55efc4', glow: 'rgba(85, 239, 196, 0.38)' },
-    { gx: 4.6, gy: 4.6, color: '#ffeaa7', glow: 'rgba(255, 234, 167, 0.38)' }
+  const mushrooms: Array<{
+    gx: number;
+    gy: number;
+    label: string;
+    color: string;
+    capDark: string;
+    glow: string;
+  }> = [
+    { gx: 2, gy: 2, label: 'Lavender Shrooms', color: '#a29bfe', capDark: '#6c5ce7', glow: 'rgba(162, 155, 254, 0.42)' },
+    { gx: 4, gy: 2, label: 'Rose Shrooms', color: '#fd79a8', capDark: '#d6306e', glow: 'rgba(253, 121, 168, 0.42)' },
+    { gx: 2, gy: 4, label: 'Mint Shrooms', color: '#55efc4', capDark: '#00a383', glow: 'rgba(85, 239, 196, 0.42)' },
+    { gx: 4, gy: 4, label: 'Gold Shrooms', color: '#ffeaa7', capDark: '#e1a12b', glow: 'rgba(255, 234, 167, 0.44)' }
   ];
+
+  function getDecorFootprint(type: DecorType, gx: number, gy: number): Array<{ gx: number; gy: number }> {
+    const width = DECOR_CONFIG[type]?.tileWidth || 1;
+    const tiles: Array<{ gx: number; gy: number }> = [];
+    for (let dx = 0; dx < width; dx++) {
+      tiles.push({ gx: gx + dx, gy });
+    }
+    return tiles;
+  }
+
+  function getOccupiedTileMap(): Map<string, string> {
+    const occupied = new Map<string, string>();
+    occupied.set(`${DOGHOUSE_TILE.gx},${DOGHOUSE_TILE.gy}`, 'Doghouse');
+
+    const sp = state.starterProps || createDefaultStarterProps();
+    if (sp.showTree) {
+      occupied.set(`${STARTER_TREE_TILE.gx},${STARTER_TREE_TILE.gy}`, 'Starter Tree');
+    }
+    mushrooms.forEach((m, idx) => {
+      if (sp.showMushrooms[idx] !== false) {
+        occupied.set(`${m.gx},${m.gy}`, m.label);
+      }
+    });
+
+    if (Array.isArray(state.placedDecorations)) {
+      state.placedDecorations.forEach(dec => {
+        getDecorFootprint(dec.type, dec.gx, dec.gy).forEach(t => {
+          occupied.set(`${t.gx},${t.gy}`, dec.type);
+        });
+      });
+    }
+    return occupied;
+  }
+
+  function resolvePlacementAnchor(
+    type: DecorType,
+    rawGx: number,
+    rawGy: number
+  ): { ok: true; gx: number; gy: number } | { ok: false; gx: number; gy: number; reason: string } {
+    const tx = clampTileIndex(rawGx);
+    const ty = clampTileIndex(rawGy);
+    const occupied = getOccupiedTileMap();
+    const width = DECOR_CONFIG[type]?.tileWidth || 1;
+
+    if (width === 1) {
+      if (occupied.has(`${tx},${ty}`)) {
+        return { ok: false, gx: tx, gy: ty, reason: 'That tile is occupied — tap an open tile!' };
+      }
+      return { ok: true, gx: tx, gy: ty };
+    }
+
+    // 2-tile wide placement (Dog Slide): try (tx, ty) + (tx+1, ty), or shift left to (tx-1, ty) + (tx, ty)
+    const candidates: number[] = [];
+    if (tx <= GRID_SIZE - width) {
+      candidates.push(tx);
+    }
+    if (tx - 1 >= 0 && tx - 1 <= GRID_SIZE - width) {
+      candidates.push(tx - 1);
+    }
+
+    for (const anchorX of candidates) {
+      const footprint = getDecorFootprint(type, anchorX, ty);
+      const fits = footprint.every(
+        t => t.gx >= 0 && t.gx < GRID_SIZE && t.gy >= 0 && t.gy < GRID_SIZE && !occupied.has(`${t.gx},${t.gy}`)
+      );
+      if (fits) {
+        return { ok: true, gx: anchorX, gy: ty };
+      }
+    }
+
+    return {
+      ok: false,
+      gx: tx,
+      gy: ty,
+      reason: 'Dog Slide needs 2 open tiles side-by-side!'
+    };
+  }
 
   // Deterministic grass tuft positions per tile for organic texture
   const tileDetails: Array<{ gx: number; gy: number; tufts: Array<{ dx: number; dy: number; h: number }> }> = [];
@@ -1922,8 +2244,76 @@ export function initPupperPark(): void {
         });
         if (!state.shinyDogs) state.shinyDogs = [];
         if (!state.perks) state.perks = [];
-        if (!state.decorInventory) state.decorInventory = { tree: 0, flowers: 0, fountain: 0 };
-        if (!state.placedDecorations) state.placedDecorations = [];
+        const rawDecorInv = (state.decorInventory && typeof state.decorInventory === 'object')
+          ? state.decorInventory as Record<string, unknown>
+          : {};
+        const mergedDecorInv = createEmptyDecorInventory();
+        DECOR_TYPES.forEach(type => {
+          const v = Number(rawDecorInv[type]);
+          mergedDecorInv[type] = Number.isFinite(v) && v > 0
+            ? Math.min(DECOR_CONFIG[type].max, Math.floor(v))
+            : 0;
+        });
+        // Migrate legacy Cozy Park Bench saves seamlessly into Dog Slide (max 1) + refund extra benches
+        const legacyBenches = Number(rawDecorInv.bench);
+        if (Number.isFinite(legacyBenches) && legacyBenches > 0) {
+          const legacyCount = Math.floor(legacyBenches);
+          if (mergedDecorInv.slide < 1) {
+            mergedDecorInv.slide = 1;
+            const extra = Math.max(0, legacyCount - 1);
+            if (extra > 0) {
+              state.magicBones = (state.magicBones || 0) + extra * 600;
+            }
+          } else {
+            state.magicBones = (state.magicBones || 0) + legacyCount * 600;
+          }
+        }
+        state.decorInventory = mergedDecorInv;
+        if (!Array.isArray(state.placedDecorations)) {
+          state.placedDecorations = [];
+        } else {
+          state.placedDecorations = state.placedDecorations.filter(
+            (d): d is PlacedDecor => Boolean(d && typeof d.type === 'string' && d.type in DECOR_CONFIG)
+          );
+        }
+        const rawStarterProps = (state.starterProps && typeof state.starterProps === 'object')
+          ? state.starterProps as Partial<StarterPropsState>
+          : {};
+        const rawShrooms = Array.isArray(rawStarterProps.showMushrooms) ? rawStarterProps.showMushrooms : [];
+        state.starterProps = {
+          showTree: rawStarterProps.showTree !== false,
+          showMushrooms: [
+            rawShrooms[0] !== false,
+            rawShrooms[1] !== false,
+            rawShrooms[2] !== false,
+            rawShrooms[3] !== false
+          ]
+        };
+        const rawUnlockedTiles = (state.unlockedTiles && typeof state.unlockedTiles === 'object')
+          ? state.unlockedTiles as Partial<Record<CustomTileStyle, unknown>>
+          : {};
+        state.unlockedTiles = {
+          cobble: Boolean(rawUnlockedTiles.cobble),
+          sand: Boolean(rawUnlockedTiles.sand),
+          clover: Boolean(rawUnlockedTiles.clover)
+        };
+        const cleanTileMap: Record<string, CustomTileStyle> = {};
+        if (state.tileMap && typeof state.tileMap === 'object') {
+          Object.entries(state.tileMap).forEach(([k, val]) => {
+            const parts = k.split(',');
+            if (parts.length !== 2) return;
+            const gx = Number(parts[0]);
+            const gy = Number(parts[1]);
+            if (
+              Number.isInteger(gx) && Number.isInteger(gy) &&
+              gx >= 0 && gx < GRID_SIZE && gy >= 0 && gy < GRID_SIZE &&
+              (val === 'cobble' || val === 'sand' || val === 'clover')
+            ) {
+              cleanTileMap[`${gx},${gy}`] = val;
+            }
+          });
+        }
+        state.tileMap = cleanTileMap;
         if (typeof state.digPower !== 'number' || Number.isNaN(state.digPower)) {
           state.digPower = BASE_DIG_POWER;
         }
@@ -1939,6 +2329,8 @@ export function initPupperPark(): void {
         state.isDraftingPerk = false;
         state.isPlacingDecor = false;
         state.activeDecorType = null;
+        state.isPaintingTiles = false;
+        state.activeTileBrush = 'grass';
         if (typeof parsed.packHappiness !== 'number' || Number.isNaN(parsed.packHappiness)) {
           state.packHappiness = getCozyFloor();
         } else {
@@ -2169,6 +2561,8 @@ export function initPupperPark(): void {
   document.getElementById('btnOpenMenu')?.addEventListener('click', () => {
     initAudio();
     dismissOnboardingHint();
+    cancelDecorPlacement();
+    stopTilePaintMode();
     if (gameModal) {
       gameModal.style.display = 'flex';
     }
@@ -2717,51 +3111,79 @@ export function initPupperPark(): void {
     if (banner) banner.style.display = 'none';
   }
 
+  function refreshTilePaintBar(): void {
+    const brushBtns = document.querySelectorAll<HTMLButtonElement>('.tile-brush-btn');
+    brushBtns.forEach(btn => {
+      const brush = btn.dataset.tileBrush as TileStyle | undefined;
+      if (!brush) return;
+      const isUnlocked = brush === 'grass' || Boolean(state.unlockedTiles?.[brush]);
+      btn.style.display = isUnlocked ? 'inline-flex' : 'none';
+      btn.classList.toggle('active', state.activeTileBrush === brush);
+    });
+  }
+
+  function stopTilePaintMode(): void {
+    state.isPaintingTiles = false;
+    const paintBar = document.getElementById('tilePaintBar');
+    if (paintBar) paintBar.style.display = 'none';
+    canvas.classList.remove('is-painting-tiles');
+  }
+
+  function startTilePaintMode(brush: TileStyle): void {
+    cancelDecorPlacement();
+    state.isPaintingTiles = true;
+    state.activeTileBrush = brush;
+    closeMenu();
+    refreshTilePaintBar();
+    const paintBar = document.getElementById('tilePaintBar');
+    if (paintBar) paintBar.style.display = 'flex';
+    canvas.classList.add('is-painting-tiles');
+    sfx.gather();
+  }
+
   document.getElementById('btnCancelPlacement')?.addEventListener('click', () => {
     initAudio();
     cancelDecorPlacement();
   });
 
-  document.getElementById('btnBuyDecorTree')?.addEventListener('click', () => {
+  document.getElementById('btnDoneTilePaint')?.addEventListener('click', () => {
     initAudio();
-    const currentTreeOwned = state.decorInventory.tree || 0;
-    if (state.magicBones >= 500 && currentTreeOwned < 3) {
-      state.magicBones -= 500;
-      state.decorInventory.tree = currentTreeOwned + 1;
-      sfx.upgrade();
-      triggerHaptic(10);
-      updateUI();
-      saveGame();
-    }
+    stopTilePaintMode();
+    sfx.collect();
   });
 
-  document.getElementById('btnBuyDecorFlowers')?.addEventListener('click', () => {
-    initAudio();
-    const currentFlowersOwned = state.decorInventory.flowers || 0;
-    if (state.magicBones >= 250 && currentFlowersOwned < 5) {
-      state.magicBones -= 250;
-      state.decorInventory.flowers = currentFlowersOwned + 1;
-      sfx.upgrade();
-      triggerHaptic(10);
-      updateUI();
-      saveGame();
-    }
+  document.querySelectorAll<HTMLButtonElement>('.tile-brush-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      initAudio();
+      const brush = btn.dataset.tileBrush as TileStyle | undefined;
+      if (!brush) return;
+      if (brush !== 'grass' && !state.unlockedTiles?.[brush]) return;
+      state.activeTileBrush = brush;
+      refreshTilePaintBar();
+      sfx.collect();
+      triggerHaptic(8);
+    });
   });
 
-  document.getElementById('btnBuyDecorFountain')?.addEventListener('click', () => {
-    initAudio();
-    const currentFountainOwned = state.decorInventory.fountain || 0;
-    if (state.magicBones >= 1000 && currentFountainOwned < 2) {
-      state.magicBones -= 1000;
-      state.decorInventory.fountain = currentFountainOwned + 1;
-      sfx.upgrade();
-      triggerHaptic(10);
-      updateUI();
-      saveGame();
-    }
+  // Decor Sub-Tab Switcher (Park Decor | Ground Tiles)
+  document.querySelectorAll<HTMLButtonElement>('.decor-subtab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      initAudio();
+      const targetId = btn.dataset.decorSubtab;
+      if (!targetId) return;
+      document.querySelectorAll<HTMLButtonElement>('.decor-subtab-btn').forEach(b => {
+        const isActive = b === btn;
+        b.classList.toggle('active', isActive);
+        b.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      });
+      document.querySelectorAll<HTMLElement>('.decor-subtab-panel').forEach(panel => {
+        panel.classList.toggle('active', panel.id === targetId);
+      });
+    });
   });
 
-  function startDecorPlacement(type: 'tree' | 'flowers' | 'fountain', message: string): void {
+  function startDecorPlacement(type: DecorType, message: string): void {
+    stopTilePaintMode();
     state.isPlacingDecor = true;
     state.activeDecorType = type;
     closeMenu();
@@ -2772,28 +3194,52 @@ export function initPupperPark(): void {
     sfx.gather();
   }
 
-  document.getElementById('btnPlaceDecorTree')?.addEventListener('click', () => {
-    initAudio();
-    const placedCount = state.placedDecorations.filter(d => d.type === 'tree').length;
-    const available = (state.decorInventory.tree || 0) - placedCount;
-    if (available <= 0 || placedCount >= 3) return;
-    startDecorPlacement('tree', 'Tap any park tile to place your tree!');
+  DECOR_TYPES.forEach(type => {
+    const cfg = DECOR_CONFIG[type];
+    document.getElementById(cfg.buyBtnId)?.addEventListener('click', () => {
+      initAudio();
+      const currentOwned = state.decorInventory[type] || 0;
+      if (state.magicBones >= cfg.cost && currentOwned < cfg.max) {
+        state.magicBones -= cfg.cost;
+        state.decorInventory[type] = currentOwned + 1;
+        sfx.upgrade();
+        triggerHaptic(10);
+        updateUI();
+        saveGame();
+      }
+    });
+
+    document.getElementById(cfg.placeBtnId)?.addEventListener('click', () => {
+      initAudio();
+      const placedCount = state.placedDecorations.filter(d => d.type === type).length;
+      const available = (state.decorInventory[type] || 0) - placedCount;
+      if (available <= 0 || placedCount >= cfg.max) return;
+      startDecorPlacement(type, cfg.placePrompt);
+    });
   });
 
-  document.getElementById('btnPlaceDecorFlowers')?.addEventListener('click', () => {
-    initAudio();
-    const placedCount = state.placedDecorations.filter(d => d.type === 'flowers').length;
-    const available = (state.decorInventory.flowers || 0) - placedCount;
-    if (available <= 0 || placedCount >= 5) return;
-    startDecorPlacement('flowers', 'Tap any park tile to place your flower patch!');
+  CUSTOM_TILE_STYLES.forEach(style => {
+    const cfg = CUSTOM_TILE_CONFIG[style];
+    document.getElementById(cfg.btnId)?.addEventListener('click', () => {
+      initAudio();
+      if (state.unlockedTiles[style]) {
+        startTilePaintMode(style);
+        return;
+      }
+      if (state.magicBones >= TILE_UNLOCK_COST) {
+        state.magicBones -= TILE_UNLOCK_COST;
+        state.unlockedTiles[style] = true;
+        sfx.upgrade();
+        triggerHaptic(14);
+        updateUI();
+        saveGame();
+      }
+    });
   });
 
-  document.getElementById('btnPlaceDecorFountain')?.addEventListener('click', () => {
+  document.getElementById('btnTileGrass')?.addEventListener('click', () => {
     initAudio();
-    const placedCount = state.placedDecorations.filter(d => d.type === 'fountain').length;
-    const available = (state.decorInventory.fountain || 0) - placedCount;
-    if (available <= 0 || placedCount >= 2) return;
-    startDecorPlacement('fountain', 'Tap any park tile to place your fountain!');
+    startTilePaintMode('grass');
   });
 
   const clearDecorConfirmModal = document.getElementById('clearDecorConfirmModal');
@@ -2807,12 +3253,106 @@ export function initPupperPark(): void {
     if (clearDecorConfirmModal) clearDecorConfirmModal.style.display = 'none';
   });
 
+  function showLandmarkToggleNote(message: string | null): void {
+    const noteEl = document.getElementById('landmarkToggleNote');
+    if (!noteEl) return;
+    if (!message) {
+      noteEl.textContent = '';
+      noteEl.style.display = 'none';
+      return;
+    }
+    noteEl.textContent = message;
+    noteEl.style.display = 'block';
+  }
+
+  document.getElementById('btnToggleStarterTree')?.addEventListener('click', () => {
+    initAudio();
+    const sp = state.starterProps || createDefaultStarterProps();
+    state.starterProps = sp;
+    if (sp.showTree) {
+      sp.showTree = false;
+      showLandmarkToggleNote(null);
+      sfx.collect();
+      triggerHaptic(8);
+      updateUI();
+      saveGame();
+      return;
+    }
+    const occupied = getOccupiedTileMap();
+    if (occupied.has(`${STARTER_TREE_TILE.gx},${STARTER_TREE_TILE.gy}`)) {
+      sfx.thud();
+      triggerHaptic(12);
+      showLandmarkToggleNote('Clear the placed decor on the Starter Tree tile before restoring it.');
+      return;
+    }
+    sp.showTree = true;
+    showLandmarkToggleNote(null);
+    sfx.gather();
+    triggerHaptic(10);
+    updateUI();
+    saveGame();
+  });
+
+  mushrooms.forEach((m, idx) => {
+    document.getElementById(`btnToggleMushroom${idx}`)?.addEventListener('click', () => {
+      initAudio();
+      const sp = state.starterProps || createDefaultStarterProps();
+      state.starterProps = sp;
+      const currentlyShown = sp.showMushrooms[idx] !== false;
+      if (currentlyShown) {
+        sp.showMushrooms[idx] = false;
+        showLandmarkToggleNote(null);
+        sfx.collect();
+        triggerHaptic(8);
+        updateUI();
+        saveGame();
+        return;
+      }
+      const occupied = getOccupiedTileMap();
+      if (occupied.has(`${m.gx},${m.gy}`)) {
+        sfx.thud();
+        triggerHaptic(12);
+        showLandmarkToggleNote(`Clear the placed decor on the ${m.label} tile before restoring them.`);
+        return;
+      }
+      sp.showMushrooms[idx] = true;
+      showLandmarkToggleNote(null);
+      sfx.gather();
+      triggerHaptic(10);
+      updateUI();
+      saveGame();
+    });
+  });
+
   document.getElementById('btnConfirmClearDecor')?.addEventListener('click', () => {
     initAudio();
     state.placedDecorations = [];
+    dogs.forEach(d => d.cancelSlide());
+    showLandmarkToggleNote(null);
     state.packHappiness = Math.max(getCozyFloor(), Math.min(HAPPINESS_MAX, state.packHappiness || getCozyFloor()));
     sfx.thud();
     if (clearDecorConfirmModal) clearDecorConfirmModal.style.display = 'none';
+    updateUI();
+    saveGame();
+  });
+
+  const clearTilesConfirmModal = document.getElementById('clearTilesConfirmModal');
+  document.getElementById('btnClearTiles')?.addEventListener('click', () => {
+    initAudio();
+    if (Object.keys(state.tileMap || {}).length === 0) return;
+    if (clearTilesConfirmModal) clearTilesConfirmModal.style.display = 'flex';
+  });
+
+  document.getElementById('btnCancelClearTiles')?.addEventListener('click', () => {
+    initAudio();
+    if (clearTilesConfirmModal) clearTilesConfirmModal.style.display = 'none';
+  });
+
+  document.getElementById('btnConfirmClearTiles')?.addEventListener('click', () => {
+    initAudio();
+    state.tileMap = {};
+    sfx.thud();
+    if (clearTilesConfirmModal) clearTilesConfirmModal.style.display = 'none';
     updateUI();
     saveGame();
   });
@@ -2928,6 +3468,8 @@ export function initPupperPark(): void {
     const clampedBones = Math.max(0, Math.min(MAX_BONES, Math.floor(startingBones)));
     const clampedMagic = Math.max(0, Math.floor(startingMagicBones));
 
+    cancelDecorPlacement();
+    stopTilePaintMode();
     state = {
       bones: clampedBones,
       lifetimeBones: clampedBones + clampedMagic,
@@ -2941,10 +3483,15 @@ export function initPupperPark(): void {
       shinyDogs: [],
       roster: [createRosterEntry('aussie', starterShinyRoll.isShiny, starterShinyRoll.shinyColor, 'Biscuit')],
       perks: [],
-      decorInventory: { tree: 0, flowers: 0, fountain: 0 },
+      decorInventory: createEmptyDecorInventory(),
       placedDecorations: [],
+      starterProps: createDefaultStarterProps(),
       isPlacingDecor: false,
       activeDecorType: null,
+      unlockedTiles: createDefaultUnlockedTiles(),
+      tileMap: {},
+      isPaintingTiles: false,
+      activeTileBrush: 'grass',
       showNameTags: true,
       soundEnabled: state.soundEnabled,
       ambientEnabled: state.ambientEnabled,
@@ -3131,6 +3678,7 @@ export function initPupperPark(): void {
       requestSave();
     }
     dogs.forEach((dog, idx) => {
+      dog.cancelSlide();
       dog.onReachToy = null;
       dog.targetGx = Math.max(0.5, Math.min(GRID_SIZE - 0.5, gx + (Math.random() - 0.5) * 0.8));
       dog.targetGy = Math.max(0.5, Math.min(GRID_SIZE - 0.5, gy + (Math.random() - 0.5) * 0.8));
@@ -3185,6 +3733,50 @@ export function initPupperPark(): void {
     requestSave();
   }, { passive: false });
 
+  let isPaintingStroke = false;
+  let lastPaintedTileKey: string | null = null;
+  let didPaintDuringStroke = false;
+
+  function paintTileAtScreenPos(clientX: number, clientY: number): boolean {
+    const rect = canvas.getBoundingClientRect();
+    const clickX = clientX - rect.left;
+    const clickY = clientY - rect.top;
+    const gridPos = screenToGrid(clickX, clickY);
+    if (
+      gridPos.gx < 0 || gridPos.gx >= GRID_SIZE ||
+      gridPos.gy < 0 || gridPos.gy >= GRID_SIZE
+    ) {
+      return false;
+    }
+    const tx = Math.floor(gridPos.gx);
+    const ty = Math.floor(gridPos.gy);
+    const key = `${tx},${ty}`;
+    if (key === lastPaintedTileKey) return false;
+    lastPaintedTileKey = key;
+
+    const brush = state.activeTileBrush || 'grass';
+    const currentStyle: TileStyle = state.tileMap[key] || 'grass';
+    if (currentStyle === brush) return false;
+
+    if (brush === 'grass') {
+      delete state.tileMap[key];
+    } else {
+      state.tileMap[key] = brush;
+    }
+    didPaintDuringStroke = true;
+
+    tileRipples.push({
+      gx: tx,
+      gy: ty,
+      age: 0,
+      duration: 0.36,
+      color: TILE_RIPPLE_COLORS[brush]
+    });
+    sfx.collect();
+    triggerHaptic(6);
+    return true;
+  }
+
   canvas.addEventListener('pointerdown', (e: PointerEvent) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -3195,9 +3787,24 @@ export function initPupperPark(): void {
         holdTimer = null;
       }
       isRotating = false;
+      isPaintingStroke = false;
+      lastPaintedTileKey = null;
       const pts = Array.from(activePointers.values());
       pinchStartDist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
       pinchStartZoom = userZoom;
+      return;
+    }
+
+    if (state.isPaintingTiles) {
+      initAudio();
+      dismissOnboardingHint();
+      isRotating = false;
+      cameraVelocity = 0;
+      isPaintingStroke = true;
+      lastPaintedTileKey = null;
+      didPaintDuringStroke = false;
+      try { canvas.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+      paintTileAtScreenPos(e.clientX, e.clientY);
       return;
     }
 
@@ -3238,6 +3845,11 @@ export function initPupperPark(): void {
       return;
     }
 
+    if (state.isPaintingTiles && isPaintingStroke && activePointers.size === 1) {
+      paintTileAtScreenPos(e.clientX, e.clientY);
+      return;
+    }
+
     const moveDist = Math.hypot(e.clientX - lastMouseX, e.clientY - lastMouseY);
     dragTotalDist += moveDist;
 
@@ -3275,6 +3887,18 @@ export function initPupperPark(): void {
       holdTimer = null;
     }
 
+    if (isPaintingStroke) {
+      isPaintingStroke = false;
+      lastPaintedTileKey = null;
+      try { canvas.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+      if (didPaintDuringStroke) {
+        didPaintDuringStroke = false;
+        updateUI();
+        saveGame();
+      }
+      return;
+    }
+
     if (!isRotating) {
       isRotating = false;
       try { canvas.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
@@ -3302,11 +3926,32 @@ export function initPupperPark(): void {
           gridPos.gx >= 0 && gridPos.gx <= GRID_SIZE &&
           gridPos.gy >= 0 && gridPos.gy <= GRID_SIZE
         ) {
+          const check = resolvePlacementAnchor(state.activeDecorType, gridPos.gx, gridPos.gy);
+          if (!check.ok) {
+            tileRipples.push({
+              gx: check.gx,
+              gy: check.gy,
+              age: 0,
+              duration: 0.45,
+              color: '#ff7675'
+            });
+            const bannerText = document.getElementById('placementBannerText');
+            if (bannerText) bannerText.textContent = check.reason;
+            sfx.thud();
+            triggerHaptic(12);
+            return;
+          }
+          const placedType = state.activeDecorType;
           state.placedDecorations.push({
-            type: state.activeDecorType,
-            gx: clampTileIndex(gridPos.gx),
-            gy: clampTileIndex(gridPos.gy)
+            type: placedType,
+            gx: check.gx,
+            gy: check.gy
           });
+          if (placedType === 'slide') {
+            dogs.forEach(d => {
+              d.slideCooldown = Math.min(d.slideCooldown, 1.2);
+            });
+          }
           cancelDecorPlacement();
           addPackHappiness(2.5);
           sfx.gather();
@@ -3323,7 +3968,7 @@ export function initPupperPark(): void {
       let bestDist = Math.max(34, 38 * scale);
       dogs.forEach(d => {
         const dp = gridToScreen(d.gx, d.gy);
-        const dist = Math.hypot(clickX - dp.x, clickY - (dp.y - 12 * scale));
+        const dist = Math.hypot(clickX - dp.x, clickY - (dp.y - (12 + d.slideElevation) * scale));
         if (dist < bestDist) {
           bestDist = dist;
           tappedDog = d;
@@ -3401,17 +4046,39 @@ export function initPupperPark(): void {
       clearTimeout(holdTimer);
       holdTimer = null;
     }
+    if (isPaintingStroke) {
+      isPaintingStroke = false;
+      lastPaintedTileKey = null;
+      if (didPaintDuringStroke) {
+        didPaintDuringStroke = false;
+        updateUI();
+        saveGame();
+      }
+    }
     isRotating = false;
     try { canvas.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
     requestSave();
   });
+
+  function getAvailableSlide(excludeDog?: Dog): PlacedDecor | null {
+    if (!Array.isArray(state.placedDecorations)) return null;
+    const slides = state.placedDecorations.filter(d => d.type === 'slide');
+    if (slides.length === 0) return null;
+    for (const s of slides) {
+      const busy = dogs.some(
+        d => d !== excludeDog && d.slideTarget && d.slideTarget.gx === s.gx && d.slideTarget.gy === s.gy
+      );
+      if (!busy) return s;
+    }
+    return null;
+  }
 
   class Dog {
     gx: number;
     gy: number;
     targetGx: number;
     targetGy: number;
-    state: 'IDLE' | 'WALK' | 'DIG' | 'SLEEP';
+    state: 'IDLE' | 'WALK' | 'DIG' | 'SLEEP' | 'SLIDE_CLIMB' | 'SLIDE_DOWN';
     timer: number;
     facingRight: boolean;
     sleepFacingRight: boolean;
@@ -3426,6 +4093,12 @@ export function initPupperPark(): void {
     shinyColor: string;
     isMagicDig: boolean;
     onReachToy: (() => void) | null;
+    slideTarget: { gx: number; gy: number } | null;
+    slideProgress: number;
+    slideElevation: number;
+    slideTilt: number;
+    slideCooldown: number;
+    onReachSlide: (() => void) | null;
 
     constructor(gx: number, gy: number, rosterId: string, breed = 'aussie', isShiny = false, shinyColor: string | null = null) {
       this.gx = gx;
@@ -3447,9 +4120,109 @@ export function initPupperPark(): void {
       this.shinyColor = shinyColor || SHINY_PALETTES[Math.floor(Math.random() * SHINY_PALETTES.length)];
       this.isMagicDig = false;
       this.onReachToy = null;
+      this.slideTarget = null;
+      this.slideProgress = 0;
+      this.slideElevation = 0;
+      this.slideTilt = 0;
+      this.slideCooldown = 3 + Math.random() * 6;
+      this.onReachSlide = null;
+    }
+
+    cancelSlide(): void {
+      this.slideTarget = null;
+      this.slideProgress = 0;
+      this.slideElevation = 0;
+      this.slideTilt = 0;
+      this.onReachSlide = null;
+      if (this.state === 'SLIDE_CLIMB' || this.state === 'SLIDE_DOWN') {
+        this.state = 'IDLE';
+        this.timer = 0.6 + Math.random() * 0.8;
+      }
+    }
+
+    startSlideClimb(): void {
+      if (!this.slideTarget) {
+        this.state = 'IDLE';
+        this.timer = 0.5;
+        return;
+      }
+      const exists = state.placedDecorations.some(
+        d => d.type === 'slide' && d.gx === this.slideTarget?.gx && d.gy === this.slideTarget?.gy
+      );
+      if (!exists) {
+        this.cancelSlide();
+        return;
+      }
+      this.state = 'SLIDE_CLIMB';
+      this.slideProgress = 0;
+      this.slideElevation = 0;
+      this.slideTilt = 0;
+    }
+
+    finishSlide(): void {
+      const target = this.slideTarget;
+      const landGx = target ? Math.min(GRID_SIZE - 0.25, target.gx + 1.66) : this.gx;
+      const landGy = target ? target.gy + 0.5 : this.gy;
+      this.gx = landGx;
+      this.gy = landGy;
+      this.slideTarget = null;
+      this.slideProgress = 0;
+      this.slideElevation = 0;
+      this.slideTilt = 0;
+      this.onReachSlide = null;
+      this.slideCooldown = 16 + Math.random() * 8;
+      this.petBounce = 0.42;
+      this.state = 'IDLE';
+      this.timer = 0.7 + Math.random() * 0.9;
+
+      const pos = gridToScreen(this.gx, this.gy);
+      const scale = getScale();
+      sfx.pet();
+      addPackHappiness(2);
+
+      for (let i = 0; i < 5; i++) {
+        particles.push({
+          x: pos.x + (Math.random() - 0.5) * 20 * scale,
+          y: pos.y - 16 * scale,
+          vx: (Math.random() - 0.5) * 44,
+          vy: -42 - Math.random() * 28,
+          life: 0.72,
+          maxLife: 0.72,
+          color: i % 2 === 0 ? '#ffeaa7' : '#ff9ff3',
+          size: i % 2 === 0 ? 3.5 : 4.5,
+          isHeart: i % 2 === 1
+        });
+      }
+
+      const entry = this.getRosterEntry();
+      if (entry && entry.level < MAX_DOG_LEVEL) {
+        const stats = getEffectiveBreedStats(entry, this.breed);
+        const xpGain = Math.max(2, Math.round(4 * stats.quickLearner * getActiveXpBoostMult()));
+        entry.xp = (entry.xp || 0) + xpGain;
+        let leveledUp = false;
+        while (entry.level < MAX_DOG_LEVEL && entry.xp >= getXpNeededForLevel(entry.level)) {
+          entry.xp -= getXpNeededForLevel(entry.level);
+          entry.level += 1;
+          leveledUp = true;
+        }
+        if (entry.level >= MAX_DOG_LEVEL) {
+          entry.level = MAX_DOG_LEVEL;
+          entry.xp = 0;
+        }
+        addFloatingText(pos.x, pos.y - 34 * scale, leveledUp ? 'Level Up!' : `Wheee! +${xpGain} XP`, '#ffeaa7');
+        if (leveledUp) {
+          sfx.upgrade();
+          triggerHaptic(20);
+        }
+        requestSave();
+      } else {
+        addFloatingText(pos.x, pos.y - 34 * scale, 'Wheee!', '#ffeaa7');
+      }
+      updateUI();
     }
 
     enterSleep(): void {
+      this.cancelSlide();
       this.state = 'SLEEP';
       this.sleepFacingRight = this.facingRight;
       this.timer = 3.2 + Math.random() * 2.8;
@@ -3472,9 +4245,9 @@ export function initPupperPark(): void {
       const word = BARK_WORDS[Math.floor(Math.random() * BARK_WORDS.length)];
       barkPopups.push({
         dog: this,
-        baseOffsetY: -36 * getScale(),
+        baseOffsetY: (-36 - this.slideElevation) * getScale(),
         fallbackX: pos.x,
-        fallbackY: pos.y - 36 * getScale(),
+        fallbackY: pos.y - (36 + this.slideElevation) * getScale(),
         text: word,
         age: 0,
         duration: BARK_TEXT_DURATION
@@ -3500,7 +4273,7 @@ export function initPupperPark(): void {
       for (let i = 0; i < 4; i++) {
         particles.push({
           x: pos.x + (Math.random() - 0.5) * 18 * scale,
-          y: pos.y - 20 * scale,
+          y: pos.y - (20 + this.slideElevation) * scale,
           vx: (Math.random() - 0.5) * 35,
           vy: -45 - Math.random() * 25,
           life: 0.75,
@@ -3529,20 +4302,33 @@ export function initPupperPark(): void {
             entry.level = MAX_DOG_LEVEL;
             entry.xp = 0;
           }
-          addFloatingText(pos.x, pos.y - 32 * scale, leveledUp ? 'Level Up!' : `♥ +${xpGain} XP`, leveledUp ? '#ffeaa7' : '#ff9ff3');
+          addFloatingText(pos.x, pos.y - (32 + this.slideElevation) * scale, leveledUp ? 'Level Up!' : `♥ +${xpGain} XP`, leveledUp ? '#ffeaa7' : '#ff9ff3');
           if (leveledUp) {
             sfx.upgrade();
             triggerHaptic(22);
           }
           requestSave();
         } else {
-          addFloatingText(pos.x, pos.y - 32 * scale, '♥ Happy Pup!', '#ff9ff3');
+          addFloatingText(pos.x, pos.y - (32 + this.slideElevation) * scale, '♥ Happy Pup!', '#ff9ff3');
         }
         updateUI();
       }
     }
 
     pickNewTarget(): void {
+      if (this.slideCooldown <= 0 && !this.onReachToy) {
+        const openSlide = getAvailableSlide(this);
+        if (openSlide && Math.random() < 0.32) {
+          this.slideTarget = { gx: openSlide.gx, gy: openSlide.gy };
+          this.targetGx = Math.max(0.24, openSlide.gx + 0.26);
+          this.targetGy = openSlide.gy + 0.5;
+          this.onReachSlide = () => this.startSlideClimb();
+          this.state = 'WALK';
+          return;
+        }
+      }
+      this.slideTarget = null;
+      this.onReachSlide = null;
       this.targetGx = 0.7 + Math.random() * (GRID_SIZE - 1.4);
       this.targetGy = 0.7 + Math.random() * (GRID_SIZE - 1.4);
       this.state = 'WALK';
@@ -3558,6 +4344,9 @@ export function initPupperPark(): void {
       if (this.petBounce > 0) {
         this.petBounce = Math.max(0, this.petBounce - dt);
       }
+      if (this.slideCooldown > 0) {
+        this.slideCooldown = Math.max(0, this.slideCooldown - dt);
+      }
 
       const cfg = BREED_CONFIG[this.breed] || BREED_CONFIG.aussie;
       const { workBonus } = getPerkMultipliers();
@@ -3565,24 +4354,31 @@ export function initPupperPark(): void {
       const moodInfo = getPackHappinessInfo();
 
       const baconPaceMult = getActiveBaconPaceMult();
-      const visualPace = Math.min(1.6, 1 + Math.log1p(Math.max(0, workBonus - 1)) * 0.25) * weather.digSpeedMult * moodInfo.paceMult * baconPaceMult;
+      const decorPaceMult = getDecorBonuses().paceMult;
+      const visualPace = Math.min(1.6, 1 + Math.log1p(Math.max(0, workBonus - 1)) * 0.25) * weather.digSpeedMult * moodInfo.paceMult * baconPaceMult * decorPaceMult;
       const walkSpeed = (cfg.walkMult || 1.1) * visualPace;
 
       this.animPhase += dt * (
-        this.state === 'WALK'
+        this.state === 'WALK' || this.state === 'SLIDE_CLIMB'
           ? 9 * Math.min(1.35, visualPace)
           : this.state === 'SLEEP'
             ? 1.4
             : 5 * Math.min(1.35, visualPace)
       );
-      this.wagPhase += dt * (this.state === 'SLEEP' ? 1.4 : 5.2 * moodInfo.wagMult);
+      this.wagPhase += dt * (
+        this.state === 'SLEEP'
+          ? 1.4
+          : this.state === 'SLIDE_DOWN'
+            ? 10.5 * moodInfo.wagMult
+            : 5.2 * moodInfo.wagMult
+      );
 
       if (moodInfo.tier === 'ecstatic' && this.state !== 'SLEEP' && Math.random() < dt * 0.45) {
         const p = gridToScreen(this.gx, this.gy);
         const s = getScale();
         particles.push({
           x: p.x + (Math.random() - 0.5) * 14 * s,
-          y: p.y - 24 * s,
+          y: p.y - (24 + this.slideElevation) * s,
           vx: (Math.random() - 0.5) * 14,
           vy: -24 - Math.random() * 14,
           life: 0.8,
@@ -3591,6 +4387,82 @@ export function initPupperPark(): void {
           size: 4,
           isHeart: true
         });
+      }
+
+      if (this.state === 'SLIDE_CLIMB') {
+        if (!this.slideTarget) {
+          this.cancelSlide();
+          return;
+        }
+        const pStart = getCenteredTilePos(this.slideTarget.gx, this.slideTarget.gy);
+        const pEnd = getCenteredTilePos(this.slideTarget.gx + 1, this.slideTarget.gy);
+        this.facingRight = pEnd.x >= pStart.x;
+
+        this.slideProgress = Math.min(1, this.slideProgress + dt / 0.68);
+        const t = this.slideProgress;
+        if (t <= 0.8) {
+          const climbT = t / 0.8;
+          this.gx = this.slideTarget.gx + 0.26 + climbT * 0.38;
+          this.slideElevation = climbT * 38 + Math.abs(Math.sin(climbT * Math.PI * 4)) * 2.2;
+          this.slideTilt = -0.22 * (1 - climbT * 0.65);
+        } else {
+          const hopT = (t - 0.8) / 0.2;
+          this.gx = this.slideTarget.gx + 0.64 + hopT * 0.14;
+          this.slideElevation = 38 + Math.sin(hopT * Math.PI) * 3;
+          this.slideTilt = -0.07 * (1 - hopT) + 0.12 * hopT;
+        }
+        this.gy = this.slideTarget.gy + 0.5;
+
+        if (this.slideProgress >= 1) {
+          this.state = 'SLIDE_DOWN';
+          this.slideProgress = 0;
+          sfx.gather();
+        }
+        return;
+      }
+
+      if (this.state === 'SLIDE_DOWN') {
+        if (!this.slideTarget) {
+          this.cancelSlide();
+          return;
+        }
+        const pStart = getCenteredTilePos(this.slideTarget.gx, this.slideTarget.gy);
+        const pEnd = getCenteredTilePos(this.slideTarget.gx + 1, this.slideTarget.gy);
+        this.facingRight = pEnd.x >= pStart.x;
+
+        this.slideProgress = Math.min(1, this.slideProgress + dt / 0.72);
+        const t = this.slideProgress;
+        const u = 0.22 * t + 0.78 * t * t;
+        const omu = 1 - u;
+
+        // Exact Quadratic Bezier matching drawDogSlide chute curve (deckFront -> chuteCtrl -> chuteFoot)
+        const gx0 = this.slideTarget.gx + 0.78;
+        const gx1 = this.slideTarget.gx + 1.12;
+        const gx2 = this.slideTarget.gx + 1.66;
+        this.gx = omu * omu * gx0 + 2 * omu * u * gx1 + u * u * gx2;
+        this.gy = this.slideTarget.gy + 0.5;
+        this.slideElevation = omu * omu * 38 + 2 * omu * u * 9.12 + u * u * 0;
+        this.slideTilt = 0.34 * Math.sin(Math.min(1, t * 1.15) * Math.PI * 0.85);
+
+        if (Math.random() < 0.45) {
+          const p = gridToScreen(this.gx, this.gy);
+          const s = getScale();
+          particles.push({
+            x: p.x + (Math.random() - 0.5) * 10 * s,
+            y: p.y - (this.slideElevation + 8) * s,
+            vx: (this.facingRight ? -18 : 18) + (Math.random() - 0.5) * 12,
+            vy: -14 - Math.random() * 14,
+            life: 0.36,
+            maxLife: 0.36,
+            color: '#ffeaa7',
+            size: 2.6 * s
+          });
+        }
+
+        if (this.slideProgress >= 1) {
+          this.finishSlide();
+        }
+        return;
       }
 
       if (this.state === 'SLEEP') {
@@ -3625,6 +4497,13 @@ export function initPupperPark(): void {
           this.gx = this.targetGx;
           this.gy = this.targetGy;
 
+          if (this.onReachSlide) {
+            const cb = this.onReachSlide;
+            this.onReachSlide = null;
+            cb();
+            return;
+          }
+
           if (this.onReachToy) {
             this.onReachToy();
             this.onReachToy = null;
@@ -3646,8 +4525,9 @@ export function initPupperPark(): void {
         } else {
           this.gx += (dx / dist) * walkSpeed * dt;
           this.gy += (dy / dist) * walkSpeed * dt;
-          this.gx = Math.max(0.5, Math.min(GRID_SIZE - 0.5, this.gx));
-          this.gy = Math.max(0.5, Math.min(GRID_SIZE - 0.5, this.gy));
+          const edgeMargin = this.slideTarget ? 0.2 : 0.3;
+          this.gx = Math.max(edgeMargin, Math.min(GRID_SIZE - edgeMargin, this.gx));
+          this.gy = Math.max(edgeMargin, Math.min(GRID_SIZE - edgeMargin, this.gy));
         }
       } else if (this.state === 'DIG') {
         this.timer -= dt;
@@ -3751,13 +4631,14 @@ export function initPupperPark(): void {
       const pos = gridToScreen(this.gx, this.gy);
       const scale = getScale();
       const isSleeping = this.state === 'SLEEP';
+      const isOnSlide = this.state === 'SLIDE_CLIMB' || this.state === 'SLIDE_DOWN';
       const effectiveFacingRight = isSleeping ? this.sleepFacingRight : this.facingRight;
 
       c.save();
       c.translate(pos.x, pos.y);
       c.scale(scale, scale);
 
-      if (this.isShiny) {
+      if (this.isShiny && !isOnSlide) {
         c.save();
         c.strokeStyle = 'rgba(255, 234, 167, 0.8)';
         c.lineWidth = 2;
@@ -3777,10 +4658,17 @@ export function initPupperPark(): void {
         c.restore();
       }
 
-      c.fillStyle = 'rgba(0, 0, 0, 0.34)';
-      c.beginPath();
-      c.ellipse(0, 4, isSleeping ? 20 : 17, isSleeping ? 8.5 : 8, 0, 0, Math.PI * 2);
-      c.fill();
+      if (isOnSlide) {
+        c.fillStyle = 'rgba(0, 0, 0, 0.18)';
+        c.beginPath();
+        c.ellipse(0, -this.slideElevation + 4.5, 11, 4.2, 0, 0, Math.PI * 2);
+        c.fill();
+      } else {
+        c.fillStyle = 'rgba(0, 0, 0, 0.34)';
+        c.beginPath();
+        c.ellipse(0, 4, isSleeping ? 20 : 17, isSleeping ? 8.5 : 8, 0, 0, Math.PI * 2);
+        c.fill();
+      }
 
       c.save();
       if (!effectiveFacingRight) {
@@ -3788,7 +4676,7 @@ export function initPupperPark(): void {
       }
 
       let feastJump = 0;
-      if (state.feastAnimTimer > 0 && !isSleeping) {
+      if (state.feastAnimTimer > 0 && !isSleeping && !isOnSlide) {
         feastJump = Math.abs(Math.sin(state.feastAnimTimer * Math.PI * 4)) * 14;
       }
 
@@ -3796,15 +4684,23 @@ export function initPupperPark(): void {
       const sleepBreath = isSleeping ? Math.sin(this.animPhase) * 0.35 : 0;
       const bounce = isSleeping
         ? -6.5
-        : (this.state === 'WALK' ? Math.abs(Math.sin(this.animPhase)) * 3 : 0) + feastJump + petHop;
-      const poseTilt = isSleeping ? 0 : (this.state === 'DIG' ? 0.25 : 0);
+        : isOnSlide
+          ? this.slideElevation
+          : (this.state === 'WALK' ? Math.abs(Math.sin(this.animPhase)) * 3 : 0) + feastJump + petHop;
+      const poseTilt = isSleeping
+        ? 0
+        : isOnSlide
+          ? this.slideTilt
+          : (this.state === 'DIG' ? 0.25 : 0);
 
       c.translate(0, -bounce);
       c.rotate(poseTilt);
 
       const legSwing = isSleeping
         ? -1.5
-        : (this.state === 'WALK' ? Math.sin(this.animPhase) * 4 : (this.state === 'DIG' ? Math.sin(this.animPhase * 3) * 5 : 0));
+        : (this.state === 'WALK' || this.state === 'SLIDE_CLIMB'
+            ? Math.sin(this.animPhase) * 4
+            : (this.state === 'DIG' ? Math.sin(this.animPhase * 3) * 5 : (this.state === 'SLIDE_DOWN' ? 3.5 : 0)));
       const legHeight = isSleeping ? 4.5 : 10;
       const pawY = isSleeping ? 3 : 4;
       const pawHeight = isSleeping ? 2 : 3;
@@ -5250,7 +6146,7 @@ export function initPupperPark(): void {
       if (state.showNameTags) {
         const entry = this.getRosterEntry();
         const label = entry ? entry.name : (BREED_LABELS[this.breed] || this.breed);
-        const tagY = isSleeping ? -22 : -36;
+        const tagY = (isSleeping ? -22 : -36) - this.slideElevation;
 
         c.font = '700 11px "Plus Jakarta Sans", system-ui, sans-serif';
         const textWidth = c.measureText(label).width;
@@ -5390,6 +6286,39 @@ export function initPupperPark(): void {
     });
   }
 
+  function getTileStyle(gx: number, gy: number): TileStyle {
+    return state.tileMap[`${gx},${gy}`] || 'grass';
+  }
+
+  function drawIsoQuad(
+    gx: number,
+    gy: number,
+    u0: number,
+    v0: number,
+    u1: number,
+    v1: number,
+    fill: string,
+    stroke?: string
+  ): void {
+    const p0 = gridToScreen(gx + u0, gy + v0);
+    const p1 = gridToScreen(gx + u1, gy + v0);
+    const p2 = gridToScreen(gx + u1, gy + v1);
+    const p3 = gridToScreen(gx + u0, gy + v1);
+    ctx.beginPath();
+    ctx.moveTo(p0.x, p0.y);
+    ctx.lineTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.lineTo(p3.x, p3.y);
+    ctx.closePath();
+    ctx.fillStyle = fill;
+    ctx.fill();
+    if (stroke) {
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+    }
+  }
+
   function drawIsometricTile(gx: number, gy: number): void {
     const top = gridToScreen(gx, gy);
     const right = gridToScreen(gx + 1, gy);
@@ -5397,6 +6326,9 @@ export function initPupperPark(): void {
     const left = gridToScreen(gx, gy + 1);
 
     const isChecker = (gx + gy) % 2 === 0;
+    const style = getTileStyle(gx, gy);
+    const scale = getScale();
+    const seed = ((gx * 37 + gy * 17) % 11) / 11;
 
     ctx.beginPath();
     ctx.moveTo(top.x, top.y);
@@ -5404,9 +6336,150 @@ export function initPupperPark(): void {
     ctx.lineTo(bottom.x, bottom.y);
     ctx.lineTo(left.x, left.y);
     ctx.closePath();
-    ctx.fillStyle = isChecker ? '#4cd137' : '#44bd32';
+
+    if (style === 'grass') {
+      ctx.fillStyle = isChecker ? '#4cd137' : '#44bd32';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.09)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      return;
+    }
+
+    if (style === 'cobble') {
+      ctx.fillStyle = isChecker ? '#756f66' : '#6c665d';
+      ctx.fill();
+      ctx.save();
+      ctx.clip();
+
+      const stonePalette = ['#c5bcb0', '#b2aaa0', '#cbc0ae', '#a49f96', '#b9afa2', '#9d978e'];
+      const stones = (gx + gy) % 2 === 0
+        ? [
+            [0.05, 0.05, 0.50, 0.45],
+            [0.55, 0.05, 0.95, 0.43],
+            [0.05, 0.50, 0.38, 0.95],
+            [0.43, 0.48, 0.95, 0.72],
+            [0.43, 0.76, 0.95, 0.95]
+          ]
+        : [
+            [0.05, 0.05, 0.42, 0.52],
+            [0.47, 0.05, 0.95, 0.38],
+            [0.47, 0.43, 0.95, 0.95],
+            [0.05, 0.57, 0.42, 0.95]
+          ];
+
+      stones.forEach(([u0, v0, u1, v1], idx) => {
+        const col = stonePalette[(gx * 3 + gy * 5 + idx) % stonePalette.length];
+        drawIsoQuad(gx, gy, u0, v0, u1, v1, col, 'rgba(255, 250, 240, 0.22)');
+      });
+
+      ctx.restore();
+      ctx.beginPath();
+      ctx.moveTo(top.x, top.y);
+      ctx.lineTo(right.x, right.y);
+      ctx.lineTo(bottom.x, bottom.y);
+      ctx.lineTo(left.x, left.y);
+      ctx.closePath();
+      ctx.strokeStyle = 'rgba(42, 38, 34, 0.28)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      return;
+    }
+
+    if (style === 'sand') {
+      ctx.fillStyle = isChecker ? '#e8c785' : '#e0bc75';
+      ctx.fill();
+      ctx.save();
+      ctx.clip();
+
+      // Wind-swept sand ripple arcs projected onto isometric ground
+      ctx.strokeStyle = 'rgba(181, 136, 68, 0.34)';
+      ctx.lineWidth = Math.max(1, 1.3 * scale);
+      ctx.lineCap = 'round';
+      for (let r = 0; r < 2; r++) {
+        const vBase = 0.28 + r * 0.42 + (seed - 0.5) * 0.08;
+        const pStart = gridToScreen(gx + 0.14, gy + vBase);
+        const pCtrl = gridToScreen(gx + 0.52, gy + vBase - 0.12);
+        const pEnd = gridToScreen(gx + 0.86, gy + vBase + 0.04);
+        ctx.beginPath();
+        ctx.moveTo(pStart.x, pStart.y);
+        ctx.quadraticCurveTo(pCtrl.x, pCtrl.y, pEnd.x, pEnd.y);
+        ctx.stroke();
+      }
+
+      // Tiny smooth pebbles
+      const pebbles = [
+        { u: 0.24 + seed * 0.12, v: 0.32, r: 1.9, c: '#c49f66' },
+        { u: 0.72 - seed * 0.1, v: 0.28 + seed * 0.15, r: 1.5, c: '#f7e5be' },
+        { u: 0.55, v: 0.74 - seed * 0.1, r: 2.0, c: '#b89056' }
+      ];
+      pebbles.forEach(pb => {
+        const pt = gridToScreen(gx + pb.u, gy + pb.v);
+        ctx.fillStyle = pb.c;
+        ctx.beginPath();
+        ctx.ellipse(pt.x, pt.y, pb.r * scale, pb.r * 0.58 * scale, 0, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      ctx.restore();
+      ctx.beginPath();
+      ctx.moveTo(top.x, top.y);
+      ctx.lineTo(right.x, right.y);
+      ctx.lineTo(bottom.x, bottom.y);
+      ctx.lineTo(left.x, left.y);
+      ctx.closePath();
+      ctx.strokeStyle = 'rgba(255, 245, 215, 0.22)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      return;
+    }
+
+    // Clover Meadow
+    ctx.fillStyle = isChecker ? '#2fa857' : '#28994d';
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.09)';
+    ctx.save();
+    ctx.clip();
+
+    const clovers = [
+      { u: 0.26, v: 0.28 },
+      { u: 0.68, v: 0.34 },
+      { u: 0.38, v: 0.72 },
+      { u: 0.74, v: 0.74 }
+    ];
+    clovers.forEach((cl, idx) => {
+      const jitterU = ((gx * 7 + gy * 13 + idx * 5) % 9 - 4) * 0.02;
+      const jitterV = ((gx * 11 + gy * 3 + idx * 7) % 9 - 4) * 0.02;
+      const pt = gridToScreen(gx + cl.u + jitterU, gy + cl.v + jitterV);
+      const r = 2.4 * scale;
+      ctx.fillStyle = idx % 2 === 0 ? '#1e7e3c' : '#3bd16a';
+      ctx.beginPath();
+      ctx.arc(pt.x - r * 0.6, pt.y, r * 0.75, 0, Math.PI * 2);
+      ctx.arc(pt.x + r * 0.6, pt.y, r * 0.75, 0, Math.PI * 2);
+      ctx.arc(pt.x, pt.y - r * 0.65, r * 0.75, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    const blossoms = [
+      { u: 0.22 + seed * 0.16, v: 0.56, c: '#fffef5' },
+      { u: 0.64, v: 0.22 + seed * 0.16, c: '#ffeaa7' },
+      { u: 0.52 - seed * 0.1, v: 0.80, c: '#fffef5' }
+    ];
+    blossoms.forEach(bl => {
+      const pt = gridToScreen(gx + bl.u, gy + bl.v);
+      ctx.fillStyle = bl.c;
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, 1.75 * scale, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    ctx.restore();
+    ctx.beginPath();
+    ctx.moveTo(top.x, top.y);
+    ctx.lineTo(right.x, right.y);
+    ctx.lineTo(bottom.x, bottom.y);
+    ctx.lineTo(left.x, left.y);
+    ctx.closePath();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.11)';
     ctx.lineWidth = 1;
     ctx.stroke();
   }
@@ -5418,6 +6491,7 @@ export function initPupperPark(): void {
     ctx.lineWidth = Math.max(1, 1.4 * scale);
     ctx.lineCap = 'round';
     tileDetails.forEach(td => {
+      if (getTileStyle(td.gx, td.gy) !== 'grass') return;
       td.tufts.forEach(t => {
         const p = gridToScreen(td.gx + t.dx, td.gy + t.dy);
         const h = t.h * scale;
@@ -5433,8 +6507,10 @@ export function initPupperPark(): void {
   }
 
   function drawDoghouse(): void {
-    const pos = gridToScreen(1.2, 1.2);
+    const pos = getCenteredTilePos(DOGHOUSE_TILE.gx, DOGHOUSE_TILE.gy);
     const scale = getScale();
+    const glowStrength = Math.min(1, 0.28 + weatherWeights.twilight * 0.9 + weatherWeights.rain * 0.45);
+
     ctx.save();
     ctx.translate(pos.x, pos.y);
     ctx.scale(scale, scale);
@@ -5443,120 +6519,342 @@ export function initPupperPark(): void {
     const sinA = Math.sin(cameraAngle);
     const viewingBack = (cosA + sinA) < 0;
 
-    ctx.fillStyle = 'rgba(0,0,0,0.32)';
+    // Grounded soft shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
     ctx.beginPath();
-    ctx.ellipse(0, 6, 28, 14, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 6.5, 29, 13.5, 0, 0, Math.PI * 2);
     ctx.fill();
 
+    // Warm wooden porch base deck
+    ctx.fillStyle = '#6c3e1b';
+    ctx.strokeStyle = '#47270f';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(-22.5, 0.5, 45, 5.2, 2);
+    ctx.fill();
+    ctx.stroke();
+
     if (viewingBack) {
-      ctx.fillStyle = '#73431a';
-      ctx.fillRect(-20, -24, 40, 26);
-
-      ctx.strokeStyle = '#5c3413';
-      ctx.lineWidth = 1.5;
-      [-10, 0, 10].forEach(px => {
-        ctx.beginPath();
-        ctx.moveTo(px, -24);
-        ctx.lineTo(px, 2);
-        ctx.stroke();
-      });
-
-      ctx.fillStyle = '#345e82';
+      // Shaded rear cedar clapboard cabin
+      ctx.fillStyle = '#79461d';
+      ctx.strokeStyle = '#4e2c11';
+      ctx.lineWidth = 1.1;
       ctx.beginPath();
-      ctx.moveTo(-26, -22);
-      ctx.lineTo(0, -40);
-      ctx.lineTo(26, -22);
+      ctx.roundRect(-20, -25, 40, 26.5, [2, 2, 0, 0]);
+      ctx.fill();
+      ctx.stroke();
+
+      // Horizontal clapboard siding grooves
+      ctx.strokeStyle = 'rgba(54, 28, 10, 0.48)';
+      ctx.lineWidth = 1;
+      for (let py = -20; py <= -4; py += 4.5) {
+        ctx.beginPath();
+        ctx.moveTo(-19.5, py);
+        ctx.lineTo(19.5, py);
+        ctx.stroke();
+      }
+
+      // Corner wood trim posts
+      ctx.fillStyle = '#e7d7bf';
+      ctx.fillRect(-20.5, -25, 3, 26.5);
+      ctx.fillRect(17.5, -25, 3, 26.5);
+
+      // Pitched slate-blue shingled back roof
+      const backRoofGrad = ctx.createLinearGradient(0, -44, 0, -21);
+      backRoofGrad.addColorStop(0, '#4a7ba7');
+      backRoofGrad.addColorStop(1, '#2d5376');
+      ctx.fillStyle = backRoofGrad;
+      ctx.strokeStyle = '#1f3b54';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(-27.5, -21.5);
+      ctx.lineTo(0, -43.5);
+      ctx.lineTo(27.5, -21.5);
       ctx.closePath();
       ctx.fill();
+      ctx.stroke();
+
+      // Subtle shingle scallops
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+      ctx.lineWidth = 0.9;
+      for (let row = 0; row < 3; row++) {
+        const y = -25 - row * 5.2;
+        const halfW = 19 - row * 5.2;
+        ctx.beginPath();
+        ctx.moveTo(-halfW, y);
+        ctx.lineTo(halfW, y);
+        ctx.stroke();
+      }
+
+      // Cream roof ridge cap
+      ctx.fillStyle = '#dfe8f0';
+      ctx.beginPath();
+      ctx.arc(0, -43.2, 2.2, 0, Math.PI * 2);
+      ctx.fill();
     } else {
-      // Warm cozy lantern spill on the grass
-      const lanternGrad = ctx.createRadialGradient(0, 4, 2, 0, 4, 28);
-      lanternGrad.addColorStop(0, 'rgba(255, 234, 167, 0.35)');
+      // Warm cozy porch lantern spill onto the front grass
+      const lanternGrad = ctx.createRadialGradient(0, 6, 2, 0, 6, 32);
+      lanternGrad.addColorStop(0, `rgba(255, 232, 152, ${0.46 * glowStrength})`);
+      lanternGrad.addColorStop(0.55, `rgba(255, 206, 110, ${0.18 * glowStrength})`);
       lanternGrad.addColorStop(1, 'rgba(255, 234, 167, 0)');
       ctx.fillStyle = lanternGrad;
       ctx.beginPath();
-      ctx.ellipse(0, 5, 28, 14, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 6.5, 32, 15, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.fillStyle = '#8d5524';
-      ctx.fillRect(-20, -24, 40, 26);
-
-      ctx.fillStyle = '#2d1c12';
+      // Cedar cabin main wall with warm top-to-bottom wood gradient
+      const wallGrad = ctx.createLinearGradient(-20, -25, 20, 2);
+      wallGrad.addColorStop(0, '#a86730');
+      wallGrad.addColorStop(0.55, '#915524');
+      wallGrad.addColorStop(1, '#754119');
+      ctx.fillStyle = wallGrad;
+      ctx.strokeStyle = '#532c10';
+      ctx.lineWidth = 1.1;
       ctx.beginPath();
-      ctx.arc(0, -10, 10, Math.PI, 0);
-      ctx.lineTo(10, 2);
-      ctx.lineTo(-10, 2);
+      ctx.roundRect(-20, -25, 40, 26.5, [2, 2, 0, 0]);
+      ctx.fill();
+      ctx.stroke();
+
+      // Horizontal cedar clapboard plank lines
+      ctx.strokeStyle = 'rgba(65, 34, 12, 0.42)';
+      ctx.lineWidth = 0.9;
+      for (let py = -20.5; py <= -3.5; py += 4.5) {
+        ctx.beginPath();
+        ctx.moveTo(-19.5, py);
+        ctx.lineTo(19.5, py);
+        ctx.stroke();
+      }
+
+      // Cream corner trim boards
+      ctx.fillStyle = '#f2e5d0';
+      ctx.fillRect(-20.4, -24.5, 2.9, 26);
+      ctx.fillRect(17.5, -24.5, 2.9, 26);
+
+      // Cream doorway frame arch
+      ctx.fillStyle = '#f5ead6';
+      ctx.beginPath();
+      ctx.arc(0, -10.5, 11.4, Math.PI, 0);
+      ctx.lineTo(11.4, 1.8);
+      ctx.lineTo(-11.4, 1.8);
       ctx.closePath();
       ctx.fill();
 
-      ctx.fillStyle = '#40739e';
+      // Dark cozy cabin interior
+      ctx.fillStyle = '#24150d';
       ctx.beginPath();
-      ctx.moveTo(-26, -22);
-      ctx.lineTo(0, -40);
-      ctx.lineTo(26, -22);
+      ctx.arc(0, -10.2, 9.4, Math.PI, 0);
+      ctx.lineTo(9.4, 1.8);
+      ctx.lineTo(-9.4, 1.8);
       ctx.closePath();
+      ctx.fill();
+
+      // Peek of cozy red cushion inside doorway
+      ctx.fillStyle = '#c0392b';
+      ctx.beginPath();
+      ctx.ellipse(0, 0.8, 7.6, 2.4, 0, Math.PI, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#f5cd79';
+      ctx.lineWidth = 0.7;
+      ctx.beginPath();
+      ctx.moveTo(-4, 0.4);
+      ctx.lineTo(4, 0.4);
+      ctx.stroke();
+
+      // Pitched overhanging roof shadow under eaves
+      ctx.fillStyle = 'rgba(20, 12, 8, 0.35)';
+      ctx.beginPath();
+      ctx.moveTo(-22, -21.5);
+      ctx.lineTo(0, -37.5);
+      ctx.lineTo(22, -21.5);
+      ctx.lineTo(20, -18.5);
+      ctx.lineTo(0, -33.5);
+      ctx.lineTo(-20, -18.5);
+      ctx.closePath();
+      ctx.fill();
+
+      // Slate-blue pitched shingle roof
+      const roofGrad = ctx.createLinearGradient(-24, -44, 24, -20);
+      roofGrad.addColorStop(0, '#5a90be');
+      roofGrad.addColorStop(0.5, '#3d709c');
+      roofGrad.addColorStop(1, '#2b5274');
+      ctx.fillStyle = roofGrad;
+      ctx.strokeStyle = '#1e3a52';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(-28, -21);
+      ctx.lineTo(0, -44);
+      ctx.lineTo(28, -21);
+      ctx.lineTo(24.5, -18.5);
+      ctx.lineTo(0, -38.8);
+      ctx.lineTo(-24.5, -18.5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Inner gable wood triangle
+      ctx.fillStyle = '#8b5122';
+      ctx.beginPath();
+      ctx.moveTo(-21, -21);
+      ctx.lineTo(0, -38.2);
+      ctx.lineTo(21, -21);
+      ctx.closePath();
+      ctx.fill();
+
+      // Cream bargeboard trim along roof edge
+      ctx.strokeStyle = '#f5ead6';
+      ctx.lineWidth = 2.0;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-25.5, -20.0);
+      ctx.lineTo(0, -41.0);
+      ctx.lineTo(25.5, -20.0);
+      ctx.stroke();
+
+      // Miniature bone nameplate mounted on the gable
+      ctx.fillStyle = '#fff5dc';
+      ctx.strokeStyle = '#6c3e1b';
+      ctx.lineWidth = 0.7;
+      ctx.beginPath();
+      ctx.roundRect(-5.2, -29.2, 10.4, 3.6, 1.5);
+      ctx.fill();
+      ctx.stroke();
+      [-5.2, 5.2].forEach(bx => {
+        ctx.beginPath();
+        ctx.arc(bx, -28.6, 1.6, 0, Math.PI * 2);
+        ctx.arc(bx, -26.2, 1.6, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // Tiny warm glowing porch lantern hanging to the right of the door
+      const lx = 14.2;
+      const ly = -14.2;
+      const bulbHalo = ctx.createRadialGradient(lx, ly, 0.5, lx, ly, 9);
+      bulbHalo.addColorStop(0, `rgba(255, 244, 175, ${0.85 * glowStrength})`);
+      bulbHalo.addColorStop(1, 'rgba(255, 210, 105, 0)');
+      ctx.fillStyle = bulbHalo;
+      ctx.beginPath();
+      ctx.arc(lx, ly, 9, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#2d3436';
+      ctx.fillRect(lx - 1.5, ly - 3.6, 3.0, 1.4);
+      ctx.fillStyle = '#ffeaa7';
+      ctx.beginPath();
+      ctx.arc(lx, ly - 0.8, 2.0, 0, Math.PI * 2);
       ctx.fill();
     }
 
     ctx.restore();
   }
 
-  function drawTree(): void {
-    const pos = gridToScreen(5.8, 1.2);
-    const scale = getScale();
-    ctx.save();
-    ctx.translate(pos.x, pos.y);
-    ctx.scale(scale, scale);
-
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    ctx.beginPath();
-    ctx.ellipse(0, 4, 16, 8, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#795548';
-    ctx.fillRect(-4, -18, 8, 20);
-
-    ctx.fillStyle = '#27ae60';
-    ctx.beginPath();
-    ctx.arc(0, -26, 16, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#2ecc71';
-    ctx.beginPath();
-    ctx.arc(-6, -32, 12, 0, Math.PI * 2);
-    ctx.arc(6, -32, 12, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.restore();
-  }
-
-  function drawCustomTree(gx: number, gy: number): void {
+  function drawDetailedTreeAt(gx: number, gy: number): void {
     const pos = getCenteredTilePos(gx, gy);
     const scale = getScale();
     ctx.save();
     ctx.translate(pos.x, pos.y);
     ctx.scale(scale, scale);
 
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    // Dappled canopy ground shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.30)';
     ctx.beginPath();
-    ctx.ellipse(0, 4, 16, 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(1.5, 4.5, 21, 9.8, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = '#795548';
-    ctx.fillRect(-4, -18, 8, 20);
+    // Soft moss tuft around root base
+    ctx.fillStyle = '#2b8a3e';
+    ctx.beginPath();
+    ctx.ellipse(0, 2.2, 9.2, 3.8, 0, 0, Math.PI * 2);
+    ctx.fill();
 
+    // Tapered organic bark trunk with flared roots & forked boughs
+    const trunkGrad = ctx.createLinearGradient(-6, 0, 6, 0);
+    trunkGrad.addColorStop(0, '#5a3822');
+    trunkGrad.addColorStop(0.38, '#8d5b3a');
+    trunkGrad.addColorStop(0.75, '#724629');
+    trunkGrad.addColorStop(1, '#4c2e1b');
+    ctx.fillStyle = trunkGrad;
+    ctx.beginPath();
+    ctx.moveTo(-7.2, 2.8);
+    ctx.quadraticCurveTo(-4.4, -2.5, -4.0, -18.5);
+    ctx.lineTo(-8.5, -24.5);
+    ctx.lineTo(-5.2, -25.8);
+    ctx.lineTo(-1.2, -20.8);
+    ctx.lineTo(1.2, -20.8);
+    ctx.lineTo(6.2, -26.2);
+    ctx.lineTo(8.6, -24.2);
+    ctx.lineTo(4.0, -18.0);
+    ctx.quadraticCurveTo(4.5, -2.5, 7.2, 2.8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#3f2414';
+    ctx.lineWidth = 0.85;
+    ctx.stroke();
+
+    // Subtle vertical bark grain lines
+    ctx.strokeStyle = 'rgba(48, 26, 12, 0.42)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(-1.8, -1.5);
+    ctx.quadraticCurveTo(-1.4, -9, -2.0, -16);
+    ctx.moveTo(1.6, 0.5);
+    ctx.quadraticCurveTo(2.0, -7, 1.4, -14.5);
+    ctx.stroke();
+
+    // Deep forest shaded underside foliage puffs
+    ctx.fillStyle = '#1b7a43';
+    ctx.beginPath();
+    ctx.arc(-11.5, -25.5, 11.2, 0, Math.PI * 2);
+    ctx.arc(11.8, -25.0, 10.8, 0, Math.PI * 2);
+    ctx.arc(0, -23.5, 13.0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Rich mid-emerald canopy body clusters
     ctx.fillStyle = '#27ae60';
     ctx.beginPath();
-    ctx.arc(0, -26, 16, 0, Math.PI * 2);
+    ctx.arc(-10.5, -30.5, 11.5, 0, Math.PI * 2);
+    ctx.arc(10.5, -30.0, 11.2, 0, Math.PI * 2);
+    ctx.arc(0, -34.5, 13.8, 0, Math.PI * 2);
     ctx.fill();
 
+    // Vibrant upper leaf puffs
     ctx.fillStyle = '#2ecc71';
     ctx.beginPath();
-    ctx.arc(-6, -32, 12, 0, Math.PI * 2);
-    ctx.arc(6, -32, 12, 0, Math.PI * 2);
+    ctx.arc(-7.5, -35.8, 9.6, 0, Math.PI * 2);
+    ctx.arc(7.8, -35.0, 9.2, 0, Math.PI * 2);
+    ctx.arc(0.5, -40.5, 10.5, 0, Math.PI * 2);
     ctx.fill();
 
+    // Sunlit golden-lime crown highlights
+    ctx.fillStyle = '#7bed9f';
+    ctx.beginPath();
+    ctx.arc(-5.2, -39.5, 5.4, 0, Math.PI * 2);
+    ctx.arc(3.8, -42.5, 5.0, 0, Math.PI * 2);
+    ctx.arc(8.4, -36.8, 3.8, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Tiny decorative leaf stipples for storybook texture
+    ctx.fillStyle = 'rgba(220, 255, 210, 0.55)';
+    [
+      { x: -11, y: -33, r: 1.5 },
+      { x: -2, y: -45, r: 1.7 },
+      { x: 9, y: -39, r: 1.5 },
+      { x: 2, y: -31, r: 1.4 }
+    ].forEach(dot => {
+      ctx.beginPath();
+      ctx.arc(dot.x, dot.y, dot.r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
     ctx.restore();
+  }
+
+  function drawTree(): void {
+    drawDetailedTreeAt(STARTER_TREE_TILE.gx, STARTER_TREE_TILE.gy);
+  }
+
+  function drawCustomTree(gx: number, gy: number): void {
+    drawDetailedTreeAt(gx, gy);
   }
 
   function drawFlowerPatch(gx: number, gy: number): void {
@@ -5607,116 +6905,921 @@ export function initPupperPark(): void {
 
   let fountainAnimPhase = 0;
 
-  function drawWaterFountain(gx: number, gy: number, dt: number): void {
+  function drawWaterFountain(gx: number, gy: number): void {
     const pos = getCenteredTilePos(gx, gy);
     const scale = getScale();
-    fountainAnimPhase += dt * 5;
     ctx.save();
     ctx.translate(pos.x, pos.y);
     ctx.scale(scale, scale);
 
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    // Grounded soft shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.34)';
     ctx.beginPath();
-    ctx.ellipse(0, 4, 18, 9, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 5.5, 24, 11.5, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = '#b2bec3';
-    ctx.strokeStyle = '#636e72';
-    ctx.lineWidth = 1.5;
+    // Sculpted limestone base plinth
+    const baseGrad = ctx.createLinearGradient(-21, 0, 21, 0);
+    baseGrad.addColorStop(0, '#99a5b2');
+    baseGrad.addColorStop(0.32, '#dce3ea');
+    baseGrad.addColorStop(0.7, '#bfc8d2');
+    baseGrad.addColorStop(1, '#7f8c99');
+    ctx.fillStyle = baseGrad;
     ctx.beginPath();
-    ctx.ellipse(0, 0, 16, 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 3.2, 21, 10.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Outer basin vertical wall
+    ctx.fillStyle = baseGrad;
+    ctx.beginPath();
+    ctx.ellipse(0, 2.2, 19.5, 9.2, 0, 0, Math.PI);
+    ctx.lineTo(-19.5, -2.5);
+    ctx.ellipse(0, -2.5, 19.5, 9.2, 0, Math.PI, 0, true);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#6c7a89';
+    ctx.lineWidth = 1.1;
+    ctx.stroke();
+
+    // Beveled bright marble outer rim
+    ctx.fillStyle = '#eef3f7';
+    ctx.strokeStyle = '#9aa7b4';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.ellipse(0, -2.5, 19.5, 9.2, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = '#0984e3';
+    // Recessed inner basin wall
+    ctx.fillStyle = '#7f8fa6';
     ctx.beginPath();
-    ctx.ellipse(0, -1, 13, 6.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, -2.2, 16.5, 7.6, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+    // Layered turquoise-to-cerulean water pool
+    const waterGrad = ctx.createRadialGradient(-3, -3.5, 2, 0, -2, 16);
+    waterGrad.addColorStop(0, '#48dbfb');
+    waterGrad.addColorStop(0.55, '#0984e3');
+    waterGrad.addColorStop(1, '#0652dd');
+    ctx.fillStyle = waterGrad;
+    ctx.beginPath();
+    ctx.ellipse(0, -1.6, 15.6, 7.0, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Two staggered concentric animated ripples
+    for (let r = 0; r < 2; r++) {
+      const cycle = ((fountainAnimPhase * 0.28 + r * 0.5) % 1);
+      const radX = 4.2 + cycle * 10.6;
+      const radY = radX * 0.45;
+      ctx.strokeStyle = `rgba(225, 248, 255, ${(1 - cycle) * 0.65})`;
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.ellipse(0, -1.6, radX, radY, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Subtle sunlit shimmer highlight on basin water
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.ellipse(-4.5, -2.5, 5.5, 2.1, -0.15, Math.PI * 1.05, Math.PI * 1.85);
+    ctx.stroke();
+
+    // Fluted center marble column
+    const colGrad = ctx.createLinearGradient(-4.5, 0, 4.5, 0);
+    colGrad.addColorStop(0, '#9aa7b4');
+    colGrad.addColorStop(0.35, '#f5f8fa');
+    colGrad.addColorStop(0.75, '#cfd8e0');
+    colGrad.addColorStop(1, '#83919e');
+    ctx.fillStyle = colGrad;
+    ctx.beginPath();
+    ctx.moveTo(-4.8, -1.5);
+    ctx.lineTo(-3.6, -24.5);
+    ctx.lineTo(3.6, -24.5);
+    ctx.lineTo(4.8, -1.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#7e8c99';
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+
+    // Decorative carved pedestal base ring
+    ctx.fillStyle = '#e6edf2';
+    ctx.beginPath();
+    ctx.ellipse(0, -2.2, 6.2, 2.8, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Mid-tier sculpted saucer bowl underside
+    ctx.fillStyle = '#a5b2bf';
+    ctx.beginPath();
+    ctx.ellipse(0, -16.8, 10.8, 4.8, 0, 0, Math.PI);
+    ctx.quadraticCurveTo(-5, -12.5, 0, -12.2);
+    ctx.quadraticCurveTo(5, -12.5, 10.8, -16.8);
+    ctx.closePath();
+    ctx.fill();
+
+    // Mid-tier saucer rim
+    ctx.fillStyle = '#f1f5f8';
+    ctx.strokeStyle = '#8b99a7';
     ctx.lineWidth = 1;
-    const rippleRadius = 3 + (Math.sin(fountainAnimPhase) + 1) * 4;
     ctx.beginPath();
-    ctx.ellipse(0, -1, rippleRadius, rippleRadius * 0.5, 0, 0, Math.PI * 2);
-    ctx.stroke();
-
-    ctx.fillStyle = '#dfe6e9';
-    ctx.fillRect(-3, -22, 6, 22);
-    ctx.strokeStyle = '#b2bec3';
-    ctx.strokeRect(-3, -22, 6, 22);
-
-    ctx.fillStyle = '#b2bec3';
-    ctx.beginPath();
-    ctx.ellipse(0, -18, 9, 4.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, -17.4, 11.4, 5.0, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = '#74b9ff';
+    // Mid-tier water pool
+    const midWaterGrad = ctx.createRadialGradient(-2, -18, 1, 0, -17.4, 9.5);
+    midWaterGrad.addColorStop(0, '#74f0ff');
+    midWaterGrad.addColorStop(1, '#0984e3');
+    ctx.fillStyle = midWaterGrad;
     ctx.beginPath();
-    ctx.ellipse(0, -18.5, 7, 3.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, -17.4, 9.2, 3.8, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = '#dfe6e9';
+    // Upper tier neck + carved crown finial
+    ctx.fillStyle = colGrad;
     ctx.beginPath();
-    ctx.arc(0, -26, 3.5, 0, Math.PI * 2);
+    ctx.moveTo(-2.8, -17.6);
+    ctx.lineTo(-2.1, -28.5);
+    ctx.lineTo(2.1, -28.5);
+    ctx.lineTo(2.8, -17.6);
+    ctx.closePath();
+    ctx.fill();
+
+    // Top small saucer & brass nozzle
+    ctx.fillStyle = '#eef3f7';
+    ctx.strokeStyle = '#8b99a7';
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.ellipse(0, -27.2, 5.2, 2.3, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
+
+    ctx.fillStyle = '#f6d365';
+    ctx.beginPath();
+    ctx.arc(0, -29.6, 2.0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 4 Lower cascading parabolic water arcs (mid bowl -> main basin)
+    const lowerStreams = [
+      { sx: -9.5, sy: -16.4, cx: -13.5, cy: -11.5, ex: -12.6, ey: -1.8 },
+      { sx: 9.5, sy: -16.4, cx: 13.5, cy: -11.5, ex: 12.6, ey: -1.8 },
+      { sx: -4.2, sy: -14.2, cx: -6.8, cy: -8.5, ex: -6.2, ey: 0.4 },
+      { sx: 4.2, sy: -14.2, cx: 6.8, cy: -8.5, ex: 6.2, ey: 0.4 }
+    ];
+    lowerStreams.forEach((st, idx) => {
+      const shimmer = 0.58 + 0.32 * Math.sin(fountainAnimPhase * 2.1 + idx * 1.4);
+      ctx.strokeStyle = `rgba(148, 226, 255, ${shimmer})`;
+      ctx.lineWidth = 1.65;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(st.sx, st.sy);
+      ctx.quadraticCurveTo(st.cx, st.cy, st.ex, st.ey);
+      ctx.stroke();
+
+      // Animated water droplet sliding down arc
+      const t = (fountainAnimPhase * 0.55 + idx * 0.25) % 1;
+      const omt = 1 - t;
+      const dx = omt * omt * st.sx + 2 * omt * t * st.cx + t * t * st.ex;
+      const dy = omt * omt * st.sy + 2 * omt * t * st.cy + t * t * st.ey;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.beginPath();
+      ctx.arc(dx, dy, 1.15, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // 4 Upper cascading parabolic water arcs (crown -> mid bowl)
+    const upperStreams = [
+      { sx: -1.4, sy: -30.2, cx: -6.4, cy: -34.2, ex: -7.6, ey: -17.6 },
+      { sx: 1.4, sy: -30.2, cx: 6.4, cy: -34.2, ex: 7.6, ey: -17.6 },
+      { sx: -0.7, sy: -30.2, cx: -3.2, cy: -32.6, ex: -3.6, ey: -16.6 },
+      { sx: 0.7, sy: -30.2, cx: 3.2, cy: -32.6, ex: 3.6, ey: -16.6 }
+    ];
+    upperStreams.forEach((st, idx) => {
+      const shimmer = 0.68 + 0.28 * Math.cos(fountainAnimPhase * 2.4 + idx);
+      ctx.strokeStyle = `rgba(205, 244, 255, ${shimmer})`;
+      ctx.lineWidth = 1.4;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(st.sx, st.sy);
+      ctx.quadraticCurveTo(st.cx, st.cy, st.ex, st.ey);
+      ctx.stroke();
+    });
+
+    // Bubbling top water plume + mist sparkles
+    const jetHeight = 3.2 + Math.sin(fountainAnimPhase * 2.4) * 2.2;
+    ctx.fillStyle = 'rgba(230, 250, 255, 0.92)';
+    ctx.beginPath();
+    ctx.ellipse(0, -32.2 - jetHeight * 0.5, 2.4, 2.2 + jetHeight * 0.35, 0, 0, Math.PI * 2);
+    ctx.fill();
 
     ctx.fillStyle = '#ffffff';
-    const jetHeight = Math.abs(Math.sin(fountainAnimPhase * 2)) * 5;
-    ctx.beginPath();
-    ctx.arc(0, -29 - jetHeight, 2, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = 'rgba(116, 185, 255, 0.8)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(-2, -26);
-    ctx.quadraticCurveTo(-7, -22, -9, -18);
-    ctx.moveTo(2, -26);
-    ctx.quadraticCurveTo(7, -22, 9, -18);
-    ctx.stroke();
+    const sparkOffsets = [
+      { x: -3.2, y: -33.5 - ((fountainAnimPhase * 2.2) % 3) },
+      { x: 3.0, y: -32.8 - (((fountainAnimPhase * 2.2) + 1.5) % 3) },
+      { x: 0.4, y: -35.8 - jetHeight * 0.6 }
+    ];
+    sparkOffsets.forEach(sp => {
+      ctx.beginPath();
+      ctx.arc(sp.x, sp.y, 1.05, 0, Math.PI * 2);
+      ctx.fill();
+    });
 
     ctx.restore();
   }
 
-  function drawMushroomCluster(m: { gx: number; gy: number; color: string; glow: string }): void {
-    const pos = gridToScreen(m.gx, m.gy);
+  function drawHydrantBody(isGold: boolean): void {
+    // Bolted cast-iron / gold octagonal anchor flange plate
+    ctx.fillStyle = isGold ? '#9e6f0c' : '#741616';
+    ctx.strokeStyle = isGold ? '#6d4a05' : '#4a0d0d';
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.ellipse(0, 2.2, 10.6, 4.9, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = isGold ? '#d49d1b' : '#b22222';
+    ctx.beginPath();
+    ctx.ellipse(0, 0.9, 9.4, 4.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Base anchor bolts
+    ctx.fillStyle = isGold ? '#fff3b0' : '#dcdde1';
+    [-7.2, -3.6, 3.6, 7.2].forEach(bx => {
+      ctx.beginPath();
+      ctx.arc(bx, 1.3 + (Math.abs(bx) < 5 ? 1.5 : 0.2), 0.95, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // Tapered fluted cylinder barrel
+    const bodyGrad = ctx.createLinearGradient(-7.2, 0, 7.2, 0);
+    if (isGold) {
+      bodyGrad.addColorStop(0, '#855806');
+      bodyGrad.addColorStop(0.26, '#fff4b8');
+      bodyGrad.addColorStop(0.54, '#ffd32a');
+      bodyGrad.addColorStop(0.82, '#cc9414');
+      bodyGrad.addColorStop(1, '#7a5005');
+    } else {
+      bodyGrad.addColorStop(0, '#871616');
+      bodyGrad.addColorStop(0.28, '#ff6b6b');
+      bodyGrad.addColorStop(0.56, '#e02f2f');
+      bodyGrad.addColorStop(0.84, '#b81d1d');
+      bodyGrad.addColorStop(1, '#701010');
+    }
+    ctx.fillStyle = bodyGrad;
+    ctx.strokeStyle = isGold ? '#734d06' : '#5e1111';
+    ctx.lineWidth = 0.95;
+    ctx.beginPath();
+    ctx.moveTo(-7.2, 0.6);
+    ctx.lineTo(-6.2, -21.0);
+    ctx.lineTo(6.2, -21.0);
+    ctx.lineTo(7.2, 0.6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Subtle vertical cast-iron fluting grooves
+    ctx.strokeStyle = isGold ? 'rgba(115, 77, 6, 0.24)' : 'rgba(72, 10, 10, 0.25)';
+    ctx.lineWidth = 0.75;
+    [-3.2, 0, 3.2].forEach(fx => {
+      ctx.beginPath();
+      ctx.moveTo(fx, -19.5);
+      ctx.lineTo(fx * 1.1, -2.5);
+      ctx.stroke();
+    });
+
+    // Lower collar ring + upper shoulder flange
+    const ringFill = isGold ? '#e8b62c' : '#c92323';
+    ctx.fillStyle = ringFill;
+    ctx.strokeStyle = isGold ? '#734d06' : '#5e1111';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.ellipse(0, -4.4, 7.6, 2.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.ellipse(0, -20.8, 7.9, 2.9, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Twin 3D angled side hose nozzles + hanging chains
+    const capMain = isGold ? '#ffe97f' : '#e6c25b';
+    const capEdge = isGold ? '#8d620b' : '#96761d';
+    [-1, 1].forEach(side => {
+      // Short hanging chain loop from neck to side nozzle
+      ctx.strokeStyle = isGold ? '#cfa020' : '#bdc3c7';
+      ctx.lineWidth = 0.95;
+      ctx.beginPath();
+      ctx.moveTo(side * 5.2, -19.5);
+      ctx.quadraticCurveTo(side * 9.8, -11.5, side * 8.2, -14.2);
+      ctx.stroke();
+
+      // Nozzle collar sleeve
+      ctx.fillStyle = isGold ? '#bd8a12' : '#ad1c1c';
+      ctx.fillRect(side < 0 ? -9.0 : 5.6, -16.8, 3.4, 5.4);
+
+      // Brass/Gold threaded nozzle cap
+      ctx.fillStyle = capMain;
+      ctx.strokeStyle = capEdge;
+      ctx.lineWidth = 0.85;
+      ctx.beginPath();
+      ctx.ellipse(side * 9.0, -14.1, 2.4, 3.3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Nozzle lug nub
+      ctx.fillStyle = '#fff5c2';
+      ctx.beginPath();
+      ctx.arc(side * 9.3, -14.1, 0.9, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // Central prominent steamer port cap with pentagonal nut
+    ctx.fillStyle = isGold ? '#bd8a12' : '#9c1919';
+    ctx.beginPath();
+    ctx.arc(0, -12.6, 4.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = capMain;
+    ctx.strokeStyle = capEdge;
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.arc(0, -12.6, 3.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = isGold ? '#fff7cc' : '#f7e097';
+    ctx.beginPath();
+    ctx.roundRect(-1.2, -13.8, 2.4, 2.4, 0.5);
+    ctx.fill();
+
+    // Scalloped ribbed domed bonnet cap
+    ctx.fillStyle = bodyGrad;
+    ctx.strokeStyle = isGold ? '#734d06' : '#5e1111';
+    ctx.lineWidth = 0.95;
+    ctx.beginPath();
+    ctx.arc(0, -21.2, 6.8, Math.PI, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Bonnet vertical ribs
+    ctx.strokeStyle = isGold ? 'rgba(255, 250, 210, 0.45)' : 'rgba(255, 210, 210, 0.32)';
+    ctx.lineWidth = 0.85;
+    ctx.beginPath();
+    ctx.arc(0, -21.2, 5.2, Math.PI * 1.15, Math.PI * 1.45);
+    ctx.stroke();
+
+    // Bonnet bolts along rim
+    ctx.fillStyle = capMain;
+    [-5.2, -2.0, 2.0, 5.2].forEach(bx => {
+      ctx.beginPath();
+      ctx.arc(bx, -20.5, 0.8, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // Top pentagonal operating valve nut
+    ctx.fillStyle = capMain;
+    ctx.strokeStyle = capEdge;
+    ctx.lineWidth = 0.85;
+    ctx.beginPath();
+    ctx.roundRect(-2.5, -30.4, 5.0, 3.1, 0.8);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#fff9d6';
+    ctx.fillRect(-1.5, -29.8, 1.4, 1.8);
+
+    // Glossy specular sheen band on barrel
+    ctx.fillStyle = isGold ? 'rgba(255, 255, 235, 0.36)' : 'rgba(255, 255, 255, 0.25)';
+    ctx.beginPath();
+    ctx.roundRect(-3.8, -19.0, 1.7, 13.5, 0.8);
+    ctx.fill();
+  }
+
+  function drawFireHydrant(gx: number, gy: number): void {
+    const pos = getCenteredTilePos(gx, gy);
     const scale = getScale();
     ctx.save();
     ctx.translate(pos.x, pos.y);
     ctx.scale(scale, scale);
 
-    const grad = ctx.createRadialGradient(0, -6, 2, 0, -6, 24);
-    grad.addColorStop(0, m.glow);
-    grad.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = grad;
+    // Grounded shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.34)';
     ctx.beginPath();
-    ctx.arc(0, -6, 24, 0, Math.PI * 2);
+    ctx.ellipse(0, 4.0, 13.0, 6.2, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    const offsets = [
-      { x: -7, y: 2, s: 0.75 },
-      { x: 7, y: 3, s: 0.7 },
-      { x: 0, y: 0, s: 1.0 }
+    drawHydrantBody(false);
+    ctx.restore();
+  }
+
+  function drawGoldenFireHydrant(gx: number, gy: number): void {
+    const pos = getCenteredTilePos(gx, gy);
+    const scale = getScale();
+    ctx.save();
+    ctx.translate(pos.x, pos.y);
+    ctx.scale(scale, scale);
+
+    // Prestige warm golden aura
+    const aura = ctx.createRadialGradient(0, -12, 3, 0, -12, 30);
+    aura.addColorStop(0, 'rgba(255, 228, 118, 0.38)');
+    aura.addColorStop(0.6, 'rgba(255, 210, 70, 0.14)');
+    aura.addColorStop(1, 'rgba(255, 215, 0, 0)');
+    ctx.fillStyle = aura;
+    ctx.beginPath();
+    ctx.arc(0, -12, 30, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Ground shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.36)';
+    ctx.beginPath();
+    ctx.ellipse(0, 5.2, 16.5, 7.8, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Dual-stepped ivory marble monument plinth with gold trim
+    ctx.fillStyle = '#aebbc7';
+    ctx.strokeStyle = '#7b8a97';
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.ellipse(0, 3.2, 15.0, 6.9, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#eef3f7';
+    ctx.beginPath();
+    ctx.ellipse(0, 1.4, 14.2, 6.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = '#e2b128';
+    ctx.lineWidth = 1.25;
+    ctx.beginPath();
+    ctx.ellipse(0, 0.4, 12.6, 5.4, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.fillStyle = '#f8fafc';
+    ctx.beginPath();
+    ctx.ellipse(0, -0.8, 11.8, 5.0, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Elevated sculpted 24k gold hydrant on plinth
+    ctx.save();
+    ctx.translate(0, -2.8);
+    drawHydrantBody(true);
+    ctx.restore();
+
+    // Gentle animated 4-point star sparkles
+    const sparkles = [
+      { x: -11.0, y: -27.5, phase: 0 },
+      { x: 11.4, y: -20.0, phase: 2.1 },
+      { x: 2.2, y: -35.8, phase: 4.2 }
+    ];
+    sparkles.forEach(sp => {
+      const pulse = Math.max(0, Math.sin(fountainAnimPhase * 1.6 + sp.phase));
+      if (pulse < 0.12) return;
+      const r = 3.8 * pulse;
+      ctx.save();
+      ctx.translate(sp.x, sp.y);
+      ctx.fillStyle = `rgba(255, 252, 215, ${0.42 + pulse * 0.58})`;
+      ctx.beginPath();
+      ctx.moveTo(0, -r);
+      ctx.quadraticCurveTo(0, 0, r, 0);
+      ctx.quadraticCurveTo(0, 0, 0, r);
+      ctx.quadraticCurveTo(0, 0, -r, 0);
+      ctx.quadraticCurveTo(0, 0, 0, -r);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    });
+
+    ctx.restore();
+  }
+
+  function drawDogSlide(gx: number, gy: number): void {
+    const pStart = getCenteredTilePos(gx, gy);
+    const pEnd = getCenteredTilePos(gx + 1, gy);
+    const pSide = getCenteredTilePos(gx, gy + 1);
+    const scale = getScale();
+
+    const dirX = pEnd.x - pStart.x;
+    const dirY = pEnd.y - pStart.y;
+    const sideX = pSide.x - pStart.x;
+    const sideY = pSide.y - pStart.y;
+    const deckH = 38 * scale;
+    const chuteHalfW = 7.8 * scale;
+
+    // Perpendicular lateral screen vector for 3D width across any rotation
+    const len = Math.max(1, Math.hypot(dirX, dirY));
+    const ux = dirX / len;
+    const uy = dirY / len;
+    // Use gently foreshortened isometric lateral offset
+    const latX = -uy * chuteHalfW * 0.68;
+    const latY = ux * chuteHalfW * 0.42;
+
+    const towerCenter = { x: pStart.x + dirX * 0.14, y: pStart.y + dirY * 0.14 };
+    const ladderFoot = { x: pStart.x - dirX * 0.24, y: pStart.y - dirY * 0.24 };
+    const deckTop = { x: towerCenter.x, y: towerCenter.y - deckH };
+    const chuteCtrl = { x: pStart.x + dirX * 0.62, y: pStart.y + dirY * 0.62 - deckH * 0.24 };
+    const chuteFoot = { x: pEnd.x + dirX * 0.16, y: pEnd.y + dirY * 0.16 - 2 * scale };
+
+    ctx.save();
+
+    // Single unified rounded isometric ground shadow spanning ladder, tower, and chute
+    const shA = { x: ladderFoot.x - dirX * 0.02 + 2.5 * scale, y: ladderFoot.y - dirY * 0.02 + 3.5 * scale };
+    const shB = { x: chuteFoot.x + dirX * 0.02 + 2.5 * scale, y: chuteFoot.y + dirY * 0.02 + 5 * scale };
+    const swX = sideX * 0.23;
+    const swY = sideY * 0.23;
+    const capX = dirX * 0.11;
+    const capY = dirY * 0.11;
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
+    ctx.beginPath();
+    ctx.moveTo(shA.x + swX, shA.y + swY);
+    ctx.lineTo(shB.x + swX, shB.y + swY);
+    ctx.quadraticCurveTo(shB.x + capX + swX * 0.55, shB.y + capY + swY * 0.55, shB.x + capX, shB.y + capY);
+    ctx.quadraticCurveTo(shB.x + capX - swX * 0.55, shB.y + capY - swY * 0.55, shB.x - swX, shB.y - swY);
+    ctx.lineTo(shA.x - swX, shA.y - swY);
+    ctx.quadraticCurveTo(shA.x - capX - swX * 0.55, shA.y - capY - swY * 0.55, shA.x - capX, shA.y - capY);
+    ctx.quadraticCurveTo(shA.x - capX + swX * 0.55, shA.y - capY + swY * 0.55, shA.x + swX, shA.y + swY);
+    ctx.closePath();
+    ctx.fill();
+
+    // Royal-blue tubular A-frame support legs & cross-braces
+    const drawBluePipe = (x1: number, y1: number, x2: number, y2: number, width: number, color = '#2980b9'): void => {
+      ctx.strokeStyle = '#1b4f72';
+      ctx.lineWidth = width + 1.6 * scale;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    };
+
+    // Back & front vertical tower posts
+    drawBluePipe(towerCenter.x - latX, towerCenter.y - latY + 2 * scale, deckTop.x - latX, deckTop.y - latY, 3.2 * scale, '#2471a3');
+    drawBluePipe(towerCenter.x + latX, towerCenter.y + latY + 2 * scale, deckTop.x + latX, deckTop.y + latY, 3.2 * scale, '#3498db');
+
+    // Horizontal stabilizer bar between tower legs
+    drawBluePipe(
+      towerCenter.x - latX,
+      towerCenter.y - latY - deckH * 0.42,
+      towerCenter.x + latX,
+      towerCenter.y + latY - deckH * 0.42,
+      2.4 * scale,
+      '#2e86c1'
+    );
+
+    // Rear angled climbing ladder side rails
+    drawBluePipe(ladderFoot.x - latX, ladderFoot.y - latY + 2 * scale, deckTop.x - latX, deckTop.y - latY, 2.8 * scale, '#2471a3');
+    drawBluePipe(ladderFoot.x + latX, ladderFoot.y + latY + 2 * scale, deckTop.x + latX, deckTop.y + latY, 2.8 * scale, '#3498db');
+
+    // 4 crisp yellow-accented climbing rungs
+    for (let i = 1; i <= 4; i++) {
+      const t = i / 5;
+      const rx = ladderFoot.x + (deckTop.x - ladderFoot.x) * t;
+      const ry = ladderFoot.y + (deckTop.y - ladderFoot.y) * t;
+      drawBluePipe(rx - latX, ry - latY, rx + latX, ry + latY, 2.2 * scale, '#5dade2');
+    }
+
+    // Back blue safety handrail arch on top platform
+    drawBluePipe(
+      deckTop.x - latX,
+      deckTop.y - latY,
+      deckTop.x - latX,
+      deckTop.y - latY - 10 * scale,
+      2.4 * scale,
+      '#2471a3'
+    );
+    drawBluePipe(
+      deckTop.x - latX,
+      deckTop.y - latY - 10 * scale,
+      deckTop.x - latX + dirX * 0.14,
+      deckTop.y - latY + dirY * 0.14 - 7 * scale,
+      2.4 * scale,
+      '#2471a3'
+    );
+
+    // Top landing deck platform
+    const deckFront = { x: deckTop.x + dirX * 0.14, y: deckTop.y + dirY * 0.14 };
+    ctx.fillStyle = '#2980b9';
+    ctx.strokeStyle = '#1b4f72';
+    ctx.lineWidth = 1.2 * scale;
+    ctx.beginPath();
+    ctx.moveTo(deckTop.x - latX, deckTop.y - latY);
+    ctx.lineTo(deckTop.x + latX, deckTop.y + latY);
+    ctx.lineTo(deckFront.x + latX, deckFront.y + latY + 2 * scale);
+    ctx.lineTo(deckFront.x - latX, deckFront.y - latY + 2 * scale);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Sweeping glossy sunny-yellow chute underside rim (gives real 3D thickness)
+    const rimDrop = 4.6 * scale;
+    ctx.fillStyle = '#c88b08';
+    ctx.beginPath();
+    ctx.moveTo(deckFront.x - latX, deckFront.y - latY + rimDrop);
+    ctx.quadraticCurveTo(chuteCtrl.x - latX, chuteCtrl.y - latY + rimDrop, chuteFoot.x - latX, chuteFoot.y - latY + rimDrop * 0.65);
+    ctx.lineTo(chuteFoot.x + latX, chuteFoot.y + latY + rimDrop * 0.65);
+    ctx.quadraticCurveTo(chuteCtrl.x + latX, chuteCtrl.y + latY + rimDrop, deckFront.x + latX, deckFront.y + latY + rimDrop);
+    ctx.closePath();
+    ctx.fill();
+
+    // Main glossy sunny-yellow chute bed
+    const chuteGrad = ctx.createLinearGradient(deckFront.x, deckFront.y, chuteFoot.x, chuteFoot.y);
+    chuteGrad.addColorStop(0, '#ffe169');
+    chuteGrad.addColorStop(0.5, '#f6c90e');
+    chuteGrad.addColorStop(1, '#f3b700');
+    ctx.fillStyle = chuteGrad;
+    ctx.strokeStyle = '#b97e04';
+    ctx.lineWidth = 1.2 * scale;
+    ctx.beginPath();
+    ctx.moveTo(deckFront.x - latX, deckFront.y - latY);
+    ctx.quadraticCurveTo(chuteCtrl.x - latX, chuteCtrl.y - latY, chuteFoot.x - latX, chuteFoot.y - latY);
+    ctx.lineTo(chuteFoot.x + latX, chuteFoot.y + latY);
+    ctx.quadraticCurveTo(chuteCtrl.x + latX, chuteCtrl.y + latY, deckFront.x + latX, deckFront.y + latY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Specular sunny shine stripe down center of chute
+    ctx.strokeStyle = 'rgba(255, 253, 224, 0.62)';
+    ctx.lineWidth = 3.2 * scale;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(deckFront.x, deckFront.y + 1 * scale);
+    ctx.quadraticCurveTo(chuteCtrl.x, chuteCtrl.y, chuteFoot.x - dirX * 0.06, chuteFoot.y - dirY * 0.06);
+    ctx.stroke();
+
+    // Raised bright yellow side guardrails along both chute edges
+    [-1, 1].forEach(side => {
+      const sx = side * latX;
+      const sy = side * latY;
+      ctx.strokeStyle = '#b97e04';
+      ctx.lineWidth = 3.4 * scale;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(deckFront.x + sx, deckFront.y + sy - 2.6 * scale);
+      ctx.quadraticCurveTo(chuteCtrl.x + sx, chuteCtrl.y + sy - 2.6 * scale, chuteFoot.x + sx, chuteFoot.y + sy - 1.2 * scale);
+      ctx.stroke();
+
+      ctx.strokeStyle = side > 0 ? '#fff099' : '#f7ca18';
+      ctx.lineWidth = 2.1 * scale;
+      ctx.beginPath();
+      ctx.moveTo(deckFront.x + sx, deckFront.y + sy - 2.8 * scale);
+      ctx.quadraticCurveTo(chuteCtrl.x + sx, chuteCtrl.y + sy - 2.8 * scale, chuteFoot.x + sx, chuteFoot.y + sy - 1.4 * scale);
+      ctx.stroke();
+    });
+
+    // Front royal-blue safety handrail on top platform
+    drawBluePipe(
+      deckTop.x + latX,
+      deckTop.y + latY,
+      deckTop.x + latX,
+      deckTop.y + latY - 10 * scale,
+      2.6 * scale,
+      '#3498db'
+    );
+    drawBluePipe(
+      deckTop.x + latX,
+      deckTop.y + latY - 10 * scale,
+      deckFront.x + latX,
+      deckFront.y + latY - 7 * scale,
+      2.6 * scale,
+      '#5dade2'
+    );
+
+    // Chute landing ground footpad
+    ctx.fillStyle = '#2980b9';
+    ctx.beginPath();
+    ctx.ellipse(chuteFoot.x, chuteFoot.y + 3 * scale, 5.5 * scale, 2.4 * scale, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  function drawLampPost(gx: number, gy: number): void {
+    const pos = getCenteredTilePos(gx, gy);
+    const scale = getScale();
+    const glowStrength = Math.min(1, 0.24 + weatherWeights.twilight * 0.95 + weatherWeights.rain * 0.52);
+
+    ctx.save();
+    ctx.translate(pos.x, pos.y);
+    ctx.scale(scale, scale);
+
+    // Warm golden ground pool (subtle in sunlight, rich in twilight & rain)
+    const poolGrad = ctx.createRadialGradient(0, 2, 2, 0, 2, 34);
+    poolGrad.addColorStop(0, `rgba(255, 224, 130, ${0.42 * glowStrength})`);
+    poolGrad.addColorStop(0.55, `rgba(255, 198, 92, ${0.20 * glowStrength})`);
+    poolGrad.addColorStop(1, 'rgba(255, 198, 92, 0)');
+    ctx.fillStyle = poolGrad;
+    ctx.beginPath();
+    ctx.ellipse(0, 2, 34, 17, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Ground shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.34)';
+    ctx.beginPath();
+    ctx.ellipse(0, 3.5, 9.5, 4.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Flared octagonal cast-iron pedestal base
+    ctx.fillStyle = '#2c343c';
+    ctx.strokeStyle = '#181d22';
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.ellipse(0, 1.6, 7.2, 3.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#39434d';
+    ctx.beginPath();
+    ctx.moveTo(-4.4, 1.0);
+    ctx.lineTo(-2.3, -9.0);
+    ctx.lineTo(2.3, -9.0);
+    ctx.lineTo(4.4, 1.0);
+    ctx.closePath();
+    ctx.fill();
+
+    // Slender iron post + decorative mid collar
+    ctx.fillStyle = '#2d353e';
+    ctx.fillRect(-1.8, -32.0, 3.6, 24.0);
+    ctx.fillStyle = '#4e5b68';
+    ctx.fillRect(-0.8, -32.0, 1.0, 24.0);
+
+    ctx.fillStyle = '#3e4a56';
+    ctx.beginPath();
+    ctx.ellipse(0, -18.0, 3.2, 1.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Ornamental scroll crossbar beneath lantern
+    ctx.strokeStyle = '#2c343c';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(-6.2, -31.5);
+    ctx.lineTo(6.2, -31.5);
+    ctx.stroke();
+
+    // Lantern ambient glow bloom
+    const lanternHalo = ctx.createRadialGradient(0, -37.2, 2, 0, -37.2, 21);
+    lanternHalo.addColorStop(0, `rgba(255, 243, 176, ${0.72 * glowStrength})`);
+    lanternHalo.addColorStop(0.5, `rgba(255, 204, 102, ${0.30 * glowStrength})`);
+    lanternHalo.addColorStop(1, 'rgba(255, 204, 102, 0)');
+    ctx.fillStyle = lanternHalo;
+    ctx.beginPath();
+    ctx.arc(0, -37.2, 21, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Lantern glass housing (trapezoid)
+    const glassGrad = ctx.createRadialGradient(0, -37.5, 1, 0, -37.5, 7);
+    glassGrad.addColorStop(0, '#fffef0');
+    glassGrad.addColorStop(0.55, '#ffe588');
+    glassGrad.addColorStop(1, '#f3b647');
+    ctx.fillStyle = glassGrad;
+    ctx.strokeStyle = '#252c33';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(-3.6, -32.2);
+    ctx.lineTo(-5.4, -41.5);
+    ctx.lineTo(5.4, -41.5);
+    ctx.lineTo(3.6, -32.2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Center vertical lantern mullion
+    ctx.strokeStyle = 'rgba(37, 44, 51, 0.72)';
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.moveTo(0, -32.2);
+    ctx.lineTo(0, -41.5);
+    ctx.stroke();
+
+    // Peaked Victorian lantern cap + finial spire
+    ctx.fillStyle = '#242b32';
+    ctx.beginPath();
+    ctx.moveTo(-6.6, -41.4);
+    ctx.lineTo(0, -46.8);
+    ctx.lineTo(6.6, -41.4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(0, -47.6, 1.35, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  function drawMushroomCluster(m: { gx: number; gy: number; color: string; capDark: string; glow: string }): void {
+    const pos = getCenteredTilePos(m.gx, m.gy);
+    const scale = getScale();
+    const glowBoost = 0.72 + weatherWeights.twilight * 0.6 + weatherWeights.rain * 0.35 + Math.sin(fountainAnimPhase * 0.8 + m.gx) * 0.12;
+
+    ctx.save();
+    ctx.translate(pos.x, pos.y);
+    ctx.scale(scale, scale);
+
+    // Bioluminescent fairy-ring halo
+    const grad = ctx.createRadialGradient(0, -6, 2, 0, -6, 26);
+    grad.addColorStop(0, m.glow);
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, glowBoost);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(0, -6, 26, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // Soft mossy bed & shadow under cluster
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+    ctx.beginPath();
+    ctx.ellipse(0, 3.2, 14.5, 6.8, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#237a3b';
+    ctx.beginPath();
+    ctx.ellipse(0, 1.8, 12.2, 5.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const cluster = [
+      { x: -7.5, y: 1.5, s: 0.74, lean: -0.14 },
+      { x: 7.4, y: 2.2, s: 0.68, lean: 0.16 },
+      { x: 0, y: 0.5, s: 1.04, lean: -0.04 }
     ];
 
-    offsets.forEach(o => {
+    cluster.forEach(o => {
       ctx.save();
       ctx.translate(o.x, o.y);
       ctx.scale(o.s, o.s);
+      ctx.rotate(o.lean);
 
-      ctx.fillStyle = '#f5f6fa';
-      ctx.fillRect(-2.5, -10, 5, 10);
-
-      ctx.fillStyle = m.color;
+      // Curved tapered creamy-ivory stem
+      const stemGrad = ctx.createLinearGradient(-3, 0, 3, 0);
+      stemGrad.addColorStop(0, '#dcd6c8');
+      stemGrad.addColorStop(0.45, '#fffdf7');
+      stemGrad.addColorStop(1, '#c8c0b0');
+      ctx.fillStyle = stemGrad;
       ctx.beginPath();
-      ctx.arc(0, -10, 8, Math.PI, 0);
+      ctx.moveTo(-3.4, 1.0);
+      ctx.quadraticCurveTo(-2.2, -5.5, -2.1, -11.5);
+      ctx.lineTo(2.1, -11.5);
+      ctx.quadraticCurveTo(2.4, -5.5, 3.4, 1.0);
       ctx.closePath();
       ctx.fill();
 
+      // Subtle gill underside ellipse
+      ctx.fillStyle = '#ece6d8';
+      ctx.beginPath();
+      ctx.ellipse(0, -10.8, 7.8, 2.8, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Richly shaded dome mushroom cap
+      const capGrad = ctx.createRadialGradient(-2.6, -15.6, 1.2, 0, -12.5, 10.5);
+      capGrad.addColorStop(0, '#ffffff');
+      capGrad.addColorStop(0.22, m.color);
+      capGrad.addColorStop(1, m.capDark);
+      ctx.fillStyle = capGrad;
+      ctx.beginPath();
+      ctx.ellipse(0, -11.2, 8.8, 7.2, 0, Math.PI, 0);
+      ctx.quadraticCurveTo(4.4, -9.2, 0, -9.4);
+      ctx.quadraticCurveTo(-4.4, -9.2, -8.8, -11.2);
+      ctx.closePath();
+      ctx.fill();
+
+      // Soft cream storybook spots on cap
+      ctx.fillStyle = 'rgba(255, 255, 245, 0.82)';
+      [
+        { sx: -3.8, sy: -14.2, r: 1.45 },
+        { sx: 2.2, sy: -15.6, r: 1.65 },
+        { sx: 5.0, sy: -12.8, r: 1.1 },
+        { sx: -0.8, sy: -12.4, r: 1.05 }
+      ].forEach(sp => {
+        ctx.beginPath();
+        ctx.arc(sp.sx, sp.sy, sp.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
       ctx.restore();
     });
+
+    // Gently drifting glowing spore motes
+    const sporePhase = fountainAnimPhase * 0.6 + m.gx * 1.7 + m.gy;
+    for (let i = 0; i < 2; i++) {
+      const spT = (sporePhase + i * 0.5) % 1;
+      const sx = Math.sin(sporePhase * 2 + i * 3) * 8;
+      const sy = -14 - spT * 12;
+      ctx.fillStyle = `rgba(255, 255, 235, ${(1 - spT) * 0.65 * Math.min(1, glowBoost)})`;
+      ctx.beginPath();
+      ctx.arc(sx, sy, 1.15, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     ctx.restore();
   }
@@ -6256,98 +8359,95 @@ export function initPupperPark(): void {
     }
 
     const decorBonuses = getDecorBonuses();
-    const { treeCount, flowerCount, fountainCount } = decorBonuses;
 
-    const ownedTree = state.decorInventory.tree || 0;
-    const ownedFlowers = state.decorInventory.flowers || 0;
-    const ownedFountain = state.decorInventory.fountain || 0;
+    DECOR_TYPES.forEach(type => {
+      const cfg = DECOR_CONFIG[type];
+      const owned = state.decorInventory[type] || 0;
+      const placed = decorBonuses.counts[type] || 0;
 
-    const ownedTreeEl = document.getElementById('ownedDecorTree');
-    if (ownedTreeEl) ownedTreeEl.textContent = String(ownedTree);
-    const countTreeEl = document.getElementById('countDecorTree');
-    if (countTreeEl) countTreeEl.textContent = String(treeCount);
+      const ownedEl = document.getElementById(cfg.ownedId);
+      if (ownedEl) ownedEl.textContent = String(owned);
+      const countEl = document.getElementById(cfg.countId);
+      if (countEl) countEl.textContent = String(placed);
 
-    const ownedFlowersEl = document.getElementById('ownedDecorFlowers');
-    if (ownedFlowersEl) ownedFlowersEl.textContent = String(ownedFlowers);
-    const countFlowersEl = document.getElementById('countDecorFlowers');
-    if (countFlowersEl) countFlowersEl.textContent = String(flowerCount);
-
-    const ownedFountainEl = document.getElementById('ownedDecorFountain');
-    if (ownedFountainEl) ownedFountainEl.textContent = String(ownedFountain);
-    const countFountainEl = document.getElementById('countDecorFountain');
-    if (countFountainEl) countFountainEl.textContent = String(fountainCount);
-
-    const btnBuyDecorTree = document.getElementById('btnBuyDecorTree') as HTMLButtonElement | null;
-    if (btnBuyDecorTree) {
-      const atMaxTree = ownedTree >= 3;
-      btnBuyDecorTree.disabled = state.magicBones < 500 || atMaxTree;
-      const nameSpan = btnBuyDecorTree.querySelector('.btn-name');
-      if (nameSpan) nameSpan.textContent = atMaxTree ? 'Max Owned' : 'Buy Tree';
-    }
-
-    const btnPlaceDecorTree = document.getElementById('btnPlaceDecorTree') as HTMLButtonElement | null;
-    if (btnPlaceDecorTree) {
-      const unplacedTree = ownedTree - treeCount;
-      const nameSpan = btnPlaceDecorTree.querySelector('.btn-name');
-      if (treeCount >= 3) {
-        if (nameSpan) nameSpan.textContent = 'Max Placed';
-        btnPlaceDecorTree.disabled = true;
-      } else if (unplacedTree <= 0) {
-        if (nameSpan) nameSpan.textContent = 'Place';
-        btnPlaceDecorTree.disabled = true;
-      } else {
-        if (nameSpan) nameSpan.textContent = 'Place';
-        btnPlaceDecorTree.disabled = false;
+      const buyBtn = document.getElementById(cfg.buyBtnId) as HTMLButtonElement | null;
+      if (buyBtn) {
+        const atMaxOwned = owned >= cfg.max;
+        buyBtn.disabled = state.magicBones < cfg.cost || atMaxOwned;
+        const nameSpan = buyBtn.querySelector('.btn-name');
+        if (nameSpan) nameSpan.textContent = atMaxOwned ? 'Max Owned' : cfg.buyLabel;
       }
-    }
 
-    const btnBuyDecorFlowers = document.getElementById('btnBuyDecorFlowers') as HTMLButtonElement | null;
-    if (btnBuyDecorFlowers) {
-      const atMaxFlowers = ownedFlowers >= 5;
-      btnBuyDecorFlowers.disabled = state.magicBones < 250 || atMaxFlowers;
-      const nameSpan = btnBuyDecorFlowers.querySelector('.btn-name');
-      if (nameSpan) nameSpan.textContent = atMaxFlowers ? 'Max Owned' : 'Buy Flowers';
-    }
-
-    const btnPlaceDecorFlowers = document.getElementById('btnPlaceDecorFlowers') as HTMLButtonElement | null;
-    if (btnPlaceDecorFlowers) {
-      const unplacedFlowers = ownedFlowers - flowerCount;
-      const nameSpan = btnPlaceDecorFlowers.querySelector('.btn-name');
-      if (flowerCount >= 5) {
-        if (nameSpan) nameSpan.textContent = 'Max Placed';
-        btnPlaceDecorFlowers.disabled = true;
-      } else if (unplacedFlowers <= 0) {
-        if (nameSpan) nameSpan.textContent = 'Place';
-        btnPlaceDecorFlowers.disabled = true;
-      } else {
-        if (nameSpan) nameSpan.textContent = 'Place';
-        btnPlaceDecorFlowers.disabled = false;
+      const placeBtn = document.getElementById(cfg.placeBtnId) as HTMLButtonElement | null;
+      if (placeBtn) {
+        const unplaced = owned - placed;
+        const nameSpan = placeBtn.querySelector('.btn-name');
+        if (placed >= cfg.max) {
+          if (nameSpan) nameSpan.textContent = 'Max Placed';
+          placeBtn.disabled = true;
+        } else if (unplaced <= 0) {
+          if (nameSpan) nameSpan.textContent = 'Place';
+          placeBtn.disabled = true;
+        } else {
+          if (nameSpan) nameSpan.textContent = 'Place';
+          placeBtn.disabled = false;
+        }
       }
-    }
+    });
 
-    const btnBuyDecorFountain = document.getElementById('btnBuyDecorFountain') as HTMLButtonElement | null;
-    if (btnBuyDecorFountain) {
-      const atMaxFountain = ownedFountain >= 2;
-      btnBuyDecorFountain.disabled = state.magicBones < 1000 || atMaxFountain;
-      const nameSpan = btnBuyDecorFountain.querySelector('.btn-name');
-      if (nameSpan) nameSpan.textContent = atMaxFountain ? 'Max Owned' : 'Buy Fountain';
-    }
+    // Custom Ground Tiles UI sync
+    const tileEntries = Object.values(state.tileMap || {});
+    CUSTOM_TILE_STYLES.forEach(style => {
+      const cfg = CUSTOM_TILE_CONFIG[style];
+      const isUnlocked = Boolean(state.unlockedTiles?.[style]);
+      const paintedCount = tileEntries.filter(v => v === style).length;
 
-    const btnPlaceDecorFountain = document.getElementById('btnPlaceDecorFountain') as HTMLButtonElement | null;
-    if (btnPlaceDecorFountain) {
-      const unplacedFountain = ownedFountain - fountainCount;
-      const nameSpan = btnPlaceDecorFountain.querySelector('.btn-name');
-      if (fountainCount >= 2) {
-        if (nameSpan) nameSpan.textContent = 'Max Placed';
-        btnPlaceDecorFountain.disabled = true;
-      } else if (unplacedFountain <= 0) {
-        if (nameSpan) nameSpan.textContent = 'Place';
-        btnPlaceDecorFountain.disabled = true;
-      } else {
-        if (nameSpan) nameSpan.textContent = 'Place';
-        btnPlaceDecorFountain.disabled = false;
+      const statusEl = document.getElementById(cfg.statusId);
+      if (statusEl) {
+        statusEl.textContent = isUnlocked
+          ? `Unlocked | ${paintedCount} painted`
+          : 'Locked | One-time unlock';
       }
-    }
+
+      const btn = document.getElementById(cfg.btnId) as HTMLButtonElement | null;
+      if (btn) {
+        const nameSpan = btn.querySelector('.btn-name');
+        const costSpan = btn.querySelector('.btn-cost') as HTMLElement | null;
+        if (isUnlocked) {
+          if (nameSpan) nameSpan.textContent = 'Paint';
+          if (costSpan) costSpan.style.display = 'none';
+          btn.disabled = false;
+        } else {
+          if (nameSpan) nameSpan.textContent = 'Unlock';
+          if (costSpan) {
+            costSpan.style.display = '';
+            costSpan.textContent = `${TILE_UNLOCK_COST.toLocaleString()} ✨`;
+          }
+          btn.disabled = state.magicBones < TILE_UNLOCK_COST;
+        }
+      }
+    });
+
+    const totalPaintedTiles = tileEntries.length;
+    const countPaintedEl = document.getElementById('countPaintedTiles');
+    if (countPaintedEl) countPaintedEl.textContent = String(totalPaintedTiles);
+    const btnClearTiles = document.getElementById('btnClearTiles') as HTMLButtonElement | null;
+    if (btnClearTiles) btnClearTiles.disabled = totalPaintedTiles === 0;
+    const sp = state.starterProps || createDefaultStarterProps();
+    const syncLandmarkBtn = (id: string, shown: boolean): void => {
+      const btn = document.getElementById(id);
+      if (!btn) return;
+      btn.classList.toggle('is-on', shown);
+      btn.classList.toggle('is-off', !shown);
+      const stateSpan = btn.querySelector('.landmark-toggle-state');
+      if (stateSpan) stateSpan.textContent = shown ? 'Shown' : 'Hidden';
+    };
+    syncLandmarkBtn('btnToggleStarterTree', sp.showTree !== false);
+    mushrooms.forEach((_, idx) => {
+      syncLandmarkBtn(`btnToggleMushroom${idx}`, sp.showMushrooms[idx] !== false);
+    });
+
+    refreshTilePaintBar();
 
     const trueBonesPerDig = getAverageBonesPerDig();
     const formattedTrueBones = Number.isInteger(trueBonesPerDig)
@@ -6414,10 +8514,15 @@ export function initPupperPark(): void {
     }
     const decorBonusEl = document.getElementById('statDecorBonus');
     if (decorBonusEl) {
+      const formatPct = (val: number): string => {
+        const pct = Math.round(val * 1000) / 10;
+        return Number.isInteger(pct) ? String(pct) : pct.toFixed(1);
+      };
       const parts: string[] = [];
-      if (treeCount > 0) parts.push(`+${treeCount * 3}% XP`);
-      if (flowerCount > 0) parts.push(`+${flowerCount * 2}% ✨`);
-      if (fountainCount > 0) parts.push(`+${fountainCount * 5}% 🦴`);
+      if (decorBonuses.xpMult > 1) parts.push(`+${formatPct(decorBonuses.xpMult - 1)}% XP`);
+      if (decorBonuses.magicAdd > 0) parts.push(`+${formatPct(decorBonuses.magicAdd)}% ✨`);
+      if (decorBonuses.payoutMult > 1) parts.push(`+${formatPct(decorBonuses.payoutMult - 1)}% 🦴`);
+      if (decorBonuses.paceMult > 1) parts.push(`+${formatPct(decorBonuses.paceMult - 1)}% Pace`);
       decorBonusEl.textContent = parts.length > 0 ? parts.join(' | ') : 'None yet';
     }
     const offlineRateEl = document.getElementById('statOfflineRate');
@@ -6682,6 +8787,10 @@ export function initPupperPark(): void {
       clearDecorConfirmModal.style.display = 'none';
       return true;
     }
+    if (isModalCurrentlyOpen('clearTilesConfirmModal') && clearTilesConfirmModal) {
+      clearTilesConfirmModal.style.display = 'none';
+      return true;
+    }
     if (isModalCurrentlyOpen('retireConfirmModal') && retireConfirmModal) {
       pendingRetireDogId = null;
       retireConfirmModal.style.display = 'none';
@@ -6704,6 +8813,10 @@ export function initPupperPark(): void {
     }
     if (state.isPlacingDecor) {
       cancelDecorPlacement();
+      return true;
+    }
+    if (state.isPaintingTiles) {
+      stopTilePaintMode();
       return true;
     }
     if (gameModal && gameModal.style.display === 'flex') {
@@ -6901,17 +9014,21 @@ export function initPupperPark(): void {
           tennisBall.timer -= dt;
           if (tennisBall.timer <= 0 && dogs.length > 0) {
             tennisBall.timer = 8.0 + Math.random() * 6.0;
-            const walker = dogs[Math.floor(Math.random() * dogs.length)];
-            walker.targetGx = tennisBall.gx;
-            walker.targetGy = tennisBall.gy;
-            walker.state = 'WALK';
-            walker.onReachToy = () => {
-              sfx.squeak();
-              addPackHappiness(1.5);
-              tennisBall.isRolling = true;
-              tennisBall.targetGx = Math.max(0.7, Math.min(GRID_SIZE - 0.7, tennisBall.gx + (Math.random() - 0.5) * 3.5));
-              tennisBall.targetGy = Math.max(0.7, Math.min(GRID_SIZE - 0.7, tennisBall.gy + (Math.random() - 0.5) * 3.5));
-            };
+            const eligible = dogs.filter(d => d.state !== 'SLIDE_CLIMB' && d.state !== 'SLIDE_DOWN' && !d.slideTarget);
+            if (eligible.length > 0) {
+              const walker = eligible[Math.floor(Math.random() * eligible.length)];
+              walker.cancelSlide();
+              walker.targetGx = tennisBall.gx;
+              walker.targetGy = tennisBall.gy;
+              walker.state = 'WALK';
+              walker.onReachToy = () => {
+                sfx.squeak();
+                addPackHappiness(1.5);
+                tennisBall.isRolling = true;
+                tennisBall.targetGx = Math.max(0.7, Math.min(GRID_SIZE - 0.7, tennisBall.gx + (Math.random() - 0.5) * 3.5));
+                tennisBall.targetGy = Math.max(0.7, Math.min(GRID_SIZE - 0.7, tennisBall.gy + (Math.random() - 0.5) * 3.5));
+              };
+            }
           }
         }
       }
@@ -6927,17 +9044,21 @@ export function initPupperPark(): void {
           frisbee.timer -= dt;
           if (frisbee.timer <= 0 && dogs.length > 0) {
             frisbee.timer = 10.0 + Math.random() * 8.0;
-            const walker = dogs[Math.floor(Math.random() * dogs.length)];
-            walker.targetGx = frisbee.gx;
-            walker.targetGy = frisbee.gy;
-            walker.state = 'WALK';
-            walker.onReachToy = () => {
-              sfx.shiny();
-              addPackHappiness(1.5);
-              frisbee.isMoving = true;
-              frisbee.targetGx = Math.max(0.7, Math.min(GRID_SIZE - 0.7, frisbee.gx + (Math.random() - 0.5) * 3.5));
-              frisbee.targetGy = Math.max(0.7, Math.min(GRID_SIZE - 0.7, frisbee.gy + (Math.random() - 0.5) * 3.5));
-            };
+            const eligible = dogs.filter(d => d.state !== 'SLIDE_CLIMB' && d.state !== 'SLIDE_DOWN' && !d.slideTarget);
+            if (eligible.length > 0) {
+              const walker = eligible[Math.floor(Math.random() * eligible.length)];
+              walker.cancelSlide();
+              walker.targetGx = frisbee.gx;
+              walker.targetGy = frisbee.gy;
+              walker.state = 'WALK';
+              walker.onReachToy = () => {
+                sfx.shiny();
+                addPackHappiness(1.5);
+                frisbee.isMoving = true;
+                frisbee.targetGx = Math.max(0.7, Math.min(GRID_SIZE - 0.7, frisbee.gx + (Math.random() - 0.5) * 3.5));
+                frisbee.targetGy = Math.max(0.7, Math.min(GRID_SIZE - 0.7, frisbee.gy + (Math.random() - 0.5) * 3.5));
+              };
+            }
           }
         }
       }
@@ -6953,17 +9074,21 @@ export function initPupperPark(): void {
           duck.timer -= dt;
           if (duck.timer <= 0 && dogs.length > 0) {
             duck.timer = 9.0 + Math.random() * 6.0;
-            const walker = dogs[Math.floor(Math.random() * dogs.length)];
-            walker.targetGx = duck.gx;
-            walker.targetGy = duck.gy;
-            walker.state = 'WALK';
-            walker.onReachToy = () => {
-              sfx.quack();
-              addPackHappiness(1.5);
-              duck.isMoved = true;
-              duck.targetGx = Math.max(0.7, Math.min(GRID_SIZE - 0.7, duck.gx + (Math.random() - 0.5) * 2.5));
-              duck.targetGy = Math.max(0.7, Math.min(GRID_SIZE - 0.7, duck.gy + (Math.random() - 0.5) * 2.5));
-            };
+            const eligible = dogs.filter(d => d.state !== 'SLIDE_CLIMB' && d.state !== 'SLIDE_DOWN' && !d.slideTarget);
+            if (eligible.length > 0) {
+              const walker = eligible[Math.floor(Math.random() * eligible.length)];
+              walker.cancelSlide();
+              walker.targetGx = duck.gx;
+              walker.targetGy = duck.gy;
+              walker.state = 'WALK';
+              walker.onReachToy = () => {
+                sfx.quack();
+                addPackHappiness(1.5);
+                duck.isMoved = true;
+                duck.targetGx = Math.max(0.7, Math.min(GRID_SIZE - 0.7, duck.gx + (Math.random() - 0.5) * 2.5));
+                duck.targetGy = Math.max(0.7, Math.min(GRID_SIZE - 0.7, duck.gy + (Math.random() - 0.5) * 2.5));
+              };
+            }
           }
         }
       }
@@ -7254,6 +9379,46 @@ export function initPupperPark(): void {
 
       drawTileGrassTufts();
 
+      // Occupied-Tile Overlay while placing decor so open tiles are unmistakable
+      if (state.isPlacingDecor) {
+        const occupied = getOccupiedTileMap();
+        ctx.save();
+        occupied.forEach((_, key) => {
+          const [gxStr, gyStr] = key.split(',');
+          const ogx = Number(gxStr);
+          const ogy = Number(gyStr);
+          const top = gridToScreen(ogx, ogy);
+          const right = gridToScreen(ogx + 1, ogy);
+          const bottom = gridToScreen(ogx + 1, ogy + 1);
+          const left = gridToScreen(ogx, ogy + 1);
+
+          ctx.beginPath();
+          ctx.moveTo(top.x, top.y);
+          ctx.lineTo(right.x, right.y);
+          ctx.lineTo(bottom.x, bottom.y);
+          ctx.lineTo(left.x, left.y);
+          ctx.closePath();
+          ctx.fillStyle = 'rgba(255, 107, 107, 0.22)';
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(255, 118, 117, 0.72)';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          // Non-hue-only crisp diagonal cross mark inside blocked tile
+          const cPos = getCenteredTilePos(ogx, ogy);
+          const r = 6 * getScale();
+          ctx.strokeStyle = 'rgba(255, 220, 220, 0.65)';
+          ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          ctx.moveTo(cPos.x - r, cPos.y - r * 0.55);
+          ctx.lineTo(cPos.x + r, cPos.y + r * 0.55);
+          ctx.moveTo(cPos.x + r, cPos.y - r * 0.55);
+          ctx.lineTo(cPos.x - r, cPos.y + r * 0.55);
+          ctx.stroke();
+        });
+        ctx.restore();
+      }
+
       // Tile Tap Ripples
       for (let i = tileRipples.length - 1; i >= 0; i--) {
         const r = tileRipples[i];
@@ -7276,8 +9441,13 @@ export function initPupperPark(): void {
       }
 
       const renderables: Array<{ sortY: number; draw: () => void }> = [];
-      renderables.push({ sortY: gridToScreen(1.2, 1.2).y, draw: drawDoghouse });
-      renderables.push({ sortY: gridToScreen(5.8, 1.2).y, draw: drawTree });
+      const spRender = state.starterProps || createDefaultStarterProps();
+      renderables.push({ sortY: getCenteredTilePos(DOGHOUSE_TILE.gx, DOGHOUSE_TILE.gy).y, draw: drawDoghouse });
+      if (spRender.showTree !== false) {
+        renderables.push({ sortY: getCenteredTilePos(STARTER_TREE_TILE.gx, STARTER_TREE_TILE.gy).y, draw: drawTree });
+      }
+
+      fountainAnimPhase += dt * 4.2;
 
       if (state.placedDecorations) {
         state.placedDecorations.forEach(dec => {
@@ -7295,7 +9465,28 @@ export function initPupperPark(): void {
           } else if (dec.type === 'fountain') {
             renderables.push({
               sortY: centeredY,
-              draw: () => drawWaterFountain(dec.gx, dec.gy, dt)
+              draw: () => drawWaterFountain(dec.gx, dec.gy)
+            });
+          } else if (dec.type === 'hydrant') {
+            renderables.push({
+              sortY: centeredY,
+              draw: () => drawFireHydrant(dec.gx, dec.gy)
+            });
+          } else if (dec.type === 'slide') {
+            const endY = getCenteredTilePos(dec.gx + 1, dec.gy).y;
+            renderables.push({
+              sortY: (centeredY + endY) * 0.5,
+              draw: () => drawDogSlide(dec.gx, dec.gy)
+            });
+          } else if (dec.type === 'lamp') {
+            renderables.push({
+              sortY: centeredY,
+              draw: () => drawLampPost(dec.gx, dec.gy)
+            });
+          } else if (dec.type === 'goldenHydrant') {
+            renderables.push({
+              sortY: centeredY,
+              draw: () => drawGoldenFireHydrant(dec.gx, dec.gy)
             });
           }
         });
@@ -7311,17 +9502,24 @@ export function initPupperPark(): void {
         renderables.push({ sortY: gridToScreen(duck.gx, duck.gy).y, draw: drawDuck });
       }
 
-      mushrooms.forEach(m => {
+      mushrooms.forEach((m, idx) => {
+        if (spRender.showMushrooms[idx] === false) return;
         renderables.push({
-          sortY: gridToScreen(m.gx, m.gy).y,
+          sortY: getCenteredTilePos(m.gx, m.gy).y,
           draw: () => drawMushroomCluster(m)
         });
       });
 
       dogs.forEach(dog => {
         dog.update(dt);
+        let dogSortY = gridToScreen(dog.gx, dog.gy).y;
+        if ((dog.state === 'SLIDE_CLIMB' || dog.state === 'SLIDE_DOWN') && dog.slideTarget) {
+          const y1 = getCenteredTilePos(dog.slideTarget.gx, dog.slideTarget.gy).y;
+          const y2 = getCenteredTilePos(dog.slideTarget.gx + 1, dog.slideTarget.gy).y;
+          dogSortY = Math.max(y1, y2) + 2;
+        }
         renderables.push({
-          sortY: gridToScreen(dog.gx, dog.gy).y,
+          sortY: dogSortY,
           draw: () => dog.draw(ctx)
         });
       });
