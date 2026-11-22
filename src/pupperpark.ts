@@ -70,7 +70,7 @@ export function initPupperPark(): void {
   const MAX_OFFLINE_SECONDS = 604800; // 7 days
   const AWAY_MIN_SECONDS = 15;
   const RETIRE_REFUND_RATE = 0.25;
-  const LEVEL_BONUS_PER_LEVEL = 0.0015;
+  const LEVEL_BONUS_PER_LEVEL = 0.01;
   const DIG_MULT_BASE = 1.0;
   const DIG_MULT_SQRT_SCALE = 0.0018;
 
@@ -132,13 +132,17 @@ export function initPupperPark(): void {
 
   const BREED_LABELS: Record<string, string> = {
     aussie: 'Aussie',
+    corgi: 'Corgi',
     beagle: 'Beagle',
     collie: 'Collie',
+    dachshund: 'Dachshund',
     husky: 'Husky',
     golden: 'Golden',
+    samoyed: 'Samoyed',
     shepherd: 'Shepherd',
     shiba: 'Shiba',
-    labrador: 'Labrador'
+    labrador: 'Labrador',
+    bernese: 'Bernese'
   };
 
   const DEFAULT_PUP_NAMES = [
@@ -458,13 +462,17 @@ export function initPupperPark(): void {
     try {
       const pitchMap: Record<string, number> = {
         aussie: 430,
+        corgi: 600,
         beagle: 510,
         collie: 470,
+        dachshund: 560,
         husky: 540,
         golden: 390,
+        samoyed: 410,
         shepherd: 350,
         shiba: 580,
-        labrador: 370
+        labrador: 370,
+        bernese: 295
       };
       const baseFreq = (pitchMap[breed] || 430) * (0.94 + Math.random() * 0.12);
       const now = audioCtx.currentTime;
@@ -553,14 +561,18 @@ export function initPupperPark(): void {
   }
 
   const BREED_CONFIG: Record<string, BreedCfg> = {
-    aussie:   { rank: 1, cost: 20,    costMult: 1.20, priceCap: 1200,   walkMult: 1.10, digSec: 1.85, payoutMult: 0.95, scalingMult: 1.00, xpMult: 1.00, magicBonus: 0.000, treasureChance: 0.00008 },
-    beagle:   { rank: 2, cost: 120,   costMult: 1.22, priceCap: 3000,   walkMult: 1.00, digSec: 1.75, payoutMult: 1.35, scalingMult: 1.12, xpMult: 1.05, magicBonus: 0.010, treasureChance: 0.00008 },
-    collie:   { rank: 3, cost: 340,   costMult: 1.24, priceCap: 6500,   walkMult: 1.20, digSec: 1.35, payoutMult: 1.05, scalingMult: 1.10, xpMult: 1.10, magicBonus: 0.015, treasureChance: 0.00008 },
-    husky:    { rank: 4, cost: 850,   costMult: 1.26, priceCap: 13000,  walkMult: 1.25, digSec: 1.65, payoutMult: 1.15, scalingMult: 1.15, xpMult: 1.15, magicBonus: 0.020, treasureChance: 0.00008 },
-    golden:   { rank: 5, cost: 2100,  costMult: 1.28, priceCap: 26000,  walkMult: 1.05, digSec: 1.75, payoutMult: 1.65, scalingMult: 1.20, xpMult: 1.08, magicBonus: 0.030, treasureChance: 0.00008 },
-    shepherd: { rank: 6, cost: 4800,  costMult: 1.30, priceCap: 48000,  walkMult: 1.15, digSec: 1.65, payoutMult: 1.25, scalingMult: 1.25, xpMult: 1.12, magicBonus: 0.035, treasureChance: 0.00008 },
-    shiba:    { rank: 7, cost: 10500, costMult: 1.32, priceCap: 80000,  walkMult: 1.10, digSec: 1.70, payoutMult: 1.20, scalingMult: 1.20, xpMult: 1.12, magicBonus: 0.055, treasureChance: 0.00064 },
-    labrador: { rank: 8, cost: 22000, costMult: 1.34, priceCap: 125000, walkMult: 1.20, digSec: 1.50, payoutMult: 1.80, scalingMult: 1.32, xpMult: 1.20, magicBonus: 0.050, treasureChance: 0.00012 }
+    aussie:    { rank: 1,  cost: 20,    costMult: 1.20, priceCap: 1200,   walkMult: 1.10, digSec: 1.85, payoutMult: 0.95, scalingMult: 1.00, xpMult: 1.00, magicBonus: 0.000, treasureChance: 0.00008 },
+    corgi:     { rank: 2,  cost: 60,    costMult: 1.21, priceCap: 2000,   walkMult: 1.12, digSec: 1.55, payoutMult: 1.15, scalingMult: 1.06, xpMult: 1.12, magicBonus: 0.008, treasureChance: 0.00010 },
+    beagle:    { rank: 3,  cost: 120,   costMult: 1.22, priceCap: 3000,   walkMult: 1.00, digSec: 1.75, payoutMult: 1.35, scalingMult: 1.12, xpMult: 1.05, magicBonus: 0.010, treasureChance: 0.00008 },
+    collie:    { rank: 4,  cost: 340,   costMult: 1.24, priceCap: 6500,   walkMult: 1.20, digSec: 1.35, payoutMult: 1.05, scalingMult: 1.10, xpMult: 1.10, magicBonus: 0.015, treasureChance: 0.00008 },
+    dachshund: { rank: 5,  cost: 560,   costMult: 1.25, priceCap: 9500,   walkMult: 1.15, digSec: 1.25, payoutMult: 1.22, scalingMult: 1.14, xpMult: 1.10, magicBonus: 0.022, treasureChance: 0.00024 },
+    husky:     { rank: 6,  cost: 850,   costMult: 1.26, priceCap: 13000,  walkMult: 1.25, digSec: 1.65, payoutMult: 1.15, scalingMult: 1.15, xpMult: 1.15, magicBonus: 0.020, treasureChance: 0.00008 },
+    golden:    { rank: 7,  cost: 2100,  costMult: 1.28, priceCap: 26000,  walkMult: 1.05, digSec: 1.75, payoutMult: 1.65, scalingMult: 1.20, xpMult: 1.08, magicBonus: 0.030, treasureChance: 0.00008 },
+    samoyed:   { rank: 8,  cost: 3200,  costMult: 1.29, priceCap: 36000,  walkMult: 1.12, digSec: 1.60, payoutMult: 1.55, scalingMult: 1.24, xpMult: 1.22, magicBonus: 0.042, treasureChance: 0.00016 },
+    shepherd:  { rank: 9,  cost: 4800,  costMult: 1.30, priceCap: 48000,  walkMult: 1.15, digSec: 1.65, payoutMult: 1.25, scalingMult: 1.25, xpMult: 1.12, magicBonus: 0.035, treasureChance: 0.00008 },
+    shiba:     { rank: 10, cost: 10500, costMult: 1.32, priceCap: 80000,  walkMult: 1.10, digSec: 1.70, payoutMult: 1.20, scalingMult: 1.20, xpMult: 1.12, magicBonus: 0.055, treasureChance: 0.00064 },
+    labrador:  { rank: 11, cost: 22000, costMult: 1.34, priceCap: 125000, walkMult: 1.20, digSec: 1.50, payoutMult: 1.80, scalingMult: 1.32, xpMult: 1.20, magicBonus: 0.050, treasureChance: 0.00012 },
+    bernese:   { rank: 12, cost: 42000, costMult: 1.35, priceCap: 190000, walkMult: 1.10, digSec: 1.45, payoutMult: 2.10, scalingMult: 1.40, xpMult: 1.25, magicBonus: 0.065, treasureChance: 0.00032 }
   };
 
   const PERK_POOL: PerkItem[] = [
@@ -650,8 +662,8 @@ export function initPupperPark(): void {
     magicBones: 0,
     nextNameIndex: 1,
     dogs: {
-      aussie: 1, beagle: 0, collie: 0, husky: 0,
-      golden: 0, shepherd: 0, shiba: 0, labrador: 0
+      aussie: 1, corgi: 0, beagle: 0, collie: 0, dachshund: 0, husky: 0,
+      golden: 0, samoyed: 0, shepherd: 0, shiba: 0, labrador: 0, bernese: 0
     },
     shinyDogs: [],
     roster: [],
@@ -1544,19 +1556,19 @@ export function initPupperPark(): void {
     const dug = entry && entry.bonesEarned ? entry.bonesEarned : 0;
     if (dug <= 0) return 0;
     const stats = getEffectiveBreedStats(entry);
-    return Math.sqrt(dug) * DIG_MULT_SQRT_SCALE * stats.packGrowth * getDogLevelBonusMult(entry);
+    return Math.sqrt(dug) * DIG_MULT_SQRT_SCALE * stats.packGrowth;
   }
 
-  function getDigMultiplier(entry: RosterEntry | null = null): number {
+  function getPackGrowthBonus(): number {
     let dugSum = 0;
-    if (entry) {
-      dugSum = getDogDugScaling(entry);
-    } else {
-      state.roster.forEach(r => {
-        dugSum += getDogDugScaling(r);
-      });
-    }
+    state.roster.forEach(r => {
+      dugSum += getDogDugScaling(r);
+    });
+    return dugSum;
+  }
 
+  function getDigMultiplier(): number {
+    const dugSum = getPackGrowthBonus();
     const { boneMult, workBonus } = getPerkMultipliers();
     const treatDigMult = getActiveFeastAndBaconMult();
     const decorMult = getDecorBonuses().payoutMult;
@@ -1567,16 +1579,13 @@ export function initPupperPark(): void {
   function getAverageBonesPerDig(): number {
     if (!state.roster || state.roster.length === 0) return state.digPower;
     const cupMult = getActiveCupMult();
-    const { boneMult, workBonus } = getPerkMultipliers();
-    const treatDigMult = getActiveFeastAndBaconMult();
-    const decorMult = getDecorBonuses().payoutMult;
-    const moodBoneMult = getPackHappinessInfo().boneMult;
+    const packDigMult = getDigMultiplier();
 
     let total = 0;
     state.roster.forEach(entry => {
       const stats = getEffectiveBreedStats(entry);
-      const perDogMult = (DIG_MULT_BASE + getDogDugScaling(entry)) * state.speedMultiplier * treatDigMult * workBonus * boneMult * decorMult * moodBoneMult;
-      const raw = state.digPower * stats.boneYield * cupMult * perDogMult;
+      const levelMult = getDogLevelBonusMult(entry);
+      const raw = state.digPower * stats.boneYield * levelMult * cupMult * packDigMult;
       total += Math.max(1, Math.round(raw * 10) / 10);
     });
 
@@ -2448,8 +2457,9 @@ export function initPupperPark(): void {
 
       const stats = getEffectiveBreedStats(entry);
       const xpNeeded = getXpNeededForLevel(entry.level);
-      const pct = Math.min(100, Math.max(0, (entry.xp / xpNeeded) * 100));
-      const levelBonusPct = ((getDogLevelBonusMult(entry) - 1) * 100).toFixed(1);
+      const isMaxLevel = entry.level >= MAX_DOG_LEVEL;
+      const pct = isMaxLevel ? 100 : Math.min(100, Math.max(0, (entry.xp / xpNeeded) * 100));
+      const levelBonusPct = Math.round((getDogLevelBonusMult(entry) - 1) * 100);
       const refundPreview = Math.floor((entry.bonesEarned || 0) * RETIRE_REFUND_RATE);
       const breedName = BREED_LABELS[entry.breed] || entry.breed;
       const isFav = Boolean(entry.isFavorite);
@@ -2512,10 +2522,10 @@ export function initPupperPark(): void {
       const bonusRow = document.createElement('div');
       bonusRow.className = 'roster-bonus-row';
       bonusRow.innerHTML = `
-        <span>Yield <strong>${stats.boneYield.toFixed(2)}x</strong> <em>(+${stats.bonusPayout.toFixed(2)})</em></span>
-        <span>Growth <strong>${stats.packGrowth.toFixed(2)}x</strong> <em>(+${stats.bonusScaling.toFixed(2)})</em></span>
+        <span>Bone Yield <strong>${stats.boneYield.toFixed(2)}x</strong> <em>(+${stats.bonusPayout.toFixed(2)})</em> <span class="lvl-bonus">(+${levelBonusPct}% Lv.)</span></span>
+        <span>Pack Growth <strong>${stats.packGrowth.toFixed(2)}x</strong> <em>(+${stats.bonusScaling.toFixed(2)})</em></span>
         <span>XP <strong>${stats.quickLearner.toFixed(2)}x</strong> <em>(+${stats.bonusXp.toFixed(2)})</em></span>
-        <span>Next Lv. <strong>${Math.floor(entry.xp)}/${xpNeeded}</strong> (+${levelBonusPct}%)</span>
+        <span>${isMaxLevel ? `<strong>Max Lv.</strong>` : `Next Lv. <strong>${Math.floor(entry.xp)}/${xpNeeded}</strong>`}</span>
       `;
 
       mainCol.appendChild(topRow);
@@ -2809,8 +2819,8 @@ export function initPupperPark(): void {
       magicBones: 0,
       nextNameIndex: 1,
       dogs: {
-        aussie: 1, beagle: 0, collie: 0, husky: 0,
-        golden: 0, shepherd: 0, shiba: 0, labrador: 0
+        aussie: 1, corgi: 0, beagle: 0, collie: 0, dachshund: 0, husky: 0,
+        golden: 0, samoyed: 0, shepherd: 0, shiba: 0, labrador: 0, bernese: 0
       },
       shinyDogs: [],
       roster: [createRosterEntry('aussie', starterShinyRoll.isShiny, starterShinyRoll.shinyColor, 'Biscuit')],
@@ -3499,8 +3509,9 @@ export function initPupperPark(): void {
       const stats = getEffectiveBreedStats(entry, this.breed);
       const cupMult = getActiveCupMult();
 
-      const dogDigMult = getDigMultiplier(entry);
-      const rawAmount = state.digPower * stats.boneYield * cupMult * dogDigMult;
+      const packDigMult = getDigMultiplier();
+      const levelMult = getDogLevelBonusMult(entry);
+      const rawAmount = state.digPower * stats.boneYield * levelMult * cupMult * packDigMult;
       const amount = Math.max(1, Math.round(rawAmount * 10) / 10);
       const boneValue = this.isMagicDig ? 1 : amount;
       const pos = gridToScreen(this.gx, this.gy);
@@ -4258,6 +4269,457 @@ export function initPupperPark(): void {
           c.arc(14, -18.5, 1.5, 0, Math.PI * 2);
           c.fill();
         }
+      } else if (this.breed === 'corgi') {
+        const coat = this.isShiny ? this.shinyColor : '#e88a38';
+        const saddle = this.isShiny ? this.shinyColor : '#c7681f';
+        const whiteFur = '#fffdf8';
+        const earInner = '#f7c4b4';
+        const stubLegH = isSleeping ? 3.5 : 6.4;
+        const stubPawY = isSleeping ? 2.4 : 3.2;
+        const stubSwing = legSwing * 0.7;
+
+        // Short Corgi legs with crisp white socks
+        c.fillStyle = coat;
+        c.fillRect(-10.8 - stubSwing, -1.5, 4.2, stubLegH);
+        c.fillRect(6.2 + stubSwing, -1.5, 4.2, stubLegH);
+        c.fillStyle = whiteFur;
+        c.fillRect(-10.8 - stubSwing, stubPawY, 4.2, pawHeight);
+        c.fillRect(6.2 + stubSwing, stubPawY, 4.2, pawHeight);
+
+        // Fluffy bobtail nub
+        c.fillStyle = coat;
+        c.beginPath();
+        c.arc(isSleeping ? -13 : -15.4, (isSleeping ? -6.4 : -8.2) + tailWag * 0.9, 3.8, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = whiteFur;
+        c.beginPath();
+        c.arc(isSleeping ? -14.2 : -16.8, (isSleeping ? -6 : -7.6) + tailWag * 0.9, 2.3, 0, Math.PI * 2);
+        c.fill();
+
+        // Iconic loaf torso
+        c.fillStyle = coat;
+        c.beginPath();
+        c.ellipse(-0.5, isSleeping ? -6.2 : -7.4, isSleeping ? 13.6 : 15.2, (isSleeping ? 6.8 : 7.8) + sleepBreath * 0.2, 0, 0, Math.PI * 2);
+        c.fill();
+
+        // Warm back saddle shading
+        c.fillStyle = saddle;
+        c.beginPath();
+        c.ellipse(-2.8, isSleeping ? -8.2 : -9.6, 9.6, 4.2, -0.05, 0, Math.PI * 2);
+        c.fill();
+
+        // Fluffy snowy belly & chest ruff
+        c.fillStyle = whiteFur;
+        c.beginPath();
+        c.ellipse(1.2, isSleeping ? -3.4 : -4.2, 10.6, 3.6, 0.04, 0, Math.PI * 2);
+        c.fill();
+        c.beginPath();
+        c.ellipse(8.2, isSleeping ? -6.5 : -7.6, 5.4, 5.8, 0.14, 0, Math.PI * 2);
+        c.fill();
+
+        // Back oversized Corgi radar ear
+        c.fillStyle = saddle;
+        c.beginPath();
+        c.moveTo(10.5, isSleeping ? -14.5 : -19);
+        c.lineTo(13.8, isSleeping ? -19.5 : -27.5);
+        c.lineTo(15.5, isSleeping ? -14.5 : -18.5);
+        c.closePath();
+        c.fill();
+
+        // Round foxy head
+        c.fillStyle = coat;
+        c.beginPath();
+        c.arc(isSleeping ? 9.5 : 11, isSleeping ? -11 : -14.8, 7.2, 0, Math.PI * 2);
+        c.fill();
+
+        // Front oversized upright Corgi radar ear
+        c.fillStyle = coat;
+        c.beginPath();
+        c.moveTo(5.8, isSleeping ? -14.2 : -18.2);
+        c.lineTo(7.4, isSleeping ? -20 : -28.8);
+        c.lineTo(12.2, isSleeping ? -14.8 : -18.8);
+        c.closePath();
+        c.fill();
+        c.fillStyle = earInner;
+        c.beginPath();
+        c.moveTo(7.2, isSleeping ? -14.8 : -19);
+        c.lineTo(8.1, isSleeping ? -18.4 : -26);
+        c.lineTo(10.8, isSleeping ? -15.2 : -19.2);
+        c.closePath();
+        c.fill();
+
+        // White cheek & muzzle blaze
+        c.fillStyle = whiteFur;
+        c.beginPath();
+        c.ellipse(isSleeping ? 14 : 16, isSleeping ? -9.4 : -12.8, 5.2, 3.5, 0.05, 0, Math.PI * 2);
+        c.fill();
+        c.beginPath();
+        c.ellipse(isSleeping ? 12.2 : 13.8, isSleeping ? -11.4 : -15.2, 2.2, 3.4, -0.1, 0, Math.PI * 2);
+        c.fill();
+
+        // Glossy nose
+        c.fillStyle = '#1e272e';
+        c.beginPath();
+        c.arc(isSleeping ? 18.6 : 20.6, isSleeping ? -10 : -13.4, 1.65, 0, Math.PI * 2);
+        c.fill();
+
+        if (isSleeping) {
+          c.strokeStyle = '#1e1e1e';
+          c.lineWidth = 1.5;
+          c.lineCap = 'round';
+          c.beginPath();
+          c.arc(12.8, -11.6, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
+          c.stroke();
+        } else {
+          c.fillStyle = '#1e1e1e';
+          c.beginPath();
+          c.arc(14.2, -15.6, 1.6, 0, Math.PI * 2);
+          c.fill();
+          c.fillStyle = '#ffffff';
+          c.beginPath();
+          c.arc(14.6, -16.1, 0.55, 0, Math.PI * 2);
+          c.fill();
+        }
+      } else if (this.breed === 'dachshund') {
+        const coat = this.isShiny ? this.shinyColor : '#3a241d';
+        const sheen = this.isShiny ? 'rgba(255,255,255,0.12)' : '#57362b';
+        const tanPts = '#d17b39';
+        const earCol = this.isShiny ? this.shinyColor : '#281712';
+        const shortLegH = isSleeping ? 3.4 : 6.2;
+        const shortPawY = isSleeping ? 2.4 : 3.2;
+        const shortSwing = legSwing * 0.7;
+
+        // Short agile legs with tan paws
+        c.fillStyle = coat;
+        c.fillRect(-13 - shortSwing, -1.5, 3.8, shortLegH);
+        c.fillRect(8.2 + shortSwing, -1.5, 3.8, shortLegH);
+        c.fillStyle = tanPts;
+        c.fillRect(-13 - shortSwing, shortPawY, 3.8, pawHeight);
+        c.fillRect(8.2 + shortSwing, shortPawY, 3.8, pawHeight);
+
+        // Sleek tapered wagging tail
+        const wag = isSleeping ? tailWag : Math.sin(this.wagPhase * 2.5) * 3.4 * moodWagAmp;
+        c.save();
+        c.strokeStyle = coat;
+        c.lineWidth = 3.2;
+        c.lineCap = 'round';
+        c.beginPath();
+        c.moveTo(-16.5, isSleeping ? -6.2 : -7.4);
+        c.quadraticCurveTo(isSleeping ? -20 : -22.5, (isSleeping ? -8 : -11.5) + wag, isSleeping ? -21.5 : -24.5, (isSleeping ? -9.2 : -14.2) + wag);
+        c.stroke();
+        c.restore();
+
+        // Extra-long sleek sausage body
+        c.fillStyle = coat;
+        c.beginPath();
+        c.ellipse(-1.4, isSleeping ? -6.0 : -7.0, isSleeping ? 15.6 : 17.6, (isSleeping ? 5.6 : 6.3) + sleepBreath * 0.18, 0, 0, Math.PI * 2);
+        c.fill();
+
+        // Glossy back coat highlight
+        c.fillStyle = sheen;
+        c.beginPath();
+        c.ellipse(-3, isSleeping ? -8.2 : -9.4, 11.2, 2.5, -0.02, 0, Math.PI * 2);
+        c.fill();
+
+        // Warm tan chest & belly point
+        c.fillStyle = tanPts;
+        c.beginPath();
+        c.ellipse(10.2, isSleeping ? -5.6 : -6.6, 4.6, 4.4, 0.12, 0, Math.PI * 2);
+        c.fill();
+
+        // Sleek head
+        c.fillStyle = coat;
+        c.beginPath();
+        c.arc(isSleeping ? 11.2 : 13, isSleeping ? -10.5 : -13.4, 6.2, 0, Math.PI * 2);
+        c.fill();
+
+        // Distinctively long tapered snout
+        c.fillStyle = coat;
+        c.beginPath();
+        c.ellipse(isSleeping ? 16.8 : 18.8, isSleeping ? -9.5 : -12.2, 5.4, 2.7, 0.08, 0, Math.PI * 2);
+        c.fill();
+
+        // Tan muzzle & cheek trim
+        c.fillStyle = tanPts;
+        c.beginPath();
+        c.ellipse(isSleeping ? 15.8 : 17.6, isSleeping ? -8.5 : -11.1, 4.1, 1.8, 0.06, 0, Math.PI * 2);
+        c.fill();
+
+        // Long velvety drooping Dachshund ear
+        c.fillStyle = earCol;
+        c.beginPath();
+        c.ellipse(isSleeping ? 9.2 : 10.4, isSleeping ? -7.8 : -9.8, 3.4, 6.8, 0.18, 0, Math.PI * 2);
+        c.fill();
+
+        // Nose
+        c.fillStyle = '#11161d';
+        c.beginPath();
+        c.arc(isSleeping ? 21.8 : 23.8, isSleeping ? -9.5 : -12.1, 1.55, 0, Math.PI * 2);
+        c.fill();
+
+        // Signature tan eyebrow dot
+        c.fillStyle = tanPts;
+        c.beginPath();
+        c.arc(isSleeping ? 13.8 : 15.4, isSleeping ? -12.4 : -15.8, 1.2, 0, Math.PI * 2);
+        c.fill();
+
+        if (isSleeping) {
+          c.strokeStyle = '#f8f9fa';
+          c.lineWidth = 1.4;
+          c.lineCap = 'round';
+          c.beginPath();
+          c.arc(14, -11, 1.4, 0.15 * Math.PI, 0.85 * Math.PI);
+          c.stroke();
+        } else {
+          c.fillStyle = '#11161d';
+          c.beginPath();
+          c.arc(15.6, -13.9, 1.5, 0, Math.PI * 2);
+          c.fill();
+          c.fillStyle = '#ffffff';
+          c.beginPath();
+          c.arc(16, -14.4, 0.5, 0, Math.PI * 2);
+          c.fill();
+        }
+      } else if (this.breed === 'samoyed') {
+        const coat = this.isShiny ? this.shinyColor : '#f7faff';
+        const fluffShade = this.isShiny ? 'rgba(0, 0, 0, 0.10)' : '#d6e2f2';
+        const brightFluff = this.isShiny ? 'rgba(255, 255, 255, 0.28)' : '#ffffff';
+        const earInner = '#f7cad0';
+
+        // Fluffy white legs
+        c.fillStyle = fluffShade;
+        c.fillRect(-11.2 - legSwing, -2.5, 4.6, legHeight);
+        c.fillRect(6.2 + legSwing, -2.5, 4.6, legHeight);
+        c.fillStyle = coat;
+        c.fillRect(-10.8 - legSwing, -2.5, 3.8, legHeight);
+        c.fillRect(6.6 + legSwing, -2.5, 3.8, legHeight);
+
+        // Big curled snowy plume tail
+        const wag = isSleeping ? tailWag : Math.sin(this.wagPhase * 2.1) * 2.8 * moodWagAmp;
+        c.save();
+        c.strokeStyle = fluffShade;
+        c.lineWidth = 7.4;
+        c.lineCap = 'round';
+        c.beginPath();
+        c.moveTo(-13.5, isSleeping ? -8 : -10);
+        c.quadraticCurveTo(isSleeping ? -18.5 : -21, (isSleeping ? -11.5 : -17) + wag, isSleeping ? -14 : -14.5, (isSleeping ? -14 : -21) + wag);
+        c.stroke();
+        c.strokeStyle = coat;
+        c.lineWidth = 5.8;
+        c.stroke();
+        c.fillStyle = brightFluff;
+        c.beginPath();
+        c.arc(isSleeping ? -14.5 : -15, (isSleeping ? -13.8 : -20.5) + wag, 3.8, 0, Math.PI * 2);
+        c.fill();
+        c.restore();
+
+        // Cloud-like plush body with soft depth underside
+        c.fillStyle = fluffShade;
+        c.beginPath();
+        c.ellipse(-1, isSleeping ? -7.6 : -9.4, isSleeping ? 14 : 15.6, (isSleeping ? 8.2 : 9.6) + sleepBreath * 0.22, 0, 0, Math.PI * 2);
+        c.fill();
+
+        c.fillStyle = coat;
+        c.beginPath();
+        c.ellipse(-1, isSleeping ? -8.4 : -10.3, isSleeping ? 13.5 : 15.2, (isSleeping ? 7.6 : 8.9) + sleepBreath * 0.22, 0, 0, Math.PI * 2);
+        c.fill();
+
+        // Cloud fluff scallops along back & thick neck ruff
+        c.fillStyle = brightFluff;
+        c.beginPath();
+        c.arc(-7.5, isSleeping ? -10.2 : -12.6, 5.2, 0, Math.PI * 2);
+        c.arc(-1, isSleeping ? -11.2 : -13.8, 5.6, 0, Math.PI * 2);
+        c.arc(6.6, isSleeping ? -9 : -11.2, 6.8, 0, Math.PI * 2);
+        c.fill();
+
+        // Back ear
+        c.fillStyle = fluffShade;
+        c.beginPath();
+        c.moveTo(10.5, isSleeping ? -15.5 : -20);
+        c.lineTo(13.2, isSleeping ? -19 : -26.8);
+        c.lineTo(15.2, isSleeping ? -15.2 : -19.8);
+        c.closePath();
+        c.fill();
+
+        // Plush round Samoyed head & cheeks
+        c.fillStyle = coat;
+        c.beginPath();
+        c.arc(isSleeping ? 9.5 : 11, isSleeping ? -12.2 : -16.8, 7.6, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = brightFluff;
+        c.beginPath();
+        c.arc(isSleeping ? 8.5 : 9.8, isSleeping ? -11.5 : -15.8, 5.2, 0, Math.PI * 2);
+        c.fill();
+
+        // Perky triangular front ear with blush pink inside
+        c.fillStyle = coat;
+        c.beginPath();
+        c.moveTo(6.2, isSleeping ? -15.8 : -20.4);
+        c.lineTo(8.8, isSleeping ? -19.6 : -27.8);
+        c.lineTo(12.2, isSleeping ? -15.8 : -20.2);
+        c.closePath();
+        c.fill();
+        c.fillStyle = earInner;
+        c.beginPath();
+        c.moveTo(7.5, isSleeping ? -16.2 : -21);
+        c.lineTo(9.0, isSleeping ? -18.4 : -25.6);
+        c.lineTo(11, isSleeping ? -16.2 : -20.8);
+        c.closePath();
+        c.fill();
+
+        // Neat snowy muzzle
+        c.fillStyle = coat;
+        c.beginPath();
+        c.ellipse(isSleeping ? 14.5 : 16.4, isSleeping ? -10.8 : -14.6, 4.9, 3.4, 0, 0, Math.PI * 2);
+        c.fill();
+
+        // Signature "Sammy Smile"
+        c.strokeStyle = '#2d3436';
+        c.lineWidth = 1.15;
+        c.lineCap = 'round';
+        c.beginPath();
+        c.arc(isSleeping ? 15.6 : 17.5, isSleeping ? -10.4 : -14.2, 2.3, 0.15 * Math.PI, 0.8 * Math.PI);
+        c.stroke();
+
+        // Black button nose
+        c.fillStyle = '#1e272e';
+        c.beginPath();
+        c.arc(isSleeping ? 18.8 : 20.8, isSleeping ? -11.4 : -15.3, 1.7, 0, Math.PI * 2);
+        c.fill();
+
+        if (isSleeping) {
+          c.strokeStyle = '#1e1e1e';
+          c.lineWidth = 1.5;
+          c.lineCap = 'round';
+          c.beginPath();
+          c.arc(13, -12.8, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
+          c.stroke();
+        } else {
+          c.fillStyle = '#1e1e1e';
+          c.beginPath();
+          c.arc(14.5, -17.4, 1.6, 0, Math.PI * 2);
+          c.fill();
+          c.fillStyle = '#ffffff';
+          c.beginPath();
+          c.arc(14.9, -17.9, 0.55, 0, Math.PI * 2);
+          c.fill();
+        }
+      } else if (this.breed === 'bernese') {
+        const coat = this.isShiny ? this.shinyColor : '#20242b';
+        const coatSheen = this.isShiny ? 'rgba(255, 255, 255, 0.14)' : '#38404d';
+        const rust = '#c85d26';
+        const whiteFur = '#f8f9fa';
+
+        // Sturdy tricolor Alpine legs (black -> rust -> snowy paws)
+        c.fillStyle = coat;
+        c.fillRect(-12 - legSwing, -3, 4.9, isSleeping ? 3.5 : 5.2);
+        c.fillRect(6.8 + legSwing, -3, 4.9, isSleeping ? 3.5 : 5.2);
+        c.fillStyle = rust;
+        c.fillRect(-12 - legSwing, isSleeping ? 0.5 : 1.5, 4.9, isSleeping ? 2 : 3.2);
+        c.fillRect(6.8 + legSwing, isSleeping ? 0.5 : 1.5, 4.9, isSleeping ? 2 : 3.2);
+        c.fillStyle = whiteFur;
+        c.fillRect(-12 - legSwing, pawY, 4.9, pawHeight);
+        c.fillRect(6.8 + legSwing, pawY, 4.9, pawHeight);
+
+        // Lush sweeping black tail with crisp white tip
+        const wag = isSleeping ? tailWag : Math.sin(this.wagPhase * 1.9) * 3.4 * moodWagAmp;
+        c.save();
+        c.strokeStyle = coat;
+        c.lineWidth = 6.4;
+        c.lineCap = 'round';
+        c.beginPath();
+        c.moveTo(-15.5, isSleeping ? -8 : -9.8);
+        c.quadraticCurveTo(isSleeping ? -20 : -24, (isSleeping ? -8.5 : -12.5) + wag, isSleeping ? -22.5 : -27.5, (isSleeping ? -5.5 : -7.5) + wag * 0.55);
+        c.stroke();
+        c.strokeStyle = whiteFur;
+        c.lineWidth = 3.2;
+        c.beginPath();
+        c.moveTo(isSleeping ? -20.5 : -24.5, (isSleeping ? -7 : -9.6) + wag * 0.7);
+        c.lineTo(isSleeping ? -22.5 : -27.5, (isSleeping ? -5.5 : -7.5) + wag * 0.55);
+        c.stroke();
+        c.restore();
+
+        // Broad noble Bernese torso
+        c.fillStyle = coat;
+        c.beginPath();
+        c.ellipse(-1, isSleeping ? -8.4 : -10.2, isSleeping ? 14.4 : 16.2, (isSleeping ? 8.3 : 9.7) + sleepBreath * 0.22, 0, 0, Math.PI * 2);
+        c.fill();
+
+        // Glossy back sheen
+        c.fillStyle = coatSheen;
+        c.beginPath();
+        c.ellipse(-3.5, isSleeping ? -11.4 : -13.6, 9.8, 3.8, -0.06, 0, Math.PI * 2);
+        c.fill();
+
+        // Warm rust shoulder & flank points
+        c.fillStyle = rust;
+        c.beginPath();
+        c.ellipse(-8.5, isSleeping ? -5.5 : -6.6, 4.2, 3.4, -0.1, 0, Math.PI * 2);
+        c.ellipse(5.5, isSleeping ? -5.5 : -6.5, 4.4, 3.8, 0.15, 0, Math.PI * 2);
+        c.fill();
+
+        // Crisp snowy white Swiss chest blaze
+        c.fillStyle = whiteFur;
+        c.beginPath();
+        c.ellipse(8.2, isSleeping ? -7.8 : -9.4, 5.6, 6.8, 0.14, 0, Math.PI * 2);
+        c.fill();
+
+        // Noble round head
+        c.fillStyle = coat;
+        c.beginPath();
+        c.arc(isSleeping ? 10 : 11.6, isSleeping ? -13 : -18, 7.8, 0, Math.PI * 2);
+        c.fill();
+
+        // Warm rust cheek spot
+        c.fillStyle = rust;
+        c.beginPath();
+        c.ellipse(isSleeping ? 12.2 : 14, isSleeping ? -11.2 : -15.6, 3.4, 2.6, 0.1, 0, Math.PI * 2);
+        c.fill();
+
+        // White muzzle blaze
+        c.fillStyle = whiteFur;
+        c.beginPath();
+        c.ellipse(isSleeping ? 15.5 : 17.5, isSleeping ? -11.2 : -15.2, 5.2, 3.5, 0, 0, Math.PI * 2);
+        c.fill();
+
+        // Soft triangular floppy Bernese ear
+        c.fillStyle = this.isShiny ? this.shinyColor : '#14171c';
+        c.beginPath();
+        c.moveTo(6.8, isSleeping ? -15.5 : -20.5);
+        c.quadraticCurveTo(4.2, isSleeping ? -11.2 : -14.8, 7.6, isSleeping ? -9.2 : -12);
+        c.quadraticCurveTo(10.8, isSleeping ? -11.2 : -14.8, 10.6, isSleeping ? -15.5 : -20.2);
+        c.closePath();
+        c.fill();
+
+        // Glossy black nose
+        c.fillStyle = '#0f1217';
+        c.beginPath();
+        c.arc(isSleeping ? 20 : 22.2, isSleeping ? -11.8 : -16, 1.9, 0, Math.PI * 2);
+        c.fill();
+
+        // Signature warm rust eyebrow pip
+        c.fillStyle = rust;
+        c.beginPath();
+        c.arc(isSleeping ? 13.8 : 15.2, isSleeping ? -15 : -20.5, 1.45, 0, Math.PI * 2);
+        c.fill();
+
+        if (isSleeping) {
+          c.strokeStyle = '#f8f9fa';
+          c.lineWidth = 1.4;
+          c.lineCap = 'round';
+          c.beginPath();
+          c.arc(13.8, -13.2, 1.5, 0.15 * Math.PI, 0.85 * Math.PI);
+          c.stroke();
+        } else {
+          c.fillStyle = '#0f1217';
+          c.beginPath();
+          c.arc(15.2, -18.2, 1.65, 0, Math.PI * 2);
+          c.fill();
+          c.fillStyle = '#ffffff';
+          c.beginPath();
+          c.arc(15.6, -18.7, 0.6, 0, Math.PI * 2);
+          c.fill();
+        }
       }
 
       c.restore();
@@ -4900,13 +5362,17 @@ export function initPupperPark(): void {
   }
 
   document.getElementById('btnSummonAussie')?.addEventListener('click', () => recruitDog('aussie'));
+  document.getElementById('btnSummonCorgi')?.addEventListener('click', () => recruitDog('corgi'));
   document.getElementById('btnSummonBeagle')?.addEventListener('click', () => recruitDog('beagle'));
   document.getElementById('btnSummonCollie')?.addEventListener('click', () => recruitDog('collie'));
+  document.getElementById('btnSummonDachshund')?.addEventListener('click', () => recruitDog('dachshund'));
   document.getElementById('btnSummonHusky')?.addEventListener('click', () => recruitDog('husky'));
   document.getElementById('btnSummonGolden')?.addEventListener('click', () => recruitDog('golden'));
+  document.getElementById('btnSummonSamoyed')?.addEventListener('click', () => recruitDog('samoyed'));
   document.getElementById('btnSummonShepherd')?.addEventListener('click', () => recruitDog('shepherd'));
   document.getElementById('btnSummonShiba')?.addEventListener('click', () => recruitDog('shiba'));
   document.getElementById('btnSummonLabrador')?.addEventListener('click', () => recruitDog('labrador'));
+  document.getElementById('btnSummonBernese')?.addEventListener('click', () => recruitDog('bernese'));
 
   function buyTimedTreat(treatKey: string, costKey: string): void {
     const cfg = TREAT_STACK_MAP[treatKey];
@@ -5342,7 +5808,7 @@ export function initPupperPark(): void {
     const statDigPowerEl = document.getElementById('statDigPower');
     if (statDigPowerEl) statDigPowerEl.textContent = String(Number(state.digPower.toFixed(1)));
     const statSpeedEl = document.getElementById('statSpeed');
-    if (statSpeedEl) statSpeedEl.textContent = `${getDigMultiplier().toFixed(1)}x`;
+    if (statSpeedEl) statSpeedEl.textContent = `${getDigMultiplier().toFixed(2)}x`;
     const statChanceEl = document.getElementById('statChance');
     if (statChanceEl) {
       const totalMagic = Math.min(0.9, state.magicChance + getPerkMultipliers().magicBonus + decorBonuses.magicAdd + getCurrentWeather().magicAdd + getPackHappinessInfo().magicAdd);

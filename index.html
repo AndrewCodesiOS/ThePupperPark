@@ -156,12 +156,30 @@
           <div id="rosterListContainer" class="roster-list"></div>
         </div>
 
-        <!-- Dogs Tab (8 Breeds) -->
+        <!-- Dogs Tab (12 Breeds) -->
         <div class="tab-content" id="tab-dogs">
-          <div class="shop-card">
+          <div class="shop-card dog-breed-card">
             <div class="shop-info">
               <h3>Australian Shepherd</h3>
-              <p>Starter | 0.95x Bone Yield | 1.0x Pack Growth | 1.1x walk | Steady baseline digger.</p>
+              <p class="breed-role">Starter — Affordable first pup to fill early slots.</p>
+              <div class="breed-stats-group">
+                <div class="breed-stats-line">
+                  <span><strong>0.95x</strong> Bone Yield</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>1.00x</strong> Pack Growth</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>1.10x</strong> Walk</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>1.85s</strong> Dig</span>
+                </div>
+                <div class="breed-stats-line">
+                  <span><strong>+0%</strong> XP</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>+0.0%</strong> ✨ Magic</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>1x</strong> Treasure</span>
+                </div>
+              </div>
               <div class="shop-owned">Owned: <span id="countAussie">1</span></div>
             </div>
             <button type="button" class="action-btn" id="btnSummonAussie">
@@ -170,10 +188,58 @@
             </button>
           </div>
 
-          <div class="shop-card">
+          <div class="shop-card dog-breed-card">
+            <div class="shop-info">
+              <h3>Pembroke Welsh Corgi</h3>
+              <p class="breed-role">Low-Rider — Quick early digger with a crisp XP boost.</p>
+              <div class="breed-stats-group">
+                <div class="breed-stats-line">
+                  <span><strong>1.15x</strong> Bone Yield</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>1.06x</strong> Pack Growth</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>1.12x</strong> Walk</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span class="breed-stat-highlight"><strong>1.55s</strong> Dig</span>
+                </div>
+                <div class="breed-stats-line">
+                  <span class="breed-stat-highlight"><strong>+12%</strong> XP</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>+0.8%</strong> ✨ Magic</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>1.25x</strong> Treasure</span>
+                </div>
+              </div>
+              <div class="shop-owned">Owned: <span id="countCorgi">0</span></div>
+            </div>
+            <button type="button" class="action-btn" id="btnSummonCorgi">
+              <span class="btn-name">Recruit</span>
+              <span class="btn-cost" id="costCorgi">60 🦴</span>
+            </button>
+          </div>
+
+          <div class="shop-card dog-breed-card">
             <div class="shop-info">
               <h3>Beagle</h3>
-              <p>Tracker | 1.35x Bone Yield | 1.12x Pack Growth | +1.0% ✨ magic &amp; strong nose.</p>
+              <p class="breed-role">Tracker — Strong early bone yield and steady pack growth.</p>
+              <div class="breed-stats-group">
+                <div class="breed-stats-line">
+                  <span class="breed-stat-highlight"><strong>1.35x</strong> Bone Yield</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>1.12x</strong> Pack Growth</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>1.00x</strong> Walk</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>1.75s</strong> Dig</span>
+                </div>
+                <div class="breed-stats-line">
+                  <span><strong>+5%</strong> XP</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>+1.0%</strong> ✨ Magic</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>1x</strong> Treasure</span>
+                </div>
+              </div>
               <div class="shop-owned">Owned: <span id="countBeagle">0</span></div>
             </div>
             <button type="button" class="action-btn" id="btnSummonBeagle">
@@ -182,10 +248,28 @@
             </button>
           </div>
 
-          <div class="shop-card">
+          <div class="shop-card dog-breed-card">
             <div class="shop-info">
               <h3>Border Collie</h3>
-              <p>Swift Digger | 1.05x Bone Yield | 1.1x Pack Growth | 1.2x walk | +1.5% ✨ magic &amp; quick digs.</p>
+              <p class="breed-role">Swift Digger — High-tempo runner with fast dig cycles.</p>
+              <div class="breed-stats-group">
+                <div class="breed-stats-line">
+                  <span><strong>1.05x</strong> Bone Yield</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>1.10x</strong> Pack Growth</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span class="breed-stat-highlight"><strong>1.20x</strong> Walk</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span class="breed-stat-highlight"><strong>1.35s</strong> Dig</span>
+                </div>
+                <div class="breed-stats-line">
+                  <span><strong>+10%</strong> XP</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>+1.5%</strong> ✨ Magic</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>1x</strong> Treasure</span>
+                </div>
+              </div>
               <div class="shop-owned">Owned: <span id="countCollie">0</span></div>
             </div>
             <button type="button" class="action-btn" id="btnSummonCollie">
@@ -194,10 +278,58 @@
             </button>
           </div>
 
-          <div class="shop-card">
+          <div class="shop-card dog-breed-card">
+            <div class="shop-info">
+              <h3>Dachshund</h3>
+              <p class="breed-role">Burrow Pro — Fastest digger in the park with 3x treasure odds.</p>
+              <div class="breed-stats-group">
+                <div class="breed-stats-line">
+                  <span><strong>1.22x</strong> Bone Yield</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>1.14x</strong> Pack Growth</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>1.15x</strong> Walk</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span class="breed-stat-highlight"><strong>1.25s</strong> Dig</span>
+                </div>
+                <div class="breed-stats-line">
+                  <span><strong>+10%</strong> XP</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>+2.2%</strong> ✨ Magic</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span class="breed-stat-highlight"><strong>3x</strong> Treasure</span>
+                </div>
+              </div>
+              <div class="shop-owned">Owned: <span id="countDachshund">0</span></div>
+            </div>
+            <button type="button" class="action-btn" id="btnSummonDachshund">
+              <span class="btn-name">Recruit</span>
+              <span class="btn-cost" id="costDachshund">560 🦴</span>
+            </button>
+          </div>
+
+          <div class="shop-card dog-breed-card">
             <div class="shop-info">
               <h3>Siberian Husky</h3>
-              <p>Sprinter | 1.15x Bone Yield | 1.15x Pack Growth | 1.25x walk | +15% XP &amp; +2.0% ✨ magic.</p>
+              <p class="breed-role">Sprinter — Fastest runner with strong XP and balanced growth.</p>
+              <div class="breed-stats-group">
+                <div class="breed-stats-line">
+                  <span><strong>1.15x</strong> Bone Yield</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>1.15x</strong> Pack Growth</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span class="breed-stat-highlight"><strong>1.25x</strong> Walk</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>1.65s</strong> Dig</span>
+                </div>
+                <div class="breed-stats-line">
+                  <span class="breed-stat-highlight"><strong>+15%</strong> XP</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>+2.0%</strong> ✨ Magic</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>1x</strong> Treasure</span>
+                </div>
+              </div>
               <div class="shop-owned">Owned: <span id="countHusky">0</span></div>
             </div>
             <button type="button" class="action-btn" id="btnSummonHusky">
@@ -206,10 +338,28 @@
             </button>
           </div>
 
-          <div class="shop-card">
+          <div class="shop-card dog-breed-card">
             <div class="shop-info">
               <h3>Golden Retriever</h3>
-              <p>Bone Magnet | 1.65x Bone Yield | 1.2x Pack Growth | +3.0% ✨ magic &amp; big payouts.</p>
+              <p class="breed-role">Bone Magnet — Heavy mid-game bone yield powerhouse.</p>
+              <div class="breed-stats-group">
+                <div class="breed-stats-line">
+                  <span class="breed-stat-highlight"><strong>1.65x</strong> Bone Yield</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>1.20x</strong> Pack Growth</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>1.05x</strong> Walk</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>1.75s</strong> Dig</span>
+                </div>
+                <div class="breed-stats-line">
+                  <span><strong>+8%</strong> XP</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span class="breed-stat-highlight"><strong>+3.0%</strong> ✨ Magic</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>1x</strong> Treasure</span>
+                </div>
+              </div>
               <div class="shop-owned">Owned: <span id="countGolden">0</span></div>
             </div>
             <button type="button" class="action-btn" id="btnSummonGolden">
@@ -218,10 +368,58 @@
             </button>
           </div>
 
-          <div class="shop-card">
+          <div class="shop-card dog-breed-card">
+            <div class="shop-info">
+              <h3>Samoyed</h3>
+              <p class="breed-role">Smiling Cloud — Fast-leveling magic bone farmer with 2x treasure odds.</p>
+              <div class="breed-stats-group">
+                <div class="breed-stats-line">
+                  <span><strong>1.55x</strong> Bone Yield</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>1.24x</strong> Pack Growth</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>1.12x</strong> Walk</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>1.60s</strong> Dig</span>
+                </div>
+                <div class="breed-stats-line">
+                  <span class="breed-stat-highlight"><strong>+22%</strong> XP</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span class="breed-stat-highlight"><strong>+4.2%</strong> ✨ Magic</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span class="breed-stat-highlight"><strong>2x</strong> Treasure</span>
+                </div>
+              </div>
+              <div class="shop-owned">Owned: <span id="countSamoyed">0</span></div>
+            </div>
+            <button type="button" class="action-btn" id="btnSummonSamoyed">
+              <span class="btn-name">Recruit</span>
+              <span class="btn-cost" id="costSamoyed">3,200 🦴</span>
+            </button>
+          </div>
+
+          <div class="shop-card dog-breed-card">
             <div class="shop-info">
               <h3>German Shepherd</h3>
-              <p>Pack Captain | 1.25x Bone Yield | 1.25x Pack Growth | +12% XP &amp; +3.5% ✨ magic.</p>
+              <p class="breed-role">Pack Captain — Reliable anchor that accelerates whole-pack growth.</p>
+              <div class="breed-stats-group">
+                <div class="breed-stats-line">
+                  <span><strong>1.25x</strong> Bone Yield</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span class="breed-stat-highlight"><strong>1.25x</strong> Pack Growth</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>1.15x</strong> Walk</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>1.65s</strong> Dig</span>
+                </div>
+                <div class="breed-stats-line">
+                  <span><strong>+12%</strong> XP</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span class="breed-stat-highlight"><strong>+3.5%</strong> ✨ Magic</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>1x</strong> Treasure</span>
+                </div>
+              </div>
               <div class="shop-owned">Owned: <span id="countShepherd">0</span></div>
             </div>
             <button type="button" class="action-btn" id="btnSummonShepherd">
@@ -230,10 +428,28 @@
             </button>
           </div>
 
-          <div class="shop-card">
+          <div class="shop-card dog-breed-card">
             <div class="shop-info">
               <h3>Shiba Inu</h3>
-              <p>Treasure Seeker | 1.2x Bone Yield | 1.2x Pack Growth | High treasure odds &amp; +5.5% ✨ magic.</p>
+              <p class="breed-role">Treasure Seeker — Unmatched 8x treasure hunter with high magic odds.</p>
+              <div class="breed-stats-group">
+                <div class="breed-stats-line">
+                  <span><strong>1.20x</strong> Bone Yield</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>1.20x</strong> Pack Growth</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>1.10x</strong> Walk</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>1.70s</strong> Dig</span>
+                </div>
+                <div class="breed-stats-line">
+                  <span><strong>+12%</strong> XP</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span class="breed-stat-highlight"><strong>+5.5%</strong> ✨ Magic</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span class="breed-stat-highlight"><strong>8x</strong> Treasure</span>
+                </div>
+              </div>
               <div class="shop-owned">Owned: <span id="countShiba">0</span></div>
             </div>
             <button type="button" class="action-btn" id="btnSummonShiba">
@@ -242,15 +458,63 @@
             </button>
           </div>
 
-          <div class="shop-card">
+          <div class="shop-card dog-breed-card">
             <div class="shop-info">
               <h3>Labrador Retriever</h3>
-              <p>Master Retriever | 1.8x Bone Yield | 1.32x Pack Growth | +20% XP &amp; +5.0% ✨ magic.</p>
+              <p class="breed-role">Master Retriever — Fast, high-yield late-game all-rounder.</p>
+              <div class="breed-stats-group">
+                <div class="breed-stats-line">
+                  <span class="breed-stat-highlight"><strong>1.80x</strong> Bone Yield</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span class="breed-stat-highlight"><strong>1.32x</strong> Pack Growth</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span class="breed-stat-highlight"><strong>1.20x</strong> Walk</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>1.50s</strong> Dig</span>
+                </div>
+                <div class="breed-stats-line">
+                  <span class="breed-stat-highlight"><strong>+20%</strong> XP</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span class="breed-stat-highlight"><strong>+5.0%</strong> ✨ Magic</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>1.5x</strong> Treasure</span>
+                </div>
+              </div>
               <div class="shop-owned">Owned: <span id="countLabrador">0</span></div>
             </div>
             <button type="button" class="action-btn" id="btnSummonLabrador">
               <span class="btn-name">Recruit</span>
               <span class="btn-cost" id="costLabrador">22,000 🦴</span>
+            </button>
+          </div>
+
+          <div class="shop-card dog-breed-card">
+            <div class="shop-info">
+              <h3>Bernese Mountain Dog</h3>
+              <p class="breed-role">Alpine Champion — Peak yield, pack growth, XP, magic, and 4x treasure odds.</p>
+              <div class="breed-stats-group">
+                <div class="breed-stats-line">
+                  <span class="breed-stat-highlight"><strong>2.10x</strong> Bone Yield</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span class="breed-stat-highlight"><strong>1.40x</strong> Pack Growth</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span><strong>1.10x</strong> Walk</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span class="breed-stat-highlight"><strong>1.45s</strong> Dig</span>
+                </div>
+                <div class="breed-stats-line">
+                  <span class="breed-stat-highlight"><strong>+25%</strong> XP</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span class="breed-stat-highlight"><strong>+6.5%</strong> ✨ Magic</span>
+                  <span class="breed-sep" aria-hidden="true">|</span>
+                  <span class="breed-stat-highlight"><strong>4x</strong> Treasure</span>
+                </div>
+              </div>
+              <div class="shop-owned">Owned: <span id="countBernese">0</span></div>
+            </div>
+            <button type="button" class="action-btn" id="btnSummonBernese">
+              <span class="btn-name">Recruit</span>
+              <span class="btn-cost" id="costBernese">42,000 🦴</span>
             </button>
           </div>
         </div>
@@ -429,7 +693,7 @@
         <div class="tab-content" id="tab-stats">
           <div class="stats-grid">
             <div class="stat-box"><span>Dig Power</span> <strong id="statDigPower">1</strong></div>
-            <div class="stat-box"><span>Dig Multiplier</span> <strong id="statSpeed">1.0x</strong></div>
+            <div class="stat-box"><span>Pack Dig Multiplier</span> <strong id="statSpeed">1.00x</strong></div>
             <div class="stat-box"><span>Magic Chance</span> <strong id="statChance">22%</strong></div>
             <div class="stat-box"><span>Lifetime Bones</span> <strong id="statLifetimeBones">0</strong></div>
             <div class="stat-box"><span>Decor Bonus</span> <strong id="statDecorBonus">None yet</strong></div>
@@ -524,6 +788,7 @@
         <div class="help-row"><strong>Call Pack</strong><span>Hold on a tile (1s) or tap Call to gather your pups together.</span></div>
         <div class="help-row"><strong>Decor &amp; Toys</strong><span>Placed decor grants permanent XP, Magic, and Bone bonuses; toys boost digs &amp; offline yield.</span></div>
         <div class="help-row"><strong>Hourly Weather</strong><span>Weather shifts every hour with atmospheric effects and perks (tap the weather badge for details).</span></div>
+        <div class="help-row"><strong>Pack Growth &amp; Levels</strong><span>Every pup's bones dug boost the whole pack's Dig Multiplier (scaled by Pack Growth), and each dog level adds +1% to its own bone yield.</span></div>
         <div class="help-row"><strong>Pack Happiness</strong><span>Pet pups, toss treats, own toys, and place decor to lift mood for cozy bonuses with zero penalties.</span></div>
       </div>
       <button type="button" id="btnConfirmHelp" class="action-btn" style="width: 100%; padding: 11px;">Got It</button>
