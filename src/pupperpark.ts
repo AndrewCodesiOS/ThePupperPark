@@ -384,6 +384,8 @@ export function initPupperPark(): void {
   const STARTER_SHINY_ODDS = 1 / 325;
   const SPAWN_SHINY_ODDS = 1 / 650;
   const REROLL_SHINY_ODDS = 1 / 1300;
+  const MANOR_REROLL_SHINY_ODDS = 1 / 916;
+  const MANOR_SPAWN_SHINY_ODDS = 1 / 458;
   const SHINY_MAGIC_BONE_BONUS = 1;
   const REROLL_STEP_COST = 25;
   const SHINY_PALETTES = ['#f1c40f', '#e67e22', '#e84393', '#00cec9', '#fd79a8'];
@@ -2139,6 +2141,14 @@ export function initPupperPark(): void {
     return Array.isArray(state.placedDecorations) && state.placedDecorations.some(d => d.type === 'doghouseManor');
   }
 
+  function getEffectiveRerollShinyOdds(): number {
+    return hasGrandDoghousePlaced() ? MANOR_REROLL_SHINY_ODDS : REROLL_SHINY_ODDS;
+  }
+
+  function getEffectiveSpawnShinyOdds(): number {
+    return hasGrandDoghousePlaced() ? MANOR_SPAWN_SHINY_ODDS : SPAWN_SHINY_ODDS;
+  }
+
   function getWaterBowlPos(): { gx: number; gy: number } {
     return hasGrandDoghousePlaced() ? GRAND_WATER_BOWL_POS : WATER_BOWL_POS;
   }
@@ -3112,7 +3122,7 @@ export function initPupperPark(): void {
     }
 
     let becameShiny = false;
-    if (!entry.isShiny && Math.random() < REROLL_SHINY_ODDS) {
+    if (!entry.isShiny && Math.random() < getEffectiveRerollShinyOdds()) {
       entry.isShiny = true;
       if (!entry.shinyColor) {
         entry.shinyColor = SHINY_PALETTES[Math.floor(Math.random() * SHINY_PALETTES.length)];
@@ -8218,7 +8228,7 @@ export function initPupperPark(): void {
       spendRegularBones(cost);
       state.costs[normBreed] = computeNextCappedCost(cost, cfg.costMult, cfg.priceCap);
 
-      const isShiny = Math.random() < SPAWN_SHINY_ODDS;
+      const isShiny = Math.random() < getEffectiveSpawnShinyOdds();
       const chosenColor = isShiny ? SHINY_PALETTES[Math.floor(Math.random() * SHINY_PALETTES.length)] : null;
 
       const entry = createRosterEntry(normBreed, isShiny, chosenColor);
