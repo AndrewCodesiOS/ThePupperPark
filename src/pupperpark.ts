@@ -136,6 +136,7 @@ export function initPupperPark(): void {
   const TIMED_TREAT_MAX_STACKS = 5;
 
   const DOGHOUSE_TILE = { gx: 1, gy: 1 };
+  const WATER_BOWL_POS = { gx: 1.96, gy: 1.44 };
   const STARTER_TREE_TILE = { gx: 5, gy: 1 };
 
   const DECOR_TYPES: DecorType[] = [
@@ -325,10 +326,10 @@ export function initPupperPark(): void {
 
   const HAPPINESS_BASE_FLOOR = 35;
   const HAPPINESS_MAX = 100;
-  const HAPPINESS_MAX_FLOOR = 90;
-  const HAPPINESS_COOL_RATE_PER_SEC = 0.12;
+  const HAPPINESS_MAX_FLOOR = 65;
   const HAPPINESS_TREAT_TRICKLE_PER_SEC = 0.25;
-  const HAPPINESS_OFFLINE_RATE_PER_HOUR = 14;
+  const HAPPINESS_AWAY_CHECKIN_HOURS = 8; // Lose 1/3 of decayable happiness per 8h away (3 check-ins/day)
+  const HAPPINESS_AWAY_FULL_DECAY_HOURS = HAPPINESS_AWAY_CHECKIN_HOURS * 3; // 24h to settle to Cozy Floor
   const WHISTLE_HAPPINESS_COOLDOWN_MS = 15000;
 
   const TOY_CONFIG: Record<string, { baseCost: number; costMult: number; priceCap: number }> = {
@@ -1732,7 +1733,13 @@ export function initPupperPark(): void {
 
   let pendingRetireDogId: string | null = null;
   let pendingRerollDogId: string | null = null;
-  let queuedAwayProgress: { actualEarned: number; estimatedDigs: number; foundTreasure: OfflineTreasureResult | null } | null = null;
+  let queuedAwayProgress: {
+    actualEarned: number;
+    estimatedDigs: number;
+    foundTreasure: OfflineTreasureResult | null;
+    moodBefore?: number;
+    moodAfter?: number;
+  } | null = null;
 
   function addFloatingText(x: number, y: number, text: string, color = '#ffeaa7'): void {
     floatingTexts.push({ x, y, text, color, age: 0, duration: 0.85 });
@@ -1988,10 +1995,10 @@ export function initPupperPark(): void {
     if (state.isDraftingPerk || isModalCurrentlyOpen('perkModal') || isModalCurrentlyOpen('offlineModal')) {
       return;
     }
-    const { actualEarned, estimatedDigs, foundTreasure } = queuedAwayProgress;
+    const { actualEarned, estimatedDigs, foundTreasure, moodBefore, moodAfter } = queuedAwayProgress;
     queuedAwayProgress = null;
     updateUI();
-    showOfflineModal(actualEarned, estimatedDigs, foundTreasure);
+    showOfflineModal(actualEarned, estimatedDigs, foundTreasure, moodBefore, moodAfter);
   }
 
   function settleAwayProgressSinceLastSave(now = Date.now()): boolean {
@@ -2012,8 +2019,12 @@ export function initPupperPark(): void {
     const currentMood = typeof state.packHappiness === 'number' && !Number.isNaN(state.packHappiness)
       ? Math.max(cozyFloor, Math.min(HAPPINESS_MAX, state.packHappiness))
       : cozyFloor;
-    const awayDrop = (effectiveSeconds / 3600) * HAPPINESS_OFFLINE_RATE_PER_HOUR;
-    state.packHappiness = Math.max(cozyFloor, currentMood - awayDrop);
+    // Lose 1/3 of the decayable happiness span above Cozy Floor every 8 hours away (full cool over 24h)
+    const decayableSpan = Math.max(0, HAPPINESS_MAX - cozyFloor);
+    const awayFraction = Math.min(1, rawElapsedSeconds / (HAPPINESS_AWAY_FULL_DECAY_HOURS * 3600));
+    const awayDrop = decayableSpan * awayFraction;
+    const nextMood = Math.max(cozyFloor, currentMood - awayDrop);
+    state.packHappiness = nextMood;
 
     const estimatedDigs = estimateOfflineDigs(effectiveSeconds);
     const avgPerDig = getAverageBonesPerDig();
@@ -2023,22 +2034,36 @@ export function initPupperPark(): void {
     const foundTreasure = Math.random() < offlineTreasureChance ? rollOfflineTreasure() : null;
 
     const actualEarned = earned > 0 ? addRegularBones(earned) : 0;
+    const moodBeforeRounded = Math.round(currentMood);
+    const moodAfterRounded = Math.round(nextMood);
+
     if (actualEarned > 0 || foundTreasure) {
       updateUI();
       if (state.isDraftingPerk || isModalCurrentlyOpen('perkModal') || isModalCurrentlyOpen('offlineModal')) {
         if (queuedAwayProgress) {
           queuedAwayProgress.actualEarned += actualEarned;
           queuedAwayProgress.estimatedDigs += estimatedDigs;
+          queuedAwayProgress.moodAfter = moodAfterRounded;
           if (foundTreasure) {
             queuedAwayProgress.foundTreasure = foundTreasure;
           }
         } else {
-          queuedAwayProgress = { actualEarned, estimatedDigs, foundTreasure };
+          queuedAwayProgress = {
+            actualEarned,
+            estimatedDigs,
+            foundTreasure,
+            moodBefore: moodBeforeRounded,
+            moodAfter: moodAfterRounded
+          };
         }
       } else {
-        showOfflineModal(actualEarned, estimatedDigs, foundTreasure);
+        showOfflineModal(actualEarned, estimatedDigs, foundTreasure, moodBeforeRounded, moodAfterRounded);
       }
       return true;
+    }
+
+    if (moodAfterRounded !== moodBeforeRounded) {
+      updateUI();
     }
 
     return false;
@@ -2549,7 +2574,13 @@ export function initPupperPark(): void {
     saveGameAt(Date.now());
   });
 
-  function showOfflineModal(earned: number, _estimatedDigs = 0, foundTreasure: OfflineTreasureResult | null = null): void {
+  function showOfflineModal(
+    earned: number,
+    _estimatedDigs = 0,
+    foundTreasure: OfflineTreasureResult | null = null,
+    moodBefore?: number,
+    moodAfter?: number
+  ): void {
     const modal = document.getElementById('offlineModal');
     const text = document.getElementById('offlineEarnings');
     if (text) {
@@ -2558,6 +2589,13 @@ export function initPupperPark(): void {
       const bonesLine = document.createElement('div');
       bonesLine.textContent = `They dug ${Math.round(earned).toLocaleString()} Bones while you were away!`;
       text.appendChild(bonesLine);
+
+      if (typeof moodBefore === 'number' && typeof moodAfter === 'number' && moodBefore - moodAfter >= 2) {
+        const moodLine = document.createElement('div');
+        moodLine.className = 'offline-mood-note';
+        moodLine.textContent = `Your pups missed you — Pack Happiness cooled from ${moodBefore}% to ${moodAfter}%. Pet or treat them to perk them right back up!`;
+        text.appendChild(moodLine);
+      }
 
       if (foundTreasure) {
         const card = document.createElement('div');
@@ -3540,7 +3578,10 @@ export function initPupperPark(): void {
   document.getElementById('btnConfirmClearDecor')?.addEventListener('click', () => {
     initAudio();
     state.placedDecorations = [];
-    dogs.forEach(d => d.cancelSlide());
+    dogs.forEach(d => {
+      d.cancelSlide();
+      d.cancelDrink(true);
+    });
     showLandmarkToggleNote(null);
     state.packHappiness = Math.max(getCozyFloor(), Math.min(HAPPINESS_MAX, state.packHappiness || getCozyFloor()));
     sfx.thud();
@@ -3904,6 +3945,7 @@ export function initPupperPark(): void {
     }
     dogs.forEach((dog, idx) => {
       dog.cancelSlide();
+      dog.cancelDrink();
       dog.onReachToy = null;
       dog.targetGx = Math.max(0.5, Math.min(GRID_SIZE - 0.5, gx + (Math.random() - 0.5) * 0.8));
       dog.targetGy = Math.max(0.5, Math.min(GRID_SIZE - 0.5, gy + (Math.random() - 0.5) * 0.8));
@@ -4298,12 +4340,90 @@ export function initPupperPark(): void {
     return null;
   }
 
+  interface DrinkTarget {
+    kind: 'bowl' | 'fountain';
+    key: string;
+    gx?: number;
+    gy?: number;
+    waterGx: number;
+    waterGy: number;
+    standGx: number;
+    standGy: number;
+  }
+
+  function isNearSlideZone(gx: number, gy: number): boolean {
+    if (!Array.isArray(state.placedDecorations)) return false;
+    return state.placedDecorations.some(d => {
+      if (d.type !== 'slide') return false;
+      return (
+        gx >= d.gx - 0.35 &&
+        gx <= d.gx + 2.45 &&
+        gy >= d.gy - 0.35 &&
+        gy <= d.gy + 1.45
+      );
+    });
+  }
+
+  function getAvailableWaterSource(dog: Dog): DrinkTarget | null {
+    const candidates: DrinkTarget[] = [];
+
+    const bowlBusy = dogs.some(d => d !== dog && d.drinkTarget?.key === 'bowl');
+    if (!bowlBusy) {
+      candidates.push({
+        kind: 'bowl',
+        key: 'bowl',
+        waterGx: WATER_BOWL_POS.gx,
+        waterGy: WATER_BOWL_POS.gy,
+        standGx: WATER_BOWL_POS.gx + 0.24,
+        standGy: WATER_BOWL_POS.gy + 0.16
+      });
+    }
+
+    const fountainCandidates: DrinkTarget[] = [];
+    if (Array.isArray(state.placedDecorations)) {
+      for (const dec of state.placedDecorations) {
+        if (dec.type !== 'fountain') continue;
+        const key = `fountain:${dec.gx},${dec.gy}`;
+        const busy = dogs.some(d => d !== dog && d.drinkTarget?.key === key);
+        if (busy) continue;
+
+        const centerGx = dec.gx + 0.5;
+        const centerGy = dec.gy + 0.5;
+        const dx = dog.gx - centerGx;
+        const dy = dog.gy - centerGy;
+        const dist = Math.hypot(dx, dy);
+        // Approach the fountain basin rim from the dog's side (default front-right rim)
+        const dirX = dist > 0.08 ? dx / dist : 0.72;
+        const dirY = dist > 0.08 ? dy / dist : 0.69;
+        const standGx = Math.max(0.35, Math.min(GRID_SIZE - 0.35, centerGx + dirX * 0.56));
+        const standGy = Math.max(0.35, Math.min(GRID_SIZE - 0.35, centerGy + dirY * 0.56));
+
+        fountainCandidates.push({
+          kind: 'fountain',
+          key,
+          gx: dec.gx,
+          gy: dec.gy,
+          waterGx: centerGx,
+          waterGy: centerGy,
+          standGx,
+          standGy
+        });
+      }
+    }
+
+    // Once the player places fountains, pups happily favor drinking from them while still using the doghouse bowl
+    if (fountainCandidates.length > 0 && (candidates.length === 0 || Math.random() < 0.68)) {
+      return fountainCandidates[Math.floor(Math.random() * fountainCandidates.length)];
+    }
+    return candidates.length > 0 ? candidates[0] : null;
+  }
+
   class Dog {
     gx: number;
     gy: number;
     targetGx: number;
     targetGy: number;
-    state: 'IDLE' | 'WALK' | 'DIG' | 'SLEEP' | 'SLIDE_CLIMB' | 'SLIDE_DOWN';
+    state: 'IDLE' | 'WALK' | 'DIG' | 'SLEEP' | 'DRINK' | 'SLIDE_CLIMB' | 'SLIDE_DOWN';
     timer: number;
     facingRight: boolean;
     sleepFacingRight: boolean;
@@ -4324,6 +4444,10 @@ export function initPupperPark(): void {
     slideTilt: number;
     slideCooldown: number;
     onReachSlide: (() => void) | null;
+    drinkTarget: DrinkTarget | null;
+    drinkCooldown: number;
+    waterBoostTimer: number;
+    onReachWater: (() => void) | null;
     blinkTimer: number;
 
     constructor(gx: number, gy: number, rosterId: string, breed = 'aussie', isShiny = false, shinyColor: string | null = null) {
@@ -4352,6 +4476,10 @@ export function initPupperPark(): void {
       this.slideTilt = 0;
       this.slideCooldown = 3 + Math.random() * 6;
       this.onReachSlide = null;
+      this.drinkTarget = null;
+      this.drinkCooldown = 18 + Math.random() * 32;
+      this.waterBoostTimer = 0;
+      this.onReachWater = null;
       this.blinkTimer = 1.4 + Math.random() * 4.2;
     }
 
@@ -4364,6 +4492,69 @@ export function initPupperPark(): void {
       if (this.state === 'SLIDE_CLIMB' || this.state === 'SLIDE_DOWN') {
         this.state = 'IDLE';
         this.timer = 0.6 + Math.random() * 0.8;
+      }
+    }
+
+    cancelDrink(onlyFountain = false): void {
+      if (onlyFountain && this.drinkTarget?.kind !== 'fountain') {
+        return;
+      }
+      this.drinkTarget = null;
+      this.onReachWater = null;
+      if (this.state === 'DRINK') {
+        this.state = 'IDLE';
+        this.timer = 0.5 + Math.random() * 0.7;
+      }
+    }
+
+    startDrinking(): void {
+      if (!this.drinkTarget) {
+        this.state = 'IDLE';
+        this.timer = 0.5;
+        return;
+      }
+      if (this.drinkTarget.kind === 'fountain') {
+        const exists = state.placedDecorations.some(
+          d => d.type === 'fountain' && d.gx === this.drinkTarget?.gx && d.gy === this.drinkTarget?.gy
+        );
+        if (!exists) {
+          this.cancelDrink();
+          return;
+        }
+      }
+      const dogPos = gridToScreen(this.gx, this.gy);
+      const waterPos = gridToScreen(this.drinkTarget.waterGx, this.drinkTarget.waterGy);
+      if (Math.abs(waterPos.x - dogPos.x) > 0.5) {
+        this.facingRight = waterPos.x >= dogPos.x;
+      }
+      this.state = 'DRINK';
+      this.timer = 2.1 + Math.random() * 0.9;
+    }
+
+    finishDrink(): void {
+      const target = this.drinkTarget;
+      this.drinkTarget = null;
+      this.onReachWater = null;
+      this.drinkCooldown = 50 + Math.random() * 40;
+      // Subtle hidden hydration speed boost (+18% walk & dig pace for 18s)
+      this.waterBoostTimer = 18;
+      this.petBounce = 0.22;
+      this.state = 'IDLE';
+      this.timer = 0.4 + Math.random() * 0.5;
+
+      const pos = gridToScreen(target ? target.waterGx : this.gx, target ? target.waterGy : this.gy);
+      const scale = getScale();
+      for (let i = 0; i < 3; i++) {
+        particles.push({
+          x: pos.x + (Math.random() - 0.5) * 14 * scale,
+          y: pos.y - 6 * scale,
+          vx: (Math.random() - 0.5) * 26,
+          vy: -24 - Math.random() * 18,
+          life: 0.48,
+          maxLife: 0.48,
+          color: i % 2 === 0 ? '#81ecec' : '#dff9fb',
+          size: 2.3 * scale
+        });
       }
     }
 
@@ -4450,6 +4641,11 @@ export function initPupperPark(): void {
 
     enterSleep(): void {
       this.cancelSlide();
+      this.cancelDrink();
+      if (isNearSlideZone(this.gx, this.gy)) {
+        this.pickNewTarget();
+        return;
+      }
       this.state = 'SLEEP';
       this.sleepFacingRight = this.facingRight;
       this.timer = 3.2 + Math.random() * 2.8;
@@ -4543,9 +4739,24 @@ export function initPupperPark(): void {
     }
 
     pickNewTarget(): void {
+      if (this.drinkCooldown <= 0 && !this.onReachToy) {
+        const waterSource = getAvailableWaterSource(this);
+        if (waterSource && Math.random() < 0.10) {
+          this.slideTarget = null;
+          this.onReachSlide = null;
+          this.drinkTarget = waterSource;
+          this.targetGx = waterSource.standGx;
+          this.targetGy = waterSource.standGy;
+          this.onReachWater = () => this.startDrinking();
+          this.state = 'WALK';
+          return;
+        }
+      }
       if (this.slideCooldown <= 0 && !this.onReachToy) {
         const openSlide = getAvailableSlide(this);
         if (openSlide && Math.random() < 0.32) {
+          this.drinkTarget = null;
+          this.onReachWater = null;
           this.slideTarget = { gx: openSlide.gx, gy: openSlide.gy };
           this.targetGx = Math.max(0.24, openSlide.gx + 0.26);
           this.targetGy = openSlide.gy + 0.5;
@@ -4556,6 +4767,8 @@ export function initPupperPark(): void {
       }
       this.slideTarget = null;
       this.onReachSlide = null;
+      this.drinkTarget = null;
+      this.onReachWater = null;
       this.targetGx = 0.7 + Math.random() * (GRID_SIZE - 1.4);
       this.targetGy = 0.7 + Math.random() * (GRID_SIZE - 1.4);
       this.state = 'WALK';
@@ -4574,6 +4787,12 @@ export function initPupperPark(): void {
       if (this.slideCooldown > 0) {
         this.slideCooldown = Math.max(0, this.slideCooldown - dt);
       }
+      if (this.drinkCooldown > 0) {
+        this.drinkCooldown = Math.max(0, this.drinkCooldown - dt);
+      }
+      if (this.waterBoostTimer > 0) {
+        this.waterBoostTimer = Math.max(0, this.waterBoostTimer - dt);
+      }
       this.blinkTimer -= dt;
       if (this.blinkTimer <= 0) {
         this.blinkTimer = 2.6 + Math.random() * 4.2;
@@ -4587,12 +4806,13 @@ export function initPupperPark(): void {
 
       const baconPaceMult = getActiveBaconPaceMult();
       const decorPaceMult = getDecorBonuses().paceMult;
-      const visualPace = Math.min(1.6, 1 + Math.log1p(Math.max(0, workBonus - 1)) * 0.25) * weather.digSpeedMult * moodInfo.paceMult * baconPaceMult * decorPaceMult * treasureBonuses.paceMult;
+      const hydrationPaceMult = this.waterBoostTimer > 0 ? 1.18 : 1;
+      const visualPace = Math.min(1.6, 1 + Math.log1p(Math.max(0, workBonus - 1)) * 0.25) * weather.digSpeedMult * moodInfo.paceMult * baconPaceMult * decorPaceMult * treasureBonuses.paceMult * hydrationPaceMult;
       const walkSpeed = (cfg.walkMult || 1.1) * visualPace;
 
       this.animPhase += dt * (
         this.state === 'WALK' || this.state === 'SLIDE_CLIMB'
-          ? 9 * Math.min(1.35, visualPace)
+          ? 9 * Math.min(1.45, visualPace)
           : this.state === 'SLEEP'
             ? 1.4
             : 5 * Math.min(1.35, visualPace)
@@ -4602,7 +4822,9 @@ export function initPupperPark(): void {
           ? 1.4
           : this.state === 'SLIDE_DOWN'
             ? 10.5 * moodInfo.wagMult
-            : 5.2 * moodInfo.wagMult
+            : this.state === 'DRINK'
+              ? 6.4 * moodInfo.wagMult
+              : 5.2 * moodInfo.wagMult
       );
 
       if (moodInfo.tier === 'ecstatic' && this.state !== 'SLEEP' && Math.random() < dt * 0.45) {
@@ -4697,6 +4919,45 @@ export function initPupperPark(): void {
         return;
       }
 
+      if (this.state === 'DRINK') {
+        if (!this.drinkTarget) {
+          this.cancelDrink();
+          return;
+        }
+        if (this.drinkTarget.kind === 'fountain') {
+          const exists = state.placedDecorations.some(
+            d => d.type === 'fountain' && d.gx === this.drinkTarget?.gx && d.gy === this.drinkTarget?.gy
+          );
+          if (!exists) {
+            this.cancelDrink();
+            return;
+          }
+        }
+        const dogPos = gridToScreen(this.gx, this.gy);
+        const waterPos = gridToScreen(this.drinkTarget.waterGx, this.drinkTarget.waterGy);
+        if (Math.abs(waterPos.x - dogPos.x) > 0.5) {
+          this.facingRight = waterPos.x >= dogPos.x;
+        }
+        if (Math.random() < dt * 4.5) {
+          const s = getScale();
+          particles.push({
+            x: waterPos.x + (Math.random() - 0.5) * 10 * s,
+            y: waterPos.y - 3 * s,
+            vx: (Math.random() - 0.5) * 20,
+            vy: -16 - Math.random() * 14,
+            life: 0.36,
+            maxLife: 0.36,
+            color: Math.random() < 0.5 ? '#81ecec' : '#dff9fb',
+            size: 2.0 * s
+          });
+        }
+        this.timer -= dt;
+        if (this.timer <= 0) {
+          this.finishDrink();
+        }
+        return;
+      }
+
       if (this.state === 'SLEEP') {
         this.facingRight = this.sleepFacingRight;
         this.timer -= dt * baconPaceMult;
@@ -4707,7 +4968,7 @@ export function initPupperPark(): void {
       } else if (this.state === 'IDLE') {
         this.timer -= dt * visualPace;
         if (this.timer <= 0) {
-          if (Math.random() < 0.28) {
+          if (Math.random() < 0.28 && !isNearSlideZone(this.gx, this.gy)) {
             this.enterSleep();
           } else {
             this.pickNewTarget();
@@ -4732,6 +4993,13 @@ export function initPupperPark(): void {
           if (this.onReachSlide) {
             const cb = this.onReachSlide;
             this.onReachSlide = null;
+            cb();
+            return;
+          }
+
+          if (this.onReachWater) {
+            const cb = this.onReachWater;
+            this.onReachWater = null;
             cb();
             return;
           }
@@ -4863,6 +5131,7 @@ export function initPupperPark(): void {
       const pos = gridToScreen(this.gx, this.gy);
       const scale = getScale();
       const isSleeping = this.state === 'SLEEP';
+      const isDrinking = this.state === 'DRINK';
       const isOnSlide = this.state === 'SLIDE_CLIMB' || this.state === 'SLIDE_DOWN';
       const effectiveFacingRight = isSleeping ? this.sleepFacingRight : this.facingRight;
 
@@ -4908,7 +5177,7 @@ export function initPupperPark(): void {
       }
 
       let feastJump = 0;
-      if (state.feastAnimTimer > 0 && !isSleeping && !isOnSlide) {
+      if (state.feastAnimTimer > 0 && !isSleeping && !isOnSlide && !isDrinking) {
         feastJump = Math.abs(Math.sin(state.feastAnimTimer * Math.PI * 4)) * 14;
       }
 
@@ -4918,17 +5187,21 @@ export function initPupperPark(): void {
         ? -4.2
         : isOnSlide
           ? this.slideElevation
-          : (this.state === 'WALK' ? Math.abs(Math.sin(this.animPhase)) * 3 : 0) + feastJump + petHop;
+          : isDrinking
+            ? -Math.abs(Math.sin(this.animPhase * 2.4)) * 1.4 + petHop
+            : (this.state === 'WALK' ? Math.abs(Math.sin(this.animPhase)) * 3 : 0) + feastJump + petHop;
       const poseTilt = isSleeping
         ? 0
         : isOnSlide
           ? this.slideTilt
-          : (this.state === 'DIG' ? 0.25 : 0);
+          : isDrinking
+            ? 0.22 + Math.sin(this.animPhase * 2.4) * 0.06
+            : (this.state === 'DIG' ? 0.25 : 0);
 
       c.translate(0, -bounce);
       c.rotate(poseTilt);
 
-      const legSwing = isSleeping
+      const legSwing = isSleeping || isDrinking
         ? 0
         : (this.state === 'WALK' || this.state === 'SLIDE_CLIMB'
             ? Math.sin(this.animPhase) * 4.1
@@ -4939,8 +5212,10 @@ export function initPupperPark(): void {
         ? Math.sin(this.wagPhase * 0.65) * 0.5
         : Math.sin(this.wagPhase * 2.2) * 2.5 * moodWagAmp;
       const isBlinking = !isSleeping && this.blinkTimer < 0.13;
-      const isJoyful = !isSleeping && (this.petBounce > 0.05 || this.state === 'SLIDE_DOWN' || state.feastAnimTimer > 0);
-      const showTongue = isJoyful || (!isSleeping && moodInfo.tier === 'ecstatic' && Math.sin(this.wagPhase * 0.45) > 0.35);
+      const isJoyful = !isSleeping && !isDrinking && (this.petBounce > 0.05 || this.state === 'SLIDE_DOWN' || state.feastAnimTimer > 0);
+      const showTongue = isDrinking
+        ? Math.sin(this.animPhase * 2.4) > -0.1
+        : isJoyful || (!isSleeping && moodInfo.tier === 'ecstatic' && Math.sin(this.wagPhase * 0.45) > 0.35);
       const earBounce = isSleeping
         ? 0
         : this.state === 'SLIDE_DOWN'
@@ -5121,12 +5396,42 @@ export function initPupperPark(): void {
         stopDraftTreasureAnimations();
         const beforeCounts = getTreasureCounts(state.perks);
         const wasSetComplete = isSetCompleted(beforeCounts, relic.setId);
+        const isFirstDiamondBowl = relic.id === 'bp_6' && getRelicRank(beforeCounts, 'bp_6') === 0;
         state.perks.push(createSavedPerkRecord(relic, nextRank));
         const afterCounts = getTreasureCounts(state.perks);
         const nowSetComplete = !wasSetComplete && isSetCompleted(afterCounts, relic.setId);
 
         state.isDraftingPerk = false;
         modal.style.display = 'none';
+
+        if (isFirstDiamondBowl) {
+          const bowlPos = gridToScreen(WATER_BOWL_POS.gx, WATER_BOWL_POS.gy);
+          particles.push({
+            x: bowlPos.x,
+            y: bowlPos.y - 4 * getScale(),
+            vx: 0,
+            vy: 0,
+            life: 0.75,
+            maxLife: 0.75,
+            color: '#9ef0ff',
+            size: 4,
+            isRing: true
+          });
+          for (let i = 0; i < 12; i++) {
+            const ang = (Math.PI * 2 * i) / 12 + Math.random() * 0.25;
+            const spd = 22 + Math.random() * 28;
+            particles.push({
+              x: bowlPos.x,
+              y: bowlPos.y - 4 * getScale(),
+              vx: Math.cos(ang) * spd,
+              vy: Math.sin(ang) * spd - 18,
+              life: 0.65 + Math.random() * 0.35,
+              maxLife: 1.0,
+              color: i % 3 === 0 ? '#fff9c4' : (i % 2 === 0 ? '#ffffff' : '#8eeaff'),
+              size: 2.2 + Math.random() * 1.8
+            });
+          }
+        }
 
         if (nowSetComplete && setDef) {
           sfx.shiny();
@@ -5654,6 +5959,253 @@ export function initPupperPark(): void {
       ctx.beginPath();
       ctx.arc(lx, ly - 0.8, 2.0, 0, Math.PI * 2);
       ctx.fill();
+    }
+
+    ctx.restore();
+  }
+
+  function hasDiamondBowl(): boolean {
+    return state.perks.some(p => p && (p.id === 'bp_6' || p.name === 'Diamond Bowl'));
+  }
+
+  function drawMiniSparkle(x: number, y: number, r: number, color: string, alpha: number): void {
+    if (r <= 0.2 || alpha <= 0.02) return;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(x, y - r);
+    ctx.quadraticCurveTo(x + r * 0.18, y - r * 0.18, x + r, y);
+    ctx.quadraticCurveTo(x + r * 0.18, y + r * 0.18, x, y + r);
+    ctx.quadraticCurveTo(x - r * 0.18, y + r * 0.18, x - r, y);
+    ctx.quadraticCurveTo(x - r * 0.18, y - r * 0.18, x, y - r);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawDogWaterBowl(): void {
+    const pos = gridToScreen(WATER_BOWL_POS.gx, WATER_BOWL_POS.gy);
+    const scale = getScale();
+    const isBeingDrunk = dogs.some(d => d.state === 'DRINK' && d.drinkTarget?.kind === 'bowl');
+    const isDiamond = hasDiamondBowl();
+
+    ctx.save();
+    ctx.translate(pos.x, pos.y);
+    ctx.scale(scale, scale);
+
+    if (isDiamond) {
+      // Soft icy crystal aura refracting light across the ground
+      const auraPulse = 0.86 + 0.14 * Math.sin(fountainAnimPhase * 0.85);
+      const aura = ctx.createRadialGradient(0, -1, 1.5, 0, 0.5, 16 * auraPulse);
+      aura.addColorStop(0, 'rgba(145, 245, 255, 0.42)');
+      aura.addColorStop(0.55, 'rgba(66, 196, 245, 0.18)');
+      aura.addColorStop(1, 'rgba(66, 196, 245, 0)');
+      ctx.fillStyle = aura;
+      ctx.beginPath();
+      ctx.ellipse(0, 1.2, 16.5, 8.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Ground shadow
+      ctx.fillStyle = 'rgba(14, 34, 64, 0.30)';
+      ctx.beginPath();
+      ctx.ellipse(0, 3.4, 11.8, 5.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Faceted diamond crystal bowl body
+      const diamondGrad = ctx.createLinearGradient(-11, -4.5, 11, 4.5);
+      diamondGrad.addColorStop(0, '#eeffff');
+      diamondGrad.addColorStop(0.32, '#8eeaff');
+      diamondGrad.addColorStop(0.72, '#42c4f5');
+      diamondGrad.addColorStop(1, '#2286d1');
+      ctx.fillStyle = diamondGrad;
+      ctx.strokeStyle = '#1f3a63';
+      ctx.lineWidth = 1.15;
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-8.4, -4.0);
+      ctx.lineTo(8.4, -4.0);
+      ctx.lineTo(10.8, 1.6);
+      ctx.quadraticCurveTo(0, 6.2, -10.8, 1.6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Bright specular crystal facet planes (left & right)
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.52)';
+      ctx.beginPath();
+      ctx.moveTo(-8.4, -4.0);
+      ctx.lineTo(-3.8, -2.8);
+      ctx.lineTo(-5.2, 4.4);
+      ctx.lineTo(-10.8, 1.6);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.24)';
+      ctx.beginPath();
+      ctx.moveTo(3.8, -2.8);
+      ctx.lineTo(8.4, -4.0);
+      ctx.lineTo(10.8, 1.6);
+      ctx.lineTo(5.2, 4.4);
+      ctx.closePath();
+      ctx.fill();
+
+      // Crisp crystal facet edge lines
+      ctx.strokeStyle = '#2570b5';
+      ctx.lineWidth = 0.75;
+      ctx.beginPath();
+      ctx.moveTo(-3.8, -2.8);
+      ctx.lineTo(-5.2, 4.4);
+      ctx.moveTo(3.8, -2.8);
+      ctx.lineTo(5.2, 4.4);
+      ctx.stroke();
+
+      // Miniature golden paw crest on front crystal facet
+      ctx.fillStyle = '#ffd55a';
+      ctx.strokeStyle = '#7c440e';
+      ctx.lineWidth = 0.55;
+      ctx.beginPath();
+      ctx.ellipse(0, 2.2, 1.8, 1.35, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      const pawToes: Array<[number, number]> = [
+        [-1.9, 0.9],
+        [-0.7, 0.25],
+        [0.7, 0.25],
+        [1.9, 0.9]
+      ];
+      for (const [tx, ty] of pawToes) {
+        ctx.beginPath();
+        ctx.arc(tx, ty, 0.58, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Icy faceted crystal top rim
+      ctx.fillStyle = '#d4faff';
+      ctx.strokeStyle = '#1f3a63';
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.ellipse(0, -4.0, 8.6, 3.6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Sparkling crystal-clear water inside
+      const waterGrad = ctx.createRadialGradient(-2, -4.6, 0.6, 0, -3.7, 7.2);
+      waterGrad.addColorStop(0, '#f0ffff');
+      waterGrad.addColorStop(0.45, '#7deeff');
+      waterGrad.addColorStop(1, '#269de6');
+      ctx.fillStyle = waterGrad;
+      ctx.beginPath();
+      ctx.ellipse(0, -3.7, 6.9, 2.65, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Animated water ripples while drinking or bright prism glint while idle
+      if (isBeingDrunk) {
+        for (let r = 0; r < 2; r++) {
+          const cycle = (fountainAnimPhase * 0.75 + r * 0.5) % 1;
+          ctx.strokeStyle = `rgba(255, 255, 255, ${(1 - cycle) * 0.9})`;
+          ctx.lineWidth = 0.95;
+          ctx.beginPath();
+          ctx.ellipse(0, -3.7, 1.5 + cycle * 4.8, (1.5 + cycle * 4.8) * 0.4, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      } else {
+        const glint = 0.55 + 0.3 * Math.sin(fountainAnimPhase * 1.1);
+        ctx.strokeStyle = `rgba(255, 255, 255, ${glint})`;
+        ctx.lineWidth = 1.0;
+        ctx.beginPath();
+        ctx.ellipse(-1.8, -4.3, 2.7, 0.9, -0.15, Math.PI * 1.05, Math.PI * 1.85);
+        ctx.stroke();
+      }
+
+      // Twinkling diamond sparkles floating near rim
+      const sp1 = 0.5 + 0.5 * Math.sin(fountainAnimPhase * 1.6);
+      const sp2 = 0.5 + 0.5 * Math.sin(fountainAnimPhase * 1.6 + 2.1);
+      drawMiniSparkle(-7.5, -6.4 - sp1 * 1.6, 1.6 + sp1 * 1.2, '#fff9c4', 0.45 + sp1 * 0.5);
+      drawMiniSparkle(7.4, -4.8 - sp2 * 1.4, 1.3 + sp2 * 1.1, '#ffffff', 0.4 + sp2 * 0.55);
+      drawMiniSparkle(1.8, -8.8 - sp2 * 1.2, 1.1 + sp1 * 0.9, '#b8f7ff', 0.35 + sp1 * 0.55);
+
+      ctx.restore();
+      return;
+    }
+
+    // Soft ground shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.30)';
+    ctx.beginPath();
+    ctx.ellipse(0, 3.2, 11.5, 5.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Ceramic tapered water bowl body matching the doghouse's slate-blue roof
+    const bowlGrad = ctx.createLinearGradient(-10, -4, 10, 3);
+    bowlGrad.addColorStop(0, '#6bb2e6');
+    bowlGrad.addColorStop(0.45, '#4682b4');
+    bowlGrad.addColorStop(1, '#2b5478');
+    ctx.fillStyle = bowlGrad;
+    ctx.strokeStyle = '#1e3a52';
+    ctx.lineWidth = 1.15;
+    ctx.beginPath();
+    ctx.moveTo(-8.2, -3.8);
+    ctx.lineTo(-10.2, 1.4);
+    ctx.ellipse(0, 1.4, 10.2, 4.4, 0, Math.PI, 0, true);
+    ctx.lineTo(8.2, -3.8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Subtle glossy ceramic specular highlight on left front curve
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
+    ctx.beginPath();
+    ctx.ellipse(-5.2, -0.4, 1.5, 2.3, -0.18, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Tiny white painted bone emblem on the front wall
+    ctx.fillStyle = '#fff5dc';
+    ctx.beginPath();
+    ctx.roundRect(-2.3, 1.0, 4.6, 1.5, 0.7);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(-2.4, 1.3, 0.85, 0, Math.PI * 2);
+    ctx.arc(-2.4, 2.2, 0.85, 0, Math.PI * 2);
+    ctx.arc(2.4, 1.3, 0.85, 0, Math.PI * 2);
+    ctx.arc(2.4, 2.2, 0.85, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Cream ceramic top rim
+    ctx.fillStyle = '#f2e8d5';
+    ctx.strokeStyle = '#1e3a52';
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.ellipse(0, -3.8, 8.4, 3.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Fresh sky-aqua water surface
+    const waterGrad = ctx.createRadialGradient(-2, -4.4, 0.8, 0, -3.6, 7.2);
+    waterGrad.addColorStop(0, '#c8fbff');
+    waterGrad.addColorStop(0.5, '#5cd6f5');
+    waterGrad.addColorStop(1, '#1e90d6');
+    ctx.fillStyle = waterGrad;
+    ctx.beginPath();
+    ctx.ellipse(0, -3.5, 6.8, 2.7, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Animated water ripples while a pup is lapping (or gentle idle shimmer)
+    if (isBeingDrunk) {
+      for (let r = 0; r < 2; r++) {
+        const cycle = (fountainAnimPhase * 0.75 + r * 0.5) % 1;
+        ctx.strokeStyle = `rgba(255, 255, 255, ${(1 - cycle) * 0.82})`;
+        ctx.lineWidth = 0.9;
+        ctx.beginPath();
+        ctx.ellipse(0, -3.5, 1.5 + cycle * 4.8, (1.5 + cycle * 4.8) * 0.4, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    } else {
+      const glint = 0.42 + 0.25 * Math.sin(fountainAnimPhase * 0.9);
+      ctx.strokeStyle = `rgba(255, 255, 255, ${glint})`;
+      ctx.lineWidth = 0.95;
+      ctx.beginPath();
+      ctx.ellipse(-1.8, -4.1, 2.6, 0.9, -0.15, Math.PI * 1.05, Math.PI * 1.85);
+      ctx.stroke();
     }
 
     ctx.restore();
@@ -7501,11 +8053,15 @@ export function initPupperPark(): void {
       }
       const costEl = document.getElementById(`cost${capBreed}`);
       if (costEl) {
-        costEl.textContent = atDogCap ? `Park Full (${MAX_DOGS}/${MAX_DOGS})` : `${state.costs[breed].toLocaleString()} 🦴`;
+        costEl.textContent = `${state.costs[breed].toLocaleString()} 🦴`;
       }
       const btnEl = document.getElementById(`btnSummon${capBreed}`) as HTMLButtonElement | null;
       if (btnEl) {
         btnEl.disabled = atDogCap || state.bones < state.costs[breed];
+        const nameEl = btnEl.querySelector('.btn-name');
+        if (nameEl) {
+          nameEl.textContent = atDogCap ? 'Park Full' : 'Recruit';
+        }
       }
     });
 
@@ -8114,7 +8670,10 @@ export function initPupperPark(): void {
         const floor = getCozyFloor();
         const cur = Number(state.packHappiness) || floor;
         if (cur > floor) {
-          state.packHappiness = Math.max(floor, cur - HAPPINESS_COOL_RATE_PER_SEC * dt);
+          // Gentle live-park cooldown (half the away rate) so pups stay happy while you're hanging out
+          const decayableSpan = Math.max(0, HAPPINESS_MAX - floor);
+          const liveCoolPerSec = (decayableSpan / (HAPPINESS_AWAY_FULL_DECAY_HOURS * 3600)) * 0.5;
+          state.packHappiness = Math.max(floor, cur - liveCoolPerSec * dt);
         } else if (cur < floor) {
           state.packHappiness = floor;
         }
@@ -8163,10 +8722,11 @@ export function initPupperPark(): void {
           tennisBall.timer -= dt;
           if (tennisBall.timer <= 0 && dogs.length > 0) {
             tennisBall.timer = 8.0 + Math.random() * 6.0;
-            const eligible = dogs.filter(d => d.state !== 'SLIDE_CLIMB' && d.state !== 'SLIDE_DOWN' && !d.slideTarget);
+            const eligible = dogs.filter(d => d.state !== 'SLIDE_CLIMB' && d.state !== 'SLIDE_DOWN' && d.state !== 'DRINK' && !d.slideTarget && !d.drinkTarget);
             if (eligible.length > 0) {
               const walker = eligible[Math.floor(Math.random() * eligible.length)];
               walker.cancelSlide();
+              walker.cancelDrink();
               walker.targetGx = tennisBall.gx;
               walker.targetGy = tennisBall.gy;
               walker.state = 'WALK';
@@ -8193,10 +8753,11 @@ export function initPupperPark(): void {
           frisbee.timer -= dt;
           if (frisbee.timer <= 0 && dogs.length > 0) {
             frisbee.timer = 10.0 + Math.random() * 8.0;
-            const eligible = dogs.filter(d => d.state !== 'SLIDE_CLIMB' && d.state !== 'SLIDE_DOWN' && !d.slideTarget);
+            const eligible = dogs.filter(d => d.state !== 'SLIDE_CLIMB' && d.state !== 'SLIDE_DOWN' && d.state !== 'DRINK' && !d.slideTarget && !d.drinkTarget);
             if (eligible.length > 0) {
               const walker = eligible[Math.floor(Math.random() * eligible.length)];
               walker.cancelSlide();
+              walker.cancelDrink();
               walker.targetGx = frisbee.gx;
               walker.targetGy = frisbee.gy;
               walker.state = 'WALK';
@@ -8223,10 +8784,11 @@ export function initPupperPark(): void {
           duck.timer -= dt;
           if (duck.timer <= 0 && dogs.length > 0) {
             duck.timer = 9.0 + Math.random() * 6.0;
-            const eligible = dogs.filter(d => d.state !== 'SLIDE_CLIMB' && d.state !== 'SLIDE_DOWN' && !d.slideTarget);
+            const eligible = dogs.filter(d => d.state !== 'SLIDE_CLIMB' && d.state !== 'SLIDE_DOWN' && d.state !== 'DRINK' && !d.slideTarget && !d.drinkTarget);
             if (eligible.length > 0) {
               const walker = eligible[Math.floor(Math.random() * eligible.length)];
               walker.cancelSlide();
+              walker.cancelDrink();
               walker.targetGx = duck.gx;
               walker.targetGy = duck.gy;
               walker.state = 'WALK';
@@ -8596,6 +9158,7 @@ export function initPupperPark(): void {
       const renderables: Array<{ sortY: number; draw: () => void }> = [];
       const spRender = state.starterProps || createDefaultStarterProps();
       renderables.push({ sortY: getCenteredTilePos(DOGHOUSE_TILE.gx, DOGHOUSE_TILE.gy).y, draw: drawDoghouse });
+      renderables.push({ sortY: gridToScreen(WATER_BOWL_POS.gx, WATER_BOWL_POS.gy).y, draw: drawDogWaterBowl });
       if (spRender.showTree !== false) {
         renderables.push({ sortY: getCenteredTilePos(STARTER_TREE_TILE.gx, STARTER_TREE_TILE.gy).y, draw: drawTree });
       }

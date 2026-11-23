@@ -216,7 +216,7 @@ export const TREASURE_CATALOG: readonly TreasureDef[] = [
     name: 'Golden Collar',
     setId: 'kennel',
     rarity: 'Rare',
-    lore: 'A museum display keepsake studded with gilded rivets and velvet lining from royal kennels.',
+    lore: 'A museum display keepsake forged in solid sun-gold and studded with polished royal rivets.',
     boneAdd: 0.35
   },
   {

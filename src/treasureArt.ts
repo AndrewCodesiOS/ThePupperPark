@@ -769,71 +769,127 @@ function drawBiscuitTin(ctx: CanvasRenderingContext2D, t: number): void {
 }
 
 function drawGoldenTag(ctx: CanvasRenderingContext2D, t: number): void {
-  const swing = Math.sin(t * 2.3) * 0.06;
+  const swing = Math.sin(t * 2.2) * 0.055;
   ctx.save();
-  ctx.translate(100, 72);
+  ctx.translate(100, 48);
   ctx.rotate(swing);
 
-  // Split ring at top
-  ctx.strokeStyle = INK;
-  ctx.lineWidth = 11;
+  // Soft golden drop shadow beneath tag
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
   ctx.beginPath();
-  ctx.arc(0, -18, 17, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.strokeStyle = '#ffd55a';
-  ctx.lineWidth = 5.5;
-  ctx.stroke();
-
-  // Gold tag lug
-  drawRoundedRect(ctx, -11, -6, 22, 16, 6);
-  ctx.fillStyle = '#f6b93b';
+  ctx.ellipse(0, 122, 34, 8, 0, 0, Math.PI * 2);
   ctx.fill();
+
+  // Top split keyring (outer + inner metallic gold ring)
   ctx.strokeStyle = INK;
-  ctx.lineWidth = 3.4;
+  ctx.lineWidth = 10.5;
+  ctx.beginPath();
+  ctx.arc(0, -4, 15, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeStyle = '#ffd85e';
+  ctx.lineWidth = 5;
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.72)';
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.arc(0, -4, 15, -Math.PI * 0.85, -Math.PI * 0.35);
   ctx.stroke();
 
-  // Chunky 24k gold bone pendant
-  ctx.translate(0, 40);
-  // 3D beveled edge beneath
+  // Small connecting jump ring through eyelet
+  ctx.fillStyle = '#f6b93b';
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 3;
+  drawRoundedRect(ctx, -5, 7, 10, 14, 5);
+  ctx.fill();
+  ctx.stroke();
+
+  // 3D beveled thickness under the ID tag plate
   ctx.save();
-  ctx.translate(0, 6);
-  drawBoneShape(ctx, 76, 36, 23);
-  ctx.fillStyle = '#b96f14';
+  ctx.translate(0, 5.5);
+  drawRoundedRect(ctx, -35, 16, 70, 94, 22);
+  ctx.fillStyle = '#a86012';
   ctx.fill();
   ctx.strokeStyle = INK;
   ctx.lineWidth = 4;
   ctx.stroke();
   ctx.restore();
 
-  const goldGrad = ctx.createLinearGradient(-56, -34, 56, 34);
-  goldGrad.addColorStop(0, '#fff7bd');
-  goldGrad.addColorStop(0.42, '#ffd147');
-  goldGrad.addColorStop(1, '#e1931b');
-  drawBoneShape(ctx, 76, 36, 23);
-  ctx.fillStyle = goldGrad;
+  // Main brushed 24k gold ID tag plate (classic rounded dog-tag silhouette)
+  const plateGrad = ctx.createLinearGradient(-36, 16, 38, 110);
+  plateGrad.addColorStop(0, '#fff8c4');
+  plateGrad.addColorStop(0.32, '#ffd652');
+  plateGrad.addColorStop(0.72, '#f0a624');
+  plateGrad.addColorStop(1, '#c97814');
+  drawRoundedRect(ctx, -35, 16, 70, 94, 22);
+  ctx.fillStyle = plateGrad;
   ctx.fill();
   ctx.strokeStyle = INK;
   ctx.lineWidth = 4;
   ctx.stroke();
 
-  // Sweeping sheen glint
-  const glintX = -50 + ((t * 48) % 140);
+  // Sweeping specular metallic glint clipped to tag plate
+  const glintX = -65 + ((t * 52) % 165);
   ctx.save();
-  drawBoneShape(ctx, 72, 32, 21);
+  drawRoundedRect(ctx, -32, 19, 64, 88, 19);
   ctx.clip();
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.34)';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.36)';
   ctx.beginPath();
-  ctx.moveTo(glintX, -40);
-  ctx.lineTo(glintX + 18, -40);
-  ctx.lineTo(glintX - 4, 40);
-  ctx.lineTo(glintX - 22, 40);
+  ctx.moveTo(glintX, 12);
+  ctx.lineTo(glintX + 20, 12);
+  ctx.lineTo(glintX - 8, 114);
+  ctx.lineTo(glintX - 28, 114);
   ctx.closePath();
   ctx.fill();
   ctx.restore();
 
-  // Raised golden paw print in center
-  drawPaw(ctx, 0, 2, 1.25, '#f6b93b', '#8e4d0c', 2.4);
-  drawPaw(ctx, -1, 0.5, 1.12, '#ffe985');
+  // Recessed engraved inner border frame
+  drawRoundedRect(ctx, -27, 24, 54, 78, 15);
+  ctx.strokeStyle = 'rgba(138, 76, 12, 0.55)';
+  ctx.lineWidth = 2.4;
+  ctx.stroke();
+  drawRoundedRect(ctx, -25.5, 25.5, 51, 75, 13.5);
+  ctx.strokeStyle = 'rgba(255, 250, 210, 0.55)';
+  ctx.lineWidth = 1.4;
+  ctx.stroke();
+
+  // Punched top eyelet hole with gold grommet rim
+  ctx.beginPath();
+  ctx.arc(0, 31, 6.2, 0, Math.PI * 2);
+  ctx.fillStyle = '#1b1438';
+  ctx.fill();
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 2.4;
+  ctx.stroke();
+
+  // Embossed paw stamp on upper-center of ID tag
+  drawPaw(ctx, 0, 56, 0.92, '#c87714', '#7a4109', 1.8);
+  drawPaw(ctx, -0.8, 54.8, 0.84, '#ffe988');
+
+  // Crisp engraved ID inscription lines below the paw
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = '#8a4c0e';
+  ctx.lineWidth = 3.2;
+  ctx.beginPath();
+  ctx.moveTo(-16, 78);
+  ctx.lineTo(16, 78);
+  ctx.moveTo(-11, 88);
+  ctx.lineTo(11, 88);
+  ctx.stroke();
+
+  // Subtle light bevel underneath engraved grooves
+  ctx.strokeStyle = 'rgba(255, 248, 200, 0.6)';
+  ctx.lineWidth = 1.3;
+  ctx.beginPath();
+  ctx.moveTo(-16, 80.2);
+  ctx.lineTo(16, 80.2);
+  ctx.moveTo(-11, 90.2);
+  ctx.lineTo(11, 90.2);
+  ctx.stroke();
+
+  // Twinkling corner glints
+  const sp = 0.5 + 0.5 * Math.sin(t * 3.2);
+  drawSparkle(ctx, -28, 26, 5.5 + sp * 2.5, '#ffffff', 0.55 + sp * 0.45);
+  drawSparkle(ctx, 29, 96, 4.5 + (1 - sp) * 2.5, '#fff7bd', 0.45 + (1 - sp) * 0.45);
 
   ctx.restore();
 }
@@ -841,88 +897,135 @@ function drawGoldenTag(ctx: CanvasRenderingContext2D, t: number): void {
 function drawGoldenCollar(ctx: CanvasRenderingContext2D, t: number): void {
   const bob = Math.sin(t * 2.0) * 1.8;
   ctx.save();
-  ctx.translate(100, 98 + bob);
+  ctx.translate(100, 102 + bob);
 
-  // Back inner red velvet arc
+  // Soft ground shadow
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.30)';
+  ctx.beginPath();
+  ctx.ellipse(0, 48, 58, 12, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Back inner gold band (deeper antique gold for 3D interior depth)
   ctx.strokeStyle = INK;
-  ctx.lineWidth = 26;
+  ctx.lineWidth = 27;
   ctx.beginPath();
-  ctx.ellipse(0, 0, 56, 34, 0, Math.PI, Math.PI * 2);
-  ctx.stroke();
-  ctx.strokeStyle = '#991b2b';
-  ctx.lineWidth = 18;
+  ctx.ellipse(0, -2, 56, 33, 0, Math.PI, Math.PI * 2);
   ctx.stroke();
 
-  // Gold top trim
-  ctx.strokeStyle = '#ffd15c';
-  ctx.lineWidth = 3.5;
-  ctx.beginPath();
-  ctx.ellipse(0, -7, 56, 31, 0, Math.PI, Math.PI * 2);
+  const backGold = ctx.createLinearGradient(-58, -36, 58, -2);
+  backGold.addColorStop(0, '#c67d18');
+  backGold.addColorStop(0.5, '#9d5d0f');
+  backGold.addColorStop(1, '#c67d18');
+  ctx.strokeStyle = backGold;
+  ctx.lineWidth = 19;
   ctx.stroke();
 
-  // Front plush crimson band
-  ctx.strokeStyle = INK;
-  ctx.lineWidth = 29;
-  ctx.beginPath();
-  ctx.ellipse(0, 4, 56, 34, 0, 0.04, Math.PI - 0.04);
-  ctx.stroke();
-
-  const bandGrad = ctx.createLinearGradient(-58, 0, 58, 36);
-  bandGrad.addColorStop(0, '#e83845');
-  bandGrad.addColorStop(0.5, '#c91f37');
-  bandGrad.addColorStop(1, '#9b162a');
-  ctx.strokeStyle = bandGrad;
-  ctx.lineWidth = 21;
-  ctx.stroke();
-
-  // Gold border rails along front
-  ctx.strokeStyle = '#ffd562';
+  // Subtle top bevel rim on back arc
+  ctx.strokeStyle = '#ffe588';
   ctx.lineWidth = 3.2;
   ctx.beginPath();
-  ctx.ellipse(0, -6, 56, 33, 0, 0.08, Math.PI - 0.08);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.ellipse(0, 14, 56, 33, 0, 0.08, Math.PI - 0.08);
+  ctx.ellipse(0, -10.5, 56, 31, 0, Math.PI + 0.06, Math.PI * 2 - 0.06);
   ctx.stroke();
 
-  // Chunky gold bone studs
-  drawCartoonBone(ctx, -34, 27, 17, 6.2, 4, 0.45, '#fff099', '#d88c1a', 2.4);
-  drawCartoonBone(ctx, -6, 37, 18, 6.4, 4.2, 0.08, '#fff099', '#d88c1a', 2.4);
-
-  // Polished gold buckle on right
-  ctx.save();
-  ctx.translate(32, 24);
-  ctx.rotate(-0.42);
-  drawRoundedRect(ctx, -13, -15, 26, 30, 11);
+  // Front full-gold collar band (chunky 24k sculpted gold)
   ctx.strokeStyle = INK;
-  ctx.lineWidth = 8.5;
+  ctx.lineWidth = 30;
+  ctx.beginPath();
+  ctx.ellipse(0, 4, 56, 34, 0, 0.02, Math.PI - 0.02);
   ctx.stroke();
-  ctx.strokeStyle = '#ffd55a';
-  ctx.lineWidth = 4.5;
-  ctx.stroke();
-  ctx.restore();
 
-  // Dangling golden star charm with gentle sway
-  const charmSwing = Math.sin(t * 2.8) * 0.16;
+  const frontGold = ctx.createLinearGradient(-60, -6, 60, 42);
+  frontGold.addColorStop(0, '#ffe47a');
+  frontGold.addColorStop(0.28, '#ffd046');
+  frontGold.addColorStop(0.58, '#f0a622');
+  frontGold.addColorStop(0.84, '#ffd75e');
+  frontGold.addColorStop(1, '#c97b16');
+  ctx.strokeStyle = frontGold;
+  ctx.lineWidth = 22;
+  ctx.stroke();
+
+  // Raised polished gold upper & lower rails along the front curve
+  ctx.strokeStyle = '#fff5b8';
+  ctx.lineWidth = 3.4;
+  ctx.beginPath();
+  ctx.ellipse(0, -5.5, 56, 33, 0, 0.08, Math.PI - 0.08);
+  ctx.stroke();
+
+  ctx.strokeStyle = '#b96e12';
+  ctx.lineWidth = 3.0;
+  ctx.beginPath();
+  ctx.ellipse(0, 14.5, 56, 33, 0, 0.08, Math.PI - 0.08);
+  ctx.stroke();
+
+  // Glossy specular sheen arc on front-left gold surface
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.62)';
+  ctx.lineWidth = 3.8;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.ellipse(0, 2, 56, 33, 0, Math.PI * 0.56, Math.PI * 0.84);
+  ctx.stroke();
+
+  // Sculpted solid-gold pyramid/dome rivets along the collar band (no dangling tag)
+  const rivets: Array<[number, number]> = [
+    [-40, 24],
+    [-20, 35],
+    [2, 38]
+  ];
+  for (const [rx, ry] of rivets) {
+    ctx.beginPath();
+    ctx.arc(rx, ry, 5.4, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffe985';
+    ctx.fill();
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 2.4;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(rx - 1.5, ry - 1.5, 1.8, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+  }
+
+  // Polished solid-gold buckle frame + keeper loop on front-right
   ctx.save();
-  ctx.translate(32, 42);
-  ctx.rotate(charmSwing);
-  ctx.fillStyle = '#ffe169';
+  ctx.translate(33, 25);
+  ctx.rotate(-0.46);
+
+  // Gold keeper loop beside buckle
+  drawRoundedRect(ctx, -23, -13, 9, 26, 4);
+  ctx.fillStyle = '#f5b332';
+  ctx.fill();
   ctx.strokeStyle = INK;
   ctx.lineWidth = 3;
+  ctx.stroke();
+
+  // Main chunky gold buckle frame
+  drawRoundedRect(ctx, -13, -16, 26, 32, 9);
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 9;
+  ctx.stroke();
+  ctx.strokeStyle = '#ffe169';
+  ctx.lineWidth = 4.8;
+  ctx.stroke();
+
+  // Buckle prong across center
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 5.2;
+  ctx.lineCap = 'round';
   ctx.beginPath();
-  for (let i = 0; i < 10; i++) {
-    const r = i % 2 === 0 ? 15 : 7;
-    const a = -Math.PI / 2 + (i * Math.PI) / 5;
-    const px = Math.cos(a) * r;
-    const py = 12 + Math.sin(a) * r;
-    if (i === 0) ctx.moveTo(px, py);
-    else ctx.lineTo(px, py);
-  }
-  ctx.closePath();
-  ctx.fill();
+  ctx.moveTo(-11, 0);
+  ctx.lineTo(11, 0);
+  ctx.stroke();
+  ctx.strokeStyle = '#fff2a8';
+  ctx.lineWidth = 2.4;
   ctx.stroke();
   ctx.restore();
+
+  // Twinkling gold sparkles along the collar rim
+  const sp1 = 0.5 + 0.5 * Math.sin(t * 3.1);
+  const sp2 = 0.5 + 0.5 * Math.sin(t * 3.1 + 1.9);
+  drawSparkle(ctx, -44, -6, 6 + sp1 * 3, '#fff9c4', 0.55 + sp1 * 0.45);
+  drawSparkle(ctx, 42, 16, 5.5 + sp2 * 3, '#ffffff', 0.5 + sp2 * 0.5);
 
   ctx.restore();
 }
