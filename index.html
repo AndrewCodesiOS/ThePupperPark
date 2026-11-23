@@ -138,7 +138,7 @@
   <!-- Bottom Slide-Up & Draggable Menu Drawer -->
   <div id="gameModal" class="drawer-overlay" style="display: none;">
     <div class="drawer-window" id="drawerWindow">
-      <div class="drawer-handle-bar" id="drawerHandle" title="Drag down to close"></div>
+      <div class="drawer-handle-bar" id="drawerHandle" role="button" tabindex="0" aria-label="Drag up to expand menu, drag down to close, or tap to toggle height" title="Drag up to expand, down to close, or tap to toggle"></div>
       <div class="modal-header">
         <div class="modal-tabs" role="tablist">
           <button type="button" class="tab-btn active" data-tab="tab-roster">Roster</button>
@@ -1122,7 +1122,7 @@
     <div class="modal-window treasure-inspect-window">
       <button type="button" id="btnCloseTreasureInspect" class="close-btn treasure-inspect-x" aria-label="Close treasure inspection">✕</button>
       <div id="inspectArtFrame" class="treasure-inspect-art-wrap">
-        <img id="inspectRelicImg" class="treasure-inspect-img" src="" alt="" referrerpolicy="no-referrer" />
+        <canvas id="inspectRelicCanvas" class="treasure-inspect-img" role="img" aria-label="Treasure relic illustration"></canvas>
       </div>
       <div class="treasure-inspect-body">
         <h2 id="inspectRelicName" class="treasure-inspect-title"></h2>

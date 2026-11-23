@@ -1,22 +1,3 @@
-/// <reference types="vite/client" />
-
-import muddyMapImg from './assets/images/park_muddy_map_1795438663967.webp';
-import lostCompassImg from './assets/images/park_lost_compass_1795438663525.webp';
-import treatPouchImg from './assets/images/park_treat_pouch_1795438665066.webp';
-import sturdyShovelImg from './assets/images/park_sturdy_shovel_1795438712867.webp';
-import biscuitTinImg from './assets/images/park_biscuit_tin_1795438665003.webp';
-import goldenTagImg from './assets/images/park_golden_tag_1795438664972.webp';
-import goldenCollarImg from './assets/images/park_golden_collar_1795438664812.webp';
-import diamondBowlImg from './assets/images/park_diamond_bowl_1795438663968.webp';
-import mysticToyImg from './assets/images/park_mystic_toy_1795438664326.webp';
-import starlightWhistleImg from './assets/images/park_starlight_whistle_1795438662571.webp';
-import boneLanternImg from './assets/images/park_bone_lantern_1795438664585.webp';
-import goodboyStashImg from './assets/images/park_goodboy_stash_1795438664713.webp';
-import sunLeashImg from './assets/images/park_sun_leash_1795438664523.webp';
-import moonstoneBellImg from './assets/images/park_moonstone_bell_1795438664334.webp';
-import infiniteChestImg from './assets/images/park_infinite_chest_1795438665270.webp';
-import firstCrownImg from './assets/images/park_first_crown_1795438664616.webp';
-
 export type TreasureRarity = 'Common' | 'Rare' | 'Legendary' | 'Mythic';
 export type TreasureSetId = 'explorer' | 'kennel' | 'arcane' | 'mythic';
 
@@ -36,7 +17,6 @@ export interface TreasureDef {
   setId: TreasureSetId;
   rarity: TreasureRarity;
   lore: string;
-  imageUrl: string;
   /** Additive dig bones bonus at Rank I (e.g. 0.12 = +12%) */
   boneAdd?: number;
   /** Explicit Rank I..V multiplicative dig bones values for Mythic relics */
@@ -132,26 +112,6 @@ export const RARITY_META: Record<
   }
 };
 
-export const TREASURE_FALLBACK_SVG =
-  'data:image/svg+xml;utf8,' +
-  encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
-      <defs>
-        <radialGradient id="bg" cx="50%" cy="42%" r="60%">
-          <stop offset="0%" stop-color="#352a5c"/>
-          <stop offset="100%" stop-color="#140f26"/>
-        </radialGradient>
-        <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#ffeaa7"/>
-          <stop offset="100%" stop-color="#d49b27"/>
-        </linearGradient>
-      </defs>
-      <rect width="256" height="256" fill="url(#bg)"/>
-      <circle cx="128" cy="128" r="76" fill="none" stroke="url(#gold)" stroke-width="4" opacity="0.5"/>
-      <path d="M128 74 L145 110 L184 116 L156 144 L163 183 L128 164 L93 183 L100 144 L72 116 L111 110 Z" fill="url(#gold)" opacity="0.88"/>
-    </svg>`
-  );
-
 export const TREASURE_SETS: readonly TreasureSetDef[] = [
   {
     id: 'explorer',
@@ -207,7 +167,6 @@ export const TREASURE_CATALOG: readonly TreasureDef[] = [
     setId: 'explorer',
     rarity: 'Common',
     lore: 'Paw-smudged parchment marking every secret burying spot beneath the park meadow.',
-    imageUrl: muddyMapImg,
     boneAdd: 0.12
   },
   {
@@ -216,7 +175,6 @@ export const TREASURE_CATALOG: readonly TreasureDef[] = [
     setId: 'explorer',
     rarity: 'Common',
     lore: 'Its brass needle ignores north completely and points straight toward buried bones.',
-    imageUrl: lostCompassImg,
     boneAdd: 0.15
   },
   {
@@ -225,7 +183,6 @@ export const TREASURE_CATALOG: readonly TreasureDef[] = [
     setId: 'explorer',
     rarity: 'Common',
     lore: 'Stitched from weathered trail cloth and perpetually dusted with crunchy biscuit crumbs.',
-    imageUrl: treatPouchImg,
     boneAdd: 0.18
   },
   {
@@ -234,7 +191,6 @@ export const TREASURE_CATALOG: readonly TreasureDef[] = [
     setId: 'explorer',
     rarity: 'Common',
     lore: 'An oak-handled garden spade worn smooth by generations of tireless digging paws.',
-    imageUrl: sturdyShovelImg,
     scalingAdd: 0.10
   },
 
@@ -245,7 +201,6 @@ export const TREASURE_CATALOG: readonly TreasureDef[] = [
     setId: 'kennel',
     rarity: 'Common',
     lore: 'An enameled keepsake tin whose golden latch pops open at the sound of happy barks.',
-    imageUrl: biscuitTinImg,
     xpAdd: 0.10
   },
   {
@@ -254,7 +209,6 @@ export const TREASURE_CATALOG: readonly TreasureDef[] = [
     setId: 'kennel',
     rarity: 'Rare',
     lore: 'Hammered from warm sun-gold and engraved with the crest of a legendary park champion.',
-    imageUrl: goldenTagImg,
     boneAdd: 0.28
   },
   {
@@ -263,7 +217,6 @@ export const TREASURE_CATALOG: readonly TreasureDef[] = [
     setId: 'kennel',
     rarity: 'Rare',
     lore: 'A museum display keepsake studded with gilded rivets and velvet lining from royal kennels.',
-    imageUrl: goldenCollarImg,
     boneAdd: 0.35
   },
   {
@@ -272,7 +225,6 @@ export const TREASURE_CATALOG: readonly TreasureDef[] = [
     setId: 'kennel',
     rarity: 'Legendary',
     lore: 'Carved from a single radiant crystal that refracts twilight lantern light across the lawn.',
-    imageUrl: diamondBowlImg,
     boneAdd: 0.65
   },
 
@@ -283,7 +235,6 @@ export const TREASURE_CATALOG: readonly TreasureDef[] = [
     setId: 'arcane',
     rarity: 'Rare',
     lore: 'Hums softly with twilight runes and leaves faint violet stardust after every squeak.',
-    imageUrl: mysticToyImg,
     magicAdd: 0.03
   },
   {
@@ -292,7 +243,6 @@ export const TREASURE_CATALOG: readonly TreasureDef[] = [
     setId: 'arcane',
     rarity: 'Rare',
     lore: 'A silver-filigree whistle whose silent melody sharpens every pup’s focus across the island.',
-    imageUrl: starlightWhistleImg,
     xpAdd: 0.18
   },
   {
@@ -301,7 +251,6 @@ export const TREASURE_CATALOG: readonly TreasureDef[] = [
     setId: 'arcane',
     rarity: 'Rare',
     lore: 'An amber-flamed brass lantern that reveals hidden treasure chests pulsing beneath the turf.',
-    imageUrl: boneLanternImg,
     treasureOddsAdd: 0.18,
     magicAdd: 0.02
   },
@@ -311,7 +260,6 @@ export const TREASURE_CATALOG: readonly TreasureDef[] = [
     setId: 'arcane',
     rarity: 'Legendary',
     lore: 'A gilded chest brimming with enchanted starlight treats saved for the very best companions.',
-    imageUrl: goodboyStashImg,
     magicAdd: 0.07
   },
 
@@ -322,7 +270,6 @@ export const TREASURE_CATALOG: readonly TreasureDef[] = [
     setId: 'mythic',
     rarity: 'Common',
     lore: 'Woven from sunlit leather and warm brass links that quicken every stride across the grass.',
-    imageUrl: sunLeashImg,
     paceAdd: 0.06,
     scalingAdd: 0.08
   },
@@ -332,7 +279,6 @@ export const TREASURE_CATALOG: readonly TreasureDef[] = [
     setId: 'mythic',
     rarity: 'Legendary',
     lore: 'Its pearlescent chime wraps the whole park in a calm, cozy glow that never fades.',
-    imageUrl: moonstoneBellImg,
     cozyFloor: 12,
     xpAdd: 0.22
   },
@@ -342,7 +288,6 @@ export const TREASURE_CATALOG: readonly TreasureDef[] = [
     setId: 'mythic',
     rarity: 'Mythic',
     lore: 'A boundless storybook trunk overflowing with glittering relics from every park that ever was.',
-    imageUrl: infiniteChestImg,
     boneMultRanks: [2.4, 2.95, 3.55, 4.15, 4.8],
     scalingAdd: 0.40
   },
@@ -352,7 +297,6 @@ export const TREASURE_CATALOG: readonly TreasureDef[] = [
     setId: 'mythic',
     rarity: 'Mythic',
     lore: 'The ancient rose-gold circlet said to have crowned the very first pup who dug in PupperPark.',
-    imageUrl: firstCrownImg,
     boneMultRanks: [2.0, 2.4, 2.85, 3.3, 3.8],
     magicAdd: 0.08,
     xpAdd: 0.25
@@ -671,31 +615,4 @@ export function formatActiveTreasureSummary(bonuses: TreasureBonuses): string {
     parts.push(`+${formatWholePct(bonuses.treasureOddsMult - 1)} Treasure Odds`);
   }
   return parts.length > 0 ? parts.join(' | ') : 'No relics discovered yet — keep digging!';
-}
-
-let treasurePreloadStarted = false;
-const preloadedTreasureImages: HTMLImageElement[] = [];
-
-export function preloadTreasureImages(): void {
-  if (treasurePreloadStarted || typeof window === 'undefined' || typeof Image === 'undefined') {
-    return;
-  }
-  treasurePreloadStarted = true;
-
-  const startPreload = (): void => {
-    for (const def of TREASURE_CATALOG) {
-      const img = new Image();
-      img.decoding = 'async';
-      img.referrerPolicy = 'no-referrer';
-      img.src = def.imageUrl;
-      preloadedTreasureImages.push(img);
-    }
-  };
-
-  const ric = (window as unknown as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
-  if (typeof ric === 'function') {
-    ric(startPreload, { timeout: 1500 });
-  } else {
-    window.setTimeout(startPreload, 400);
-  }
 }

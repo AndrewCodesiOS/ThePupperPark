@@ -1,10 +1,10 @@
 import { drawIllustratedDog } from './dogArt';
+import { renderTreasureCanvasFrame, startAnimatedTreasureCanvas } from './treasureArt';
 import {
   TREASURE_SETS,
   RARITY_META,
   MAX_RELIC_RANK,
   MAXED_TREASURE_JACKPOT_MAGIC,
-  TREASURE_FALLBACK_SVG,
   TreasureSetId,
   OfflineTreasureResult,
   TreasureBonuses,
@@ -20,7 +20,6 @@ import {
   getTreasureCounts,
   getTreasureSetById,
   isSetCompleted,
-  preloadTreasureImages,
   rollSingleWeightedTreasure,
   rollWeightedTreasureOptions
 } from './treasures';
@@ -2579,15 +2578,11 @@ export function initPupperPark(): void {
             : `Rank ${getRankRoman(prevRank)} → Rank ${getRankRoman(newRank)}`;
           const statsLine = formatRelicStatsAtRank(def, newRank);
 
-          const img = document.createElement('img');
-          img.className = 'offline-treasure-thumb';
-          img.src = def.imageUrl;
-          img.alt = def.name;
-          img.referrerPolicy = 'no-referrer';
-          img.onerror = () => {
-            img.onerror = null;
-            img.src = TREASURE_FALLBACK_SVG;
-          };
+          const thumbCanvas = document.createElement('canvas');
+          thumbCanvas.className = 'offline-treasure-thumb';
+          thumbCanvas.setAttribute('role', 'img');
+          thumbCanvas.setAttribute('aria-label', def.name);
+          renderTreasureCanvasFrame(thumbCanvas, def.id, def.rarity, 64);
 
           const info = document.createElement('div');
           info.className = 'offline-treasure-info';
@@ -2598,7 +2593,7 @@ export function initPupperPark(): void {
             ${completedSetName ? `<div class="offline-treasure-meta" style="color: #55efc4;">Set Bonus Activated: ${completedSetName}!</div>` : ''}
           `;
 
-          card.appendChild(img);
+          card.appendChild(thumbCanvas);
           card.appendChild(info);
         }
         text.appendChild(card);
@@ -2623,38 +2618,156 @@ export function initPupperPark(): void {
     gameModal.style.display = 'none';
   }
 
+  type DrawerSnapState = 'half' | 'expanded';
+  let drawerSnapState: DrawerSnapState = 'half';
+
+  function bindReliableCloseButton(btn: HTMLElement | null, onClose: () => void): void {
+    if (!btn) return;
+    let activeTouchId: number | null = null;
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let lastClosedAt = 0;
+
+    const triggerClose = (): void => {
+      const now = performance.now();
+      if (now - lastClosedAt < 280) return;
+      lastClosedAt = now;
+      onClose();
+    };
+
+    btn.addEventListener('touchstart', (e: TouchEvent) => {
+      if (e.changedTouches.length === 0) return;
+      const t = e.changedTouches[0];
+      activeTouchId = t.identifier;
+      touchStartX = t.clientX;
+      touchStartY = t.clientY;
+    }, { passive: true });
+
+    btn.addEventListener('touchend', (e: TouchEvent) => {
+      if (activeTouchId === null) return;
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        if (t.identifier === activeTouchId) {
+          activeTouchId = null;
+          const dist = Math.hypot(t.clientX - touchStartX, t.clientY - touchStartY);
+          if (dist <= 28) {
+            e.preventDefault();
+            e.stopPropagation();
+            triggerClose();
+          }
+          break;
+        }
+      }
+    }, { passive: false });
+
+    btn.addEventListener('touchcancel', () => {
+      activeTouchId = null;
+    }, { passive: true });
+
+    btn.addEventListener('click', (e: MouseEvent) => {
+      e.stopPropagation();
+      triggerClose();
+    });
+  }
+
+  function getDrawerSnapHeights(): { halfHeight: number; expandedHeight: number } {
+    const vh = Math.max(
+      320,
+      Math.round(window.visualViewport?.height || window.innerHeight || document.documentElement.clientHeight || 640)
+    );
+    const expandedHeight = Math.max(300, Math.min(vh - 28, Math.round(vh * 0.9)));
+    const halfHeight = Math.max(240, Math.min(expandedHeight - 60, Math.round(vh * 0.52)));
+    return { halfHeight, expandedHeight };
+  }
+
+  function applyDrawerSnap(snap: DrawerSnapState, animate = true): void {
+    drawerSnapState = snap;
+    if (!drawerWindow) return;
+    const { halfHeight, expandedHeight } = getDrawerSnapHeights();
+    const targetH = snap === 'expanded' ? expandedHeight : halfHeight;
+    if (!animate) {
+      drawerWindow.classList.add('is-dragging');
+    } else {
+      drawerWindow.classList.remove('is-dragging');
+    }
+    drawerWindow.classList.toggle('is-expanded', snap === 'expanded');
+    drawerWindow.style.height = `${targetH}px`;
+    drawerWindow.style.transform = 'translateY(0)';
+    if (!animate) {
+      void drawerWindow.offsetHeight;
+      drawerWindow.classList.remove('is-dragging');
+    }
+  }
+
+  let drawerStartY = 0;
+  let drawerStartHeight = 0;
+  let drawerStartTime = 0;
+  let drawerCurrentDeltaY = 0;
+  let drawerDismissOffset = 0;
+  let drawerDraggedHeight = 0;
+  let drawerDidMove = false;
+  let isDrawerDragging = false;
+
+  function openMenu(initialSnap: DrawerSnapState = 'half'): void {
+    isDrawerDragging = false;
+    drawerCurrentDeltaY = 0;
+    drawerDismissOffset = 0;
+    if (drawerWindow) {
+      drawerWindow.classList.add('is-dragging');
+      const { halfHeight, expandedHeight } = getDrawerSnapHeights();
+      const targetH = initialSnap === 'expanded' ? expandedHeight : halfHeight;
+      drawerSnapState = initialSnap;
+      drawerWindow.classList.toggle('is-expanded', initialSnap === 'expanded');
+      drawerWindow.style.height = `${targetH}px`;
+      drawerWindow.style.transform = 'translateY(0)';
+    }
+    if (gameModal) {
+      gameModal.style.display = 'flex';
+    }
+    if (drawerWindow) {
+      void drawerWindow.offsetHeight;
+      drawerWindow.classList.remove('is-dragging');
+    }
+  }
+
   document.getElementById('btnOpenMenu')?.addEventListener('click', () => {
     initAudio();
     dismissOnboardingHint();
     cancelDecorPlacement();
     stopTilePaintMode();
-    if (gameModal) {
-      gameModal.style.display = 'flex';
-    }
-    if (drawerWindow) {
-      drawerWindow.classList.remove('is-dragging');
-      drawerWindow.style.transform = 'translateY(0)';
-    }
+    openMenu('half');
     updateUI();
     renderRosterTab();
   });
 
   function closeMenu(): void {
+    isDrawerDragging = false;
+    drawerCurrentDeltaY = 0;
+    drawerDismissOffset = 0;
+    drawerSnapState = 'half';
     if (gameModal) {
       gameModal.style.display = 'none';
     }
+    if (drawerWindow) {
+      drawerWindow.classList.remove('is-dragging', 'is-expanded');
+      drawerWindow.style.height = '';
+      drawerWindow.style.transform = '';
+    }
   }
 
-  document.getElementById('btnCloseMenu')?.addEventListener('click', closeMenu);
-
-  let drawerStartY = 0;
-  let drawerCurrentY = 0;
-  let isDrawerDragging = false;
+  bindReliableCloseButton(document.getElementById('btnCloseMenu'), closeMenu);
 
   drawerHandle?.addEventListener('pointerdown', (e: PointerEvent) => {
+    if (!drawerWindow) return;
     isDrawerDragging = true;
+    drawerDidMove = false;
     drawerStartY = e.clientY;
-    drawerWindow?.classList.add('is-dragging');
+    drawerStartHeight = drawerWindow.getBoundingClientRect().height;
+    drawerDraggedHeight = drawerStartHeight;
+    drawerStartTime = performance.now();
+    drawerCurrentDeltaY = 0;
+    drawerDismissOffset = 0;
+    drawerWindow.classList.add('is-dragging');
     try {
       drawerHandle.setPointerCapture(e.pointerId);
     } catch {
@@ -2663,10 +2776,29 @@ export function initPupperPark(): void {
   });
 
   drawerHandle?.addEventListener('pointermove', (e: PointerEvent) => {
-    if (!isDrawerDragging) return;
-    drawerCurrentY = e.clientY - drawerStartY;
-    if (drawerCurrentY > 0 && drawerWindow) {
-      drawerWindow.style.transform = `translateY(${drawerCurrentY}px)`;
+    if (!isDrawerDragging || !drawerWindow) return;
+    const dy = e.clientY - drawerStartY;
+    drawerCurrentDeltaY = dy;
+    if (Math.abs(dy) > 5) {
+      drawerDidMove = true;
+    }
+
+    const { halfHeight, expandedHeight } = getDrawerSnapHeights();
+    const rawTargetHeight = drawerStartHeight - dy;
+
+    if (rawTargetHeight >= halfHeight) {
+      const clampedHeight = rawTargetHeight > expandedHeight
+        ? expandedHeight + (rawTargetHeight - expandedHeight) * 0.2
+        : rawTargetHeight;
+      drawerDraggedHeight = clampedHeight;
+      drawerDismissOffset = 0;
+      drawerWindow.style.height = `${Math.round(clampedHeight)}px`;
+      drawerWindow.style.transform = 'translateY(0)';
+    } else {
+      drawerDraggedHeight = halfHeight;
+      drawerDismissOffset = halfHeight - rawTargetHeight;
+      drawerWindow.style.height = `${halfHeight}px`;
+      drawerWindow.style.transform = `translateY(${Math.round(drawerDismissOffset)}px)`;
     }
   });
 
@@ -2680,17 +2812,34 @@ export function initPupperPark(): void {
       // Ignore
     }
 
-    if (drawerCurrentY > 80) {
+    const elapsedMs = Math.max(16, performance.now() - drawerStartTime);
+    const velocityY = drawerCurrentDeltaY / elapsedMs;
+    const { halfHeight, expandedHeight } = getDrawerSnapHeights();
+
+    if (!drawerDidMove) {
+      applyDrawerSnap(drawerSnapState === 'expanded' ? 'half' : 'expanded');
+    } else if (drawerDismissOffset > 80 || (velocityY > 0.65 && drawerDismissOffset > 18)) {
       closeMenu();
+    } else if (velocityY > 0.42 && drawerDismissOffset === 0) {
+      applyDrawerSnap('half');
+    } else if (velocityY < -0.42 || drawerDraggedHeight > (halfHeight + expandedHeight) * 0.5) {
+      applyDrawerSnap('expanded');
+    } else {
+      applyDrawerSnap('half');
     }
-    if (drawerWindow) {
-      drawerWindow.style.transform = 'translateY(0)';
-    }
-    drawerCurrentY = 0;
+
+    drawerCurrentDeltaY = 0;
+    drawerDismissOffset = 0;
   }
 
   drawerHandle?.addEventListener('pointerup', finishDrawerDrag);
   drawerHandle?.addEventListener('pointercancel', finishDrawerDrag);
+  drawerHandle?.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      applyDrawerSnap(drawerSnapState === 'expanded' ? 'half' : 'expanded');
+    }
+  });
 
   const tabBtns = document.querySelectorAll<HTMLButtonElement>('.tab-btn');
   tabBtns.forEach(btn => {
@@ -2925,8 +3074,7 @@ export function initPupperPark(): void {
 
   if (btnCloseRerollModal) {
     btnCloseRerollModal.style.touchAction = 'manipulation';
-    btnCloseRerollModal.addEventListener('click', (e) => {
-      e.stopPropagation();
+    bindReliableCloseButton(btnCloseRerollModal, () => {
       initAudio();
       closeRerollModal();
     });
@@ -3502,7 +3650,7 @@ export function initPupperPark(): void {
 
   document.getElementById('btnQuickHelp')?.addEventListener('click', openHelpModal);
   document.getElementById('btnOpenHelp')?.addEventListener('click', openHelpModal);
-  document.getElementById('btnCloseHelp')?.addEventListener('click', closeHelpModal);
+  bindReliableCloseButton(document.getElementById('btnCloseHelp'), closeHelpModal);
   document.getElementById('btnConfirmHelp')?.addEventListener('click', closeHelpModal);
   helpModal?.addEventListener('click', (e) => {
     if (e.target === helpModal) closeHelpModal();
@@ -3610,6 +3758,7 @@ export function initPupperPark(): void {
     if (rerollModal) rerollModal.style.display = 'none';
     const perkModalEl = document.getElementById('perkModal');
     if (perkModalEl) perkModalEl.style.display = 'none';
+    stopDraftTreasureAnimations();
     closeTreasureInspector();
     cancelDecorPlacement();
     closeMenu();
@@ -3634,27 +3783,24 @@ export function initPupperPark(): void {
     sfx.upgrade();
   });
 
-  function getViewportSize(): { width: number; height: number } {
+  function getViewportSize(): { width: number; height: number; visibleHeight: number } {
     const rect = canvas.getBoundingClientRect();
     const docEl = document.documentElement;
-    const rawW = Math.max(
-      rect.width || 0,
-      window.innerWidth || 0,
-      docEl ? docEl.clientWidth : 0
-    );
-    const rawH = Math.max(
-      rect.height || 0,
-      window.innerHeight || 0,
-      docEl ? docEl.clientHeight : 0
-    );
-    return {
-      width: Math.max(240, Math.ceil(rawW || 360)),
-      height: Math.max(240, Math.ceil(rawH || 640))
-    };
+    const rawW = rect.width > 0
+      ? rect.width
+      : Math.max(window.innerWidth || 0, docEl ? docEl.clientWidth : 0);
+    const rawH = rect.height > 0
+      ? rect.height
+      : Math.max(window.innerHeight || 0, docEl ? docEl.clientHeight : 0);
+    const visibleRawH = window.visualViewport?.height || window.innerHeight || rawH;
+    const width = Math.max(240, Math.ceil(rawW || 360));
+    const height = Math.max(240, Math.ceil(rawH || 640));
+    const visibleHeight = Math.max(240, Math.min(height, Math.ceil(visibleRawH || height)));
+    return { width, height, visibleHeight };
   }
 
   function resize(): void {
-    const { width, height } = getViewportSize();
+    const { width, height, visibleHeight } = getViewportSize();
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     viewportW = width;
     viewportH = height;
@@ -3662,13 +3808,17 @@ export function initPupperPark(): void {
     canvas.height = Math.round(height * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    // Auto-fit the 7x7 isometric island comfortably inside narrow portrait phones
+    // Auto-fit the 7x7 isometric island comfortably inside narrow portrait or wide landscape screens
     const fitW = (width - 28) / (GRID_SIZE * BASE_TILE_W * 1.05);
-    const fitH = (height - 150) / (GRID_SIZE * BASE_TILE_H * 1.45);
+    const fitH = (visibleHeight - 150) / (GRID_SIZE * BASE_TILE_H * 1.45);
     autoFitScale = Math.max(0.48, Math.min(1.15, Math.min(fitW, fitH)));
 
     originX = viewportW / 2;
-    originY = viewportH / 2 + 8;
+    originY = visibleHeight / 2 + 8;
+
+    if (gameModal && gameModal.style.display !== 'none' && !isDrawerDragging) {
+      applyDrawerSnap(drawerSnapState, false);
+    }
   }
 
   window.addEventListener('resize', resize);
@@ -4866,6 +5016,15 @@ export function initPupperPark(): void {
     }
   }
 
+  let draftArtStops: Array<() => void> = [];
+
+  function stopDraftTreasureAnimations(): void {
+    for (const stop of draftArtStops) {
+      stop();
+    }
+    draftArtStops = [];
+  }
+
   function triggerPerkDraft(): void {
     state.isDraftingPerk = true;
     sfx.shiny();
@@ -4875,6 +5034,7 @@ export function initPupperPark(): void {
     const choicesContainer = document.getElementById('perkChoices');
     if (!modal || !choicesContainer) return;
 
+    stopDraftTreasureAnimations();
     choicesContainer.innerHTML = '';
 
     const counts = getTreasureCounts(state.perks);
@@ -4896,6 +5056,7 @@ export function initPupperPark(): void {
       claimBtn.style.cssText = 'width: 100%; max-width: 240px; padding: 11px;';
       claimBtn.textContent = `Claim +${MAXED_TREASURE_JACKPOT_MAGIC.toLocaleString()} ✨`;
       claimBtn.addEventListener('click', () => {
+        stopDraftTreasureAnimations();
         state.magicBones += MAXED_TREASURE_JACKPOT_MAGIC;
         state.isDraftingPerk = false;
         modal.style.display = 'none';
@@ -4931,16 +5092,11 @@ export function initPupperPark(): void {
 
       const artWrap = document.createElement('div');
       artWrap.className = 'perk-choice-art-wrap';
-      const img = document.createElement('img');
-      img.className = 'perk-choice-img';
-      img.src = relic.imageUrl;
-      img.alt = relic.name;
-      img.referrerPolicy = 'no-referrer';
-      img.onerror = () => {
-        img.onerror = null;
-        img.src = TREASURE_FALLBACK_SVG;
-      };
-      artWrap.appendChild(img);
+      const artCanvas = document.createElement('canvas');
+      artCanvas.className = 'perk-choice-img';
+      artCanvas.setAttribute('role', 'img');
+      artCanvas.setAttribute('aria-label', relic.name);
+      artWrap.appendChild(artCanvas);
 
       const content = document.createElement('div');
       content.className = 'perk-choice-content';
@@ -4962,6 +5118,7 @@ export function initPupperPark(): void {
       btn.appendChild(content);
 
       btn.addEventListener('click', () => {
+        stopDraftTreasureAnimations();
         const beforeCounts = getTreasureCounts(state.perks);
         const wasSetComplete = isSetCompleted(beforeCounts, relic.setId);
         state.perks.push(createSavedPerkRecord(relic, nextRank));
@@ -4986,6 +5143,7 @@ export function initPupperPark(): void {
       });
 
       choicesContainer.appendChild(btn);
+      draftArtStops.push(startAnimatedTreasureCanvas(artCanvas, relic.id, relic.rarity, 200));
     });
 
     modal.style.display = 'flex';
@@ -6858,8 +7016,7 @@ export function initPupperPark(): void {
   let activeTreasureSetFilter: 'all' | TreasureSetId = 'all';
   let treasureLockedHintTimer: number | null = null;
   let lastTreasuresRenderKey = '';
-
-  preloadTreasureImages();
+  let inspectArtStop: (() => void) | null = null;
 
   function showTreasureLockedHint(message: string): void {
     const hintEl = document.getElementById('treasureLockedHint');
@@ -6876,6 +7033,10 @@ export function initPupperPark(): void {
   }
 
   function closeTreasureInspector(): void {
+    if (inspectArtStop) {
+      inspectArtStop();
+      inspectArtStop = null;
+    }
     const modal = document.getElementById('treasureInspectModal');
     if (modal) modal.style.display = 'none';
   }
@@ -6890,9 +7051,14 @@ export function initPupperPark(): void {
       return;
     }
 
+    if (inspectArtStop) {
+      inspectArtStop();
+      inspectArtStop = null;
+    }
+
     const modal = document.getElementById('treasureInspectModal');
     const artFrame = document.getElementById('inspectArtFrame');
-    const imgEl = document.getElementById('inspectRelicImg') as HTMLImageElement | null;
+    const canvasEl = document.getElementById('inspectRelicCanvas') as HTMLCanvasElement | null;
     const nameEl = document.getElementById('inspectRelicName');
     const metaEl = document.getElementById('inspectRelicMeta');
     const loreEl = document.getElementById('inspectRelicLore');
@@ -6911,14 +7077,9 @@ export function initPupperPark(): void {
     if (artFrame) {
       artFrame.className = `treasure-inspect-art-wrap ${rarityMeta.cssClass}`;
     }
-    if (imgEl) {
-      imgEl.referrerPolicy = 'no-referrer';
-      imgEl.alt = relic.name;
-      imgEl.onerror = () => {
-        imgEl.onerror = null;
-        imgEl.src = TREASURE_FALLBACK_SVG;
-      };
-      imgEl.src = relic.imageUrl;
+    if (canvasEl) {
+      canvasEl.setAttribute('aria-label', relic.name);
+      inspectArtStop = startAnimatedTreasureCanvas(canvasEl, relic.id, relic.rarity, 260);
     }
     if (nameEl) nameEl.textContent = relic.name;
     if (metaEl) {
@@ -6969,7 +7130,7 @@ export function initPupperPark(): void {
     }
   }
 
-  document.getElementById('btnCloseTreasureInspect')?.addEventListener('click', closeTreasureInspector);
+  bindReliableCloseButton(document.getElementById('btnCloseTreasureInspect'), closeTreasureInspector);
   document.getElementById('btnDoneTreasureInspect')?.addEventListener('click', closeTreasureInspector);
   document.getElementById('treasureInspectModal')?.addEventListener('click', (e: MouseEvent) => {
     if (e.target === e.currentTarget) {
@@ -7096,17 +7257,12 @@ export function initPupperPark(): void {
         thumbWrap.className = 'treasure-tile-thumb-wrap';
 
         if (isDiscovered) {
-          const img = document.createElement('img');
-          img.className = 'treasure-tile-img';
-          img.src = relic.imageUrl;
-          img.alt = relic.name;
-          img.decoding = 'async';
-          img.referrerPolicy = 'no-referrer';
-          img.onerror = () => {
-            img.onerror = null;
-            img.src = TREASURE_FALLBACK_SVG;
-          };
-          thumbWrap.appendChild(img);
+          const thumbCanvas = document.createElement('canvas');
+          thumbCanvas.className = 'treasure-tile-img';
+          thumbCanvas.setAttribute('role', 'img');
+          thumbCanvas.setAttribute('aria-label', relic.name);
+          thumbWrap.appendChild(thumbCanvas);
+          renderTreasureCanvasFrame(thumbCanvas, relic.id, relic.rarity, 128);
         } else {
           const sil = document.createElement('span');
           sil.className = 'treasure-tile-silhouette';
@@ -7733,11 +7889,7 @@ export function initPupperPark(): void {
     const rosterTabBtn = document.querySelector<HTMLButtonElement>('.tab-btn[data-tab="tab-roster"]');
     rosterTabBtn?.classList.add('active');
     document.getElementById('tab-roster')?.classList.add('active');
-    if (gameModal) gameModal.style.display = 'flex';
-    if (drawerWindow) {
-      drawerWindow.classList.remove('is-dragging');
-      drawerWindow.style.transform = 'translateY(0)';
-    }
+    openMenu('half');
     updateUI();
     renderRosterTab();
   });
@@ -8176,7 +8328,11 @@ export function initPupperPark(): void {
       // Dynamic Time-of-Day + Weather Skybox Backdrop
       const skyTopStr = rgbaStr(skyTop, 1);
       const skyBotStr = rgbaStr(skyBot, 1);
-      const skyBotRgb = `rgb(${Math.round(skyBot[0])}, ${Math.round(skyBot[1])}, ${Math.round(skyBot[2])})`;
+      const overlayBotAlphaPreview = 0.04 + 0.05 * sunnyWeight + 0.04 * windyWeight + Math.min(0.06, skyGlowAlpha * 0.25);
+      const botOverlayPreviewRgb = lerpRgb(skyBot, skyGlow, 0.25);
+      let finalBotRgb = lerpRgb(skyBot, [9, 132, 227], 0.07 * rainWeight);
+      finalBotRgb = lerpRgb(finalBotRgb, botOverlayPreviewRgb, overlayBotAlphaPreview);
+      const skyBotRgb = `rgb(${Math.round(finalBotRgb[0])}, ${Math.round(finalBotRgb[1])}, ${Math.round(finalBotRgb[2])})`;
       const skyTopRgb = `rgb(${Math.round(skyTop[0])}, ${Math.round(skyTop[1])}, ${Math.round(skyTop[2])})`;
       if (document.documentElement.dataset.skyBot !== skyBotRgb) {
         document.documentElement.dataset.skyBot = skyBotRgb;
