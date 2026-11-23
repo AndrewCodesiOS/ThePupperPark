@@ -2894,7 +2894,7 @@ export function initPupperPark(): void {
     }
     drawerWindow.classList.toggle('is-expanded', snap === 'expanded');
     drawerWindow.style.height = `${targetH}px`;
-    drawerWindow.style.transform = 'translateY(0)';
+    drawerWindow.style.transform = '';
     if (!animate) {
       void drawerWindow.offsetHeight;
       drawerWindow.classList.remove('is-dragging');
@@ -2914,6 +2914,7 @@ export function initPupperPark(): void {
     isDrawerDragging = false;
     drawerCurrentDeltaY = 0;
     drawerDismissOffset = 0;
+    resize();
     if (drawerWindow) {
       drawerWindow.classList.add('is-dragging');
       const { halfHeight, expandedHeight } = getDrawerSnapHeights();
@@ -2921,7 +2922,7 @@ export function initPupperPark(): void {
       drawerSnapState = initialSnap;
       drawerWindow.classList.toggle('is-expanded', initialSnap === 'expanded');
       drawerWindow.style.height = `${targetH}px`;
-      drawerWindow.style.transform = 'translateY(0)';
+      drawerWindow.style.transform = '';
     }
     if (gameModal) {
       gameModal.style.display = 'flex';
@@ -2995,7 +2996,7 @@ export function initPupperPark(): void {
       drawerDraggedHeight = clampedHeight;
       drawerDismissOffset = 0;
       drawerWindow.style.height = `${Math.round(clampedHeight)}px`;
-      drawerWindow.style.transform = 'translateY(0)';
+      drawerWindow.style.transform = '';
     } else {
       drawerDraggedHeight = halfHeight;
       drawerDismissOffset = halfHeight - rawTargetHeight;
@@ -4110,19 +4111,31 @@ export function initPupperPark(): void {
       window.matchMedia('(display-mode: fullscreen)').matches
     ));
   let orientationRecoveryTimers: number[] = [];
+  let resizeRafId: number | null = null;
+  let lastAppliedAppHeight = '';
+  let lastViewportW = 0;
+  let lastViewportH = 0;
+  let lastVisibleH = 0;
+  let lastDpr = 0;
 
-  function getViewportSize(): { width: number; height: number; visibleHeight: number; standaloneDeficit: number } {
+  function getViewportSize(): { width: number; height: number; visibleHeight: number } {
     const docEl = document.documentElement;
     const winW = window.innerWidth || (docEl ? docEl.clientWidth : 0) || 360;
     const winH = window.innerHeight || (docEl ? docEl.clientHeight : 0) || 640;
-    const visibleRawH = window.visualViewport?.height || winH;
+    const activeTag = document.activeElement?.tagName;
+    const isInputFocused = activeTag === 'INPUT' || activeTag === 'TEXTAREA';
+    const vvH = (!isInputFocused && window.visualViewport && window.visualViewport.height > 0)
+      ? window.visualViewport.height
+      : winH;
 
-    // On iOS/iPadOS standalone PWAs, rotating from landscape to portrait causes WebKit
-    // to shrink window.innerHeight / 100% by the status-bar/home-indicator safe area (~20-59px)
-    // and keep that shrunk height even after rotating back. When fullscreen width matches the
-    // physical screen width for this orientation, restore the true physical screen height.
-    let fullH = winH;
-    let standaloneDeficit = 0;
+    let fullH = Math.max(winH, vvH);
+
+    // On iOS/iPadOS standalone PWAs, rotating orientations can cause WebKit to
+    // report window.innerHeight smaller than the physical screen height by the
+    // status-bar/home-indicator safe area (~20-90px). Whenever the app spans the
+    // full screen width for this orientation, lock deterministically to the
+    // physical screen height (never toggling back to '100%') so it never shrinks
+    // or oscillates.
     if (isAppleTouchDevice && isStandalonePwa && window.screen) {
       const screenShort = Math.min(window.screen.width || 0, window.screen.height || 0);
       const screenLong = Math.max(window.screen.width || 0, window.screen.height || 0);
@@ -4130,19 +4143,20 @@ export function initPupperPark(): void {
         const isLandscape = winW > winH;
         const expectedW = isLandscape ? screenLong : screenShort;
         const expectedH = isLandscape ? screenShort : screenLong;
-        const widthMatchesFullscreen = Math.abs(winW - expectedW) <= 4;
-        const gap = expectedH - winH;
-        if (widthMatchesFullscreen && gap > 0 && gap <= 100) {
+        const widthMatchesFullscreen = Math.abs(winW - expectedW) <= 6;
+        const gap = expectedH - fullH;
+        if (widthMatchesFullscreen && gap >= -2 && gap <= 120) {
           fullH = expectedH;
-          standaloneDeficit = gap;
         }
       }
     }
 
-    const width = Math.max(240, Math.ceil(winW));
-    const height = Math.max(240, Math.ceil(fullH));
-    const visibleHeight = Math.max(240, Math.min(height, Math.ceil(Math.max(visibleRawH, fullH))));
-    return { width, height, visibleHeight, standaloneDeficit };
+    const width = Math.max(240, Math.round(winW));
+    const height = Math.max(240, Math.round(fullH));
+    const visibleHeight = isInputFocused
+      ? height
+      : Math.max(240, Math.min(height, Math.round(Math.max(vvH, fullH))));
+    return { width, height, visibleHeight };
   }
 
   function resetPhantomScroll(): void {
@@ -4155,18 +4169,31 @@ export function initPupperPark(): void {
     if (document.body.scrollTop !== 0) document.body.scrollTop = 0;
   }
 
-  let lastAppliedAppHeight = '';
+  function resize(force = false): void {
+    const { width, height, visibleHeight } = getViewportSize();
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const desiredAppHeight = `${height}px`;
 
-  function resize(): void {
-    resetPhantomScroll();
-    const { width, height, visibleHeight, standaloneDeficit } = getViewportSize();
-    const desiredAppHeight = standaloneDeficit > 0 ? `${height}px` : '100%';
     if (lastAppliedAppHeight !== desiredAppHeight) {
       lastAppliedAppHeight = desiredAppHeight;
       document.documentElement.style.setProperty('--app-height', desiredAppHeight);
     }
 
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    if (
+      !force &&
+      width === lastViewportW &&
+      height === lastViewportH &&
+      visibleHeight === lastVisibleH &&
+      dpr === lastDpr
+    ) {
+      return;
+    }
+
+    lastViewportW = width;
+    lastViewportH = height;
+    lastVisibleH = visibleHeight;
+    lastDpr = dpr;
+
     viewportW = width;
     viewportH = height;
     const targetCanvasW = Math.round(width * dpr);
@@ -4190,15 +4217,32 @@ export function initPupperPark(): void {
     }
   }
 
+  function scheduleResize(): void {
+    if (resizeRafId !== null) return;
+    resizeRafId = window.requestAnimationFrame(() => {
+      resizeRafId = null;
+      resize();
+    });
+  }
+
   function scheduleOrientationResize(): void {
     orientationRecoveryTimers.forEach(id => window.clearTimeout(id));
     orientationRecoveryTimers = [];
-    resize();
-    orientationRecoveryTimers.push(window.setTimeout(resize, 120));
-    orientationRecoveryTimers.push(window.setTimeout(resize, 320));
+    resetPhantomScroll();
+    resize(true);
+    const recover = (): void => {
+      resetPhantomScroll();
+      resize();
+      if (gameModal && gameModal.style.display !== 'none' && !isDrawerDragging) {
+        applyDrawerSnap(drawerSnapState, false);
+      }
+    };
+    orientationRecoveryTimers.push(window.setTimeout(recover, 120));
+    orientationRecoveryTimers.push(window.setTimeout(recover, 300));
+    orientationRecoveryTimers.push(window.setTimeout(recover, 550));
   }
 
-  window.addEventListener('resize', resize);
+  window.addEventListener('resize', scheduleResize);
   window.addEventListener('orientationchange', scheduleOrientationResize);
   if (screen.orientation && typeof screen.orientation.addEventListener === 'function') {
     screen.orientation.addEventListener('change', scheduleOrientationResize);
@@ -4210,14 +4254,9 @@ export function initPupperPark(): void {
     orientationMql.addEventListener('change', scheduleOrientationResize);
   }
   if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', resize);
-    window.visualViewport.addEventListener('scroll', resize);
+    window.visualViewport.addEventListener('resize', scheduleResize);
   }
-  if (typeof ResizeObserver !== 'undefined') {
-    const ro = new ResizeObserver(() => resize());
-    ro.observe(document.documentElement);
-  }
-  resize();
+  resize(true);
 
   function gridToScreen(gx: number, gy: number): { x: number; y: number } {
     const cx = GRID_SIZE / 2;
