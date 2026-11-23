@@ -910,6 +910,7 @@ export function initPupperPark(): void {
     pupCupStacks: number;
     xpTreatStacks: number;
     feastStacks: number;
+    treatBreakEven: { cup: number; feast: number; bacon: number };
     feastAnimTimer: number;
     hasTennisBall: boolean;
     hasFrisbee: boolean;
@@ -967,6 +968,7 @@ export function initPupperPark(): void {
     pupCupStacks: 0,
     xpTreatStacks: 0,
     feastStacks: 0,
+    treatBreakEven: { cup: 0, feast: 0, bacon: 0 },
     feastAnimTimer: 0,
     hasTennisBall: false,
     hasFrisbee: false,
@@ -1656,6 +1658,104 @@ export function initPupperPark(): void {
   function getActiveBaconPaceMult(overrideBacon?: boolean): number {
     const baconActive = typeof overrideBacon === 'boolean' ? overrideBacon : state.baconTimer > 0;
     return baconActive ? 1 + (TREAT_CONFIG.treatBacon.paceBonus || 0.35) : 1;
+  }
+
+  type BreakEvenTreatKey = 'cup' | 'feast' | 'bacon';
+
+  function createEmptyTreatBreakEven(): Record<BreakEvenTreatKey, number> {
+    return { cup: 0, feast: 0, bacon: 0 };
+  }
+
+  function isBreakEvenTreatKey(key: string): key is BreakEvenTreatKey {
+    return key === 'cup' || key === 'feast' || key === 'bacon';
+  }
+
+  function getTreatTimerForBreakEven(key: BreakEvenTreatKey): number {
+    if (key === 'cup') return state.pupCupTimer;
+    if (key === 'feast') return state.feastTimer;
+    return state.baconTimer;
+  }
+
+  function getTreatNaturalExtraForDuration(key: BreakEvenTreatKey, durationSec: number): number {
+    const overrideKey = key === 'cup' ? 'cupActive' : key === 'feast' ? 'feastActive' : 'baconActive';
+    const baseRate = getEstimatedPackRates({ [overrideKey]: false }).bonesPerMin;
+    const buffedRate = getEstimatedPackRates({ [overrideKey]: true }).bonesPerMin;
+    return Math.max(0, (buffedRate - baseRate) * (durationSec / 60));
+  }
+
+  function applyTreatBreakEvenOnDig(naturalDigBones: number): number {
+    const ledger = state.treatBreakEven;
+    if (!ledger) return 0;
+
+    const activeKeys: BreakEvenTreatKey[] = (['cup', 'feast', 'bacon'] as BreakEvenTreatKey[]).filter(
+      k => getTreatTimerForBreakEven(k) > 0 && (ledger[k] || 0) > 0.001
+    );
+    if (activeKeys.length === 0) return 0;
+
+    const currentRates = getEstimatedPackRates();
+    const withoutOverrides: { cupActive?: boolean; feastActive?: boolean; baconActive?: boolean } = {};
+    activeKeys.forEach(k => {
+      if (k === 'cup') withoutOverrides.cupActive = false;
+      if (k === 'feast') withoutOverrides.feastActive = false;
+      if (k === 'bacon') withoutOverrides.baconActive = false;
+    });
+    const baseWithoutBreakEven = getEstimatedPackRates(withoutOverrides).bonesPerMin;
+    const combinedNaturalExtraShare = currentRates.bonesPerMin > 0
+      ? Math.max(0, Math.min(0.95, (currentRates.bonesPerMin - baseWithoutBreakEven) / currentRates.bonesPerMin))
+      : 0;
+    const totalNaturalCredit = naturalDigBones * combinedNaturalExtraShare;
+
+    const marginalWeights = activeKeys.map(k => {
+      const overrideKey = k === 'cup' ? 'cupActive' : k === 'feast' ? 'feastActive' : 'baconActive';
+      const withoutK = getEstimatedPackRates({ [overrideKey]: false }).bonesPerMin;
+      return Math.max(0.01, currentRates.bonesPerMin - withoutK);
+    });
+    const totalWeight = marginalWeights.reduce((sum, w) => sum + w, 0) || 1;
+
+    const regularDigsPerSec = Math.max(
+      0.15,
+      (currentRates.digsPerMin / 60) * (state.kongTimer > 0 ? 1 : Math.max(0.1, 1 - state.magicChance))
+    );
+
+    let totalBonus = 0;
+    activeKeys.forEach((k, idx) => {
+      let rem = ledger[k] || 0;
+      if (rem <= 0.001) return;
+
+      const naturalCredit = totalNaturalCredit * (marginalWeights[idx] / totalWeight);
+      rem = Math.max(0, rem - naturalCredit);
+
+      if (rem > 0.001) {
+        const timeLeft = Math.max(0.5, getTreatTimerForBreakEven(k));
+        const estRemainingDigs = Math.max(1, regularDigsPerSec * timeLeft);
+        const rawTopUp = Math.min(rem, rem / estRemainingDigs);
+        const roundedTopUp = Math.min(rem, Math.max(0.1, Math.round(rawTopUp * 10) / 10));
+        rem = Math.max(0, rem - roundedTopUp);
+        totalBonus += roundedTopUp;
+      }
+
+      ledger[k] = rem > 0.001 ? rem : 0;
+    });
+
+    return Math.round(totalBonus * 10) / 10;
+  }
+
+  function creditManualTapBreakEven(tapBones: number): void {
+    const ledger = state.treatBreakEven;
+    if (!ledger || state.pupCupTimer <= 0 || (ledger.cup || 0) <= 0.001) return;
+    const cupShare = TREAT_CONFIG.treatCup.payoutBonus / (1 + TREAT_CONFIG.treatCup.payoutBonus);
+    const next = Math.max(0, ledger.cup - tapBones * cupShare);
+    ledger.cup = next > 0.001 ? next : 0;
+  }
+
+  function settleExpiredTreatBreakEven(key: BreakEvenTreatKey): void {
+    const ledger = state.treatBreakEven;
+    if (!ledger) return;
+    const residual = ledger[key] || 0;
+    ledger[key] = 0;
+    if (residual > 0.05) {
+      addRegularBones(Math.round(residual * 10) / 10);
+    }
   }
 
   const tennisBall = { gx: 3.5, gy: 3.5, targetGx: 3.5, targetGy: 3.5, isRolling: false, timer: 6.0, bouncePhase: 0 };
@@ -2350,6 +2450,14 @@ export function initPupperPark(): void {
             state[sk] = Math.min(TIMED_TREAT_MAX_STACKS, Math.floor(val));
           }
         });
+        const rawBreakEven = (state.treatBreakEven && typeof state.treatBreakEven === 'object')
+          ? state.treatBreakEven as Record<string, unknown>
+          : {};
+        state.treatBreakEven = {
+          cup: state.pupCupTimer > 0 && Number.isFinite(Number(rawBreakEven.cup)) && Number(rawBreakEven.cup) > 0 ? Number(rawBreakEven.cup) : 0,
+          feast: state.feastTimer > 0 && Number.isFinite(Number(rawBreakEven.feast)) && Number(rawBreakEven.feast) > 0 ? Number(rawBreakEven.feast) : 0,
+          bacon: state.baconTimer > 0 && Number.isFinite(Number(rawBreakEven.bacon)) && Number(rawBreakEven.bacon) > 0 ? Number(rawBreakEven.bacon) : 0
+        };
         if (!state.shinyDogs) state.shinyDogs = [];
         if (!state.perks) state.perks = [];
         const rawDecorInv = (state.decorInventory && typeof state.decorInventory === 'object')
@@ -3936,6 +4044,7 @@ export function initPupperPark(): void {
       pupCupStacks: 0,
       xpTreatStacks: 0,
       feastStacks: 0,
+      treatBreakEven: createEmptyTreatBreakEven(),
       feastAnimTimer: 0,
       hasTennisBall: false,
       hasFrisbee: false,
@@ -4439,6 +4548,7 @@ export function initPupperPark(): void {
         });
 
         if (kongActive) {
+          creditManualTapBreakEven(tapBones);
           droppedBones.push({
             x: clickX - 5,
             y: clickY - 10,
@@ -4460,6 +4570,9 @@ export function initPupperPark(): void {
             value: 1
           });
         } else {
+          if (!naturalMagic) {
+            creditManualTapBreakEven(tapBones);
+          }
           droppedBones.push({
             x: clickX,
             y: clickY - 10,
@@ -5448,13 +5561,14 @@ export function initPupperPark(): void {
       const levelMult = getDogLevelBonusMult(entry);
       const rawAmount = state.digPower * stats.boneYield * levelMult * cupMult * packDigMult;
       const amount = Math.max(1, Math.round(rawAmount * 10) / 10);
+      const breakEvenBonus = this.isMagicDig ? 0 : applyTreatBreakEvenOnDig(amount);
       const magicYield = 1 + (this.isShiny ? SHINY_MAGIC_BONE_BONUS : 0);
-      const boneValue = this.isMagicDig ? magicYield : amount;
+      const boneValue = this.isMagicDig ? magicYield : Math.round((amount + breakEvenBonus) * 10) / 10;
       const pos = gridToScreen(this.gx, this.gy);
 
       if (entry) {
         if (!this.isMagicDig) {
-          entry.bonesEarned = (entry.bonesEarned || 0) + boneValue;
+          entry.bonesEarned = (entry.bonesEarned || 0) + amount;
         }
         if (entry.level < MAX_DOG_LEVEL) {
           const baseXp = this.isMagicDig ? 2 : Math.max(1, Math.floor(amount));
@@ -8277,7 +8391,18 @@ export function initPupperPark(): void {
     if (state.bones >= cost) {
       spendRegularBones(cost);
       const maxDur = getTreatMaxDuration(treatKey);
-      const nextTimer = Math.min(maxDur, (Number(state[cfg.timerKey]) || 0) + cfg.duration);
+      const prevTimer = Number(state[cfg.timerKey]) || 0;
+      const nextTimer = Math.min(maxDur, prevTimer + cfg.duration);
+      const addedDuration = Math.max(0, nextTimer - prevTimer);
+      if (isBreakEvenTreatKey(treatKey) && addedDuration > 0) {
+        if (!state.treatBreakEven) {
+          state.treatBreakEven = createEmptyTreatBreakEven();
+        }
+        const naturalExtra = getTreatNaturalExtraForDuration(treatKey, addedDuration);
+        if (naturalExtra < cost) {
+          state.treatBreakEven[treatKey] = (state.treatBreakEven[treatKey] || 0) + cost;
+        }
+      }
       state[cfg.timerKey] = nextTimer;
       state[cfg.stackKey] = Math.min(TIMED_TREAT_MAX_STACKS, Math.max(1, Math.ceil(nextTimer / cfg.duration)));
       if (treatKey === 'feast') {
@@ -8698,28 +8823,28 @@ export function initPupperPark(): void {
     const cupBase = getEstimatedPackRates({ cupActive: false }).bonesPerMin;
     const cupBuffed = getEstimatedPackRates({ cupActive: true }).bonesPerMin;
     const cupNet = Math.round((cupBuffed - cupBase) * (TREAT_CONFIG.treatCup.duration / 60) - TREAT_CONFIG.treatCup.baseCost);
-    if (cupNet >= 0) {
+    if (cupNet > 0) {
       setRoiLine('roiTreatCup', `Est. +${cupNet.toLocaleString()} 🦴 profit per 90s`, 'positive');
     } else {
-      setRoiLine('roiTreatCup', `Needs 667+ 🦴/min to profit (now ${Math.round(cupBase).toLocaleString()}/m)`, 'caution');
+      setRoiLine('roiTreatCup', `Breaks even now | Profits at 667+ 🦴/min (${Math.round(cupBase).toLocaleString()}/m)`, 'caution');
     }
 
     const feastBase = getEstimatedPackRates({ feastActive: false }).bonesPerMin;
     const feastBuffed = getEstimatedPackRates({ feastActive: true }).bonesPerMin;
     const feastNet = Math.round((feastBuffed - feastBase) * (TREAT_CONFIG.treatFeast.duration / 60) - TREAT_CONFIG.treatFeast.baseCost);
-    if (feastNet >= 0) {
+    if (feastNet > 0) {
       setRoiLine('roiTreatFeast', `Est. +${feastNet.toLocaleString()} 🦴 profit per 90s`, 'positive');
     } else {
-      setRoiLine('roiTreatFeast', `Needs 2,000+ 🦴/min to profit (now ${Math.round(feastBase).toLocaleString()}/m)`, 'caution');
+      setRoiLine('roiTreatFeast', `Breaks even now | Profits at 2,000+ 🦴/min (${Math.round(feastBase).toLocaleString()}/m)`, 'caution');
     }
 
     const baconBase = getEstimatedPackRates({ baconActive: false }).bonesPerMin;
     const baconBuffed = getEstimatedPackRates({ baconActive: true }).bonesPerMin;
     const baconNet = Math.round((baconBuffed - baconBase) * (TREAT_CONFIG.treatBacon.duration / 60) - TREAT_CONFIG.treatBacon.baseCost);
-    if (baconNet >= 0) {
+    if (baconNet > 0) {
       setRoiLine('roiTreatBacon', `Est. +${baconNet.toLocaleString()} 🦴 profit per 60s | +35% pace & drops`, 'positive');
     } else {
-      setRoiLine('roiTreatBacon', `Needs 4,255+ 🦴/min to profit (now ${Math.round(baconBase).toLocaleString()}/m)`, 'caution');
+      setRoiLine('roiTreatBacon', `Breaks even now (+35% pace) | Profits at 4,255+ 🦴/min (${Math.round(baconBase).toLocaleString()}/m)`, 'caution');
     }
 
     const kongRates = getEstimatedPackRates({ kongActive: true });
@@ -9412,14 +9537,20 @@ export function initPupperPark(): void {
 
       if (state.baconTimer > 0) {
         state.baconTimer = Math.max(0, state.baconTimer - dt);
-        if (state.baconTimer === 0) state.baconStacks = 0;
+        if (state.baconTimer === 0) {
+          state.baconStacks = 0;
+          settleExpiredTreatBreakEven('bacon');
+        }
       } else if (state.baconStacks > 0) {
         state.baconStacks = 0;
       }
 
       if (state.pupCupTimer > 0) {
         state.pupCupTimer = Math.max(0, state.pupCupTimer - dt);
-        if (state.pupCupTimer === 0) state.pupCupStacks = 0;
+        if (state.pupCupTimer === 0) {
+          state.pupCupStacks = 0;
+          settleExpiredTreatBreakEven('cup');
+        }
       } else if (state.pupCupStacks > 0) {
         state.pupCupStacks = 0;
       }
@@ -9433,7 +9564,10 @@ export function initPupperPark(): void {
 
       if (state.feastTimer > 0) {
         state.feastTimer = Math.max(0, state.feastTimer - dt);
-        if (state.feastTimer === 0) state.feastStacks = 0;
+        if (state.feastTimer === 0) {
+          state.feastStacks = 0;
+          settleExpiredTreatBreakEven('feast');
+        }
       } else if (state.feastStacks > 0) {
         state.feastStacks = 0;
       }
