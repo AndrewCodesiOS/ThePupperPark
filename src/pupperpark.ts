@@ -2873,10 +2873,10 @@ export function initPupperPark(): void {
   }
 
   function getDrawerSnapHeights(): { halfHeight: number; expandedHeight: number } {
-    const vh = Math.max(
-      320,
-      Math.round(window.visualViewport?.height || window.innerHeight || document.documentElement.clientHeight || 640)
-    );
+    const measuredH = viewportH > 0
+      ? viewportH
+      : (window.visualViewport?.height || window.innerHeight || document.documentElement.clientHeight || 640);
+    const vh = Math.max(320, Math.round(measuredH));
     const expandedHeight = Math.max(300, Math.min(vh - 28, Math.round(vh * 0.9)));
     const halfHeight = Math.max(240, Math.min(expandedHeight - 60, Math.round(vh * 0.52)));
     return { halfHeight, expandedHeight };
@@ -4100,26 +4100,50 @@ export function initPupperPark(): void {
     sfx.upgrade();
   });
 
-  function getViewportSize(): { width: number; height: number; visibleHeight: number } {
-    const rect = canvas.getBoundingClientRect();
-    const docEl = document.documentElement;
-    const rawW = rect.width > 0
-      ? rect.width
-      : Math.max(window.innerWidth || 0, docEl ? docEl.clientWidth : 0);
-    const rawH = rect.height > 0
-      ? rect.height
-      : Math.max(window.innerHeight || 0, docEl ? docEl.clientHeight : 0);
-    const visibleRawH = window.visualViewport?.height || window.innerHeight || rawH;
-    const width = Math.max(240, Math.ceil(rawW || 360));
-    const height = Math.max(240, Math.ceil(rawH || 640));
-    const visibleHeight = Math.max(240, Math.min(height, Math.ceil(visibleRawH || height)));
-    return { width, height, visibleHeight };
-  }
-
   const isAppleTouchDevice =
     /iPad|iPhone|iPod/.test(navigator.userAgent) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isStandalonePwa =
+    (window.navigator as Navigator & { standalone?: boolean }).standalone === true ||
+    (typeof window.matchMedia === 'function' && (
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.matchMedia('(display-mode: fullscreen)').matches
+    ));
   let orientationRecoveryTimers: number[] = [];
+
+  function getViewportSize(): { width: number; height: number; visibleHeight: number; standaloneDeficit: number } {
+    const docEl = document.documentElement;
+    const winW = window.innerWidth || (docEl ? docEl.clientWidth : 0) || 360;
+    const winH = window.innerHeight || (docEl ? docEl.clientHeight : 0) || 640;
+    const visibleRawH = window.visualViewport?.height || winH;
+
+    // On iOS/iPadOS standalone PWAs, rotating from landscape to portrait causes WebKit
+    // to shrink window.innerHeight / 100% by the status-bar/home-indicator safe area (~20-59px)
+    // and keep that shrunk height even after rotating back. When fullscreen width matches the
+    // physical screen width for this orientation, restore the true physical screen height.
+    let fullH = winH;
+    let standaloneDeficit = 0;
+    if (isAppleTouchDevice && isStandalonePwa && window.screen) {
+      const screenShort = Math.min(window.screen.width || 0, window.screen.height || 0);
+      const screenLong = Math.max(window.screen.width || 0, window.screen.height || 0);
+      if (screenShort > 0 && screenLong > 0) {
+        const isLandscape = winW > winH;
+        const expectedW = isLandscape ? screenLong : screenShort;
+        const expectedH = isLandscape ? screenShort : screenLong;
+        const widthMatchesFullscreen = Math.abs(winW - expectedW) <= 4;
+        const gap = expectedH - winH;
+        if (widthMatchesFullscreen && gap > 0 && gap <= 100) {
+          fullH = expectedH;
+          standaloneDeficit = gap;
+        }
+      }
+    }
+
+    const width = Math.max(240, Math.ceil(winW));
+    const height = Math.max(240, Math.ceil(fullH));
+    const visibleHeight = Math.max(240, Math.min(height, Math.ceil(Math.max(visibleRawH, fullH))));
+    return { width, height, visibleHeight, standaloneDeficit };
+  }
 
   function resetPhantomScroll(): void {
     const activeTag = document.activeElement?.tagName;
@@ -4131,14 +4155,26 @@ export function initPupperPark(): void {
     if (document.body.scrollTop !== 0) document.body.scrollTop = 0;
   }
 
+  let lastAppliedAppHeight = '';
+
   function resize(): void {
     resetPhantomScroll();
-    const { width, height, visibleHeight } = getViewportSize();
+    const { width, height, visibleHeight, standaloneDeficit } = getViewportSize();
+    const desiredAppHeight = standaloneDeficit > 0 ? `${height}px` : '100%';
+    if (lastAppliedAppHeight !== desiredAppHeight) {
+      lastAppliedAppHeight = desiredAppHeight;
+      document.documentElement.style.setProperty('--app-height', desiredAppHeight);
+    }
+
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     viewportW = width;
     viewportH = height;
-    canvas.width = Math.round(width * dpr);
-    canvas.height = Math.round(height * dpr);
+    const targetCanvasW = Math.round(width * dpr);
+    const targetCanvasH = Math.round(height * dpr);
+    if (canvas.width !== targetCanvasW || canvas.height !== targetCanvasH) {
+      canvas.width = targetCanvasW;
+      canvas.height = targetCanvasH;
+    }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     // Auto-fit the 7x7 isometric island comfortably inside narrow portrait or wide landscape screens
@@ -4154,55 +4190,24 @@ export function initPupperPark(): void {
     }
   }
 
-  function recoverViewportAfterOrientationChange(): void {
+  function scheduleOrientationResize(): void {
     orientationRecoveryTimers.forEach(id => window.clearTimeout(id));
     orientationRecoveryTimers = [];
-
-    const runViewportPass = (reparseViewportFit: boolean) => {
-      resetPhantomScroll();
-      if (reparseViewportFit && isAppleTouchDevice) {
-        const metaViewport = document.querySelector('meta[name="viewport"]');
-        if (metaViewport) {
-          const current =
-            metaViewport.getAttribute('content') ||
-            'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
-          const coverContent = current.includes('viewport-fit=')
-            ? current.replace(/viewport-fit=[^,\s]+/, 'viewport-fit=cover')
-            : `${current}, viewport-fit=cover`;
-          const autoContent = coverContent.replace(/viewport-fit=cover/, 'viewport-fit=auto');
-
-          // Force iOS/iPadOS WebKit standalone PWA to flush its cached orientation viewport-fit box
-          metaViewport.setAttribute('content', autoContent);
-          void document.documentElement.offsetHeight;
-          requestAnimationFrame(() => {
-            metaViewport.setAttribute('content', coverContent);
-            resetPhantomScroll();
-            void document.documentElement.offsetHeight;
-            resize();
-          });
-          return;
-        }
-      }
-
-      void document.documentElement.offsetHeight;
-      resize();
-    };
-
-    runViewportPass(false);
-    orientationRecoveryTimers.push(window.setTimeout(() => runViewportPass(true), 180));
-    orientationRecoveryTimers.push(window.setTimeout(() => runViewportPass(false), 450));
+    resize();
+    orientationRecoveryTimers.push(window.setTimeout(resize, 120));
+    orientationRecoveryTimers.push(window.setTimeout(resize, 320));
   }
 
   window.addEventListener('resize', resize);
-  window.addEventListener('orientationchange', recoverViewportAfterOrientationChange);
+  window.addEventListener('orientationchange', scheduleOrientationResize);
   if (screen.orientation && typeof screen.orientation.addEventListener === 'function') {
-    screen.orientation.addEventListener('change', recoverViewportAfterOrientationChange);
+    screen.orientation.addEventListener('change', scheduleOrientationResize);
   }
   const orientationMql = typeof window.matchMedia === 'function'
     ? window.matchMedia('(orientation: landscape)')
     : null;
   if (orientationMql && typeof orientationMql.addEventListener === 'function') {
-    orientationMql.addEventListener('change', recoverViewportAfterOrientationChange);
+    orientationMql.addEventListener('change', scheduleOrientationResize);
   }
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', resize);

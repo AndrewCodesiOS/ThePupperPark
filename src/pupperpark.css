@@ -14,6 +14,7 @@
   --border-hud: rgba(162, 155, 254, 0.35);
   --font-display: 'Outfit', system-ui, -apple-system, sans-serif;
   --font-body: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --app-height: 100%;
 }
 
 * {
@@ -38,10 +39,12 @@ html {
   background: var(--bg-void);
   color: #f8f9fc;
   width: 100%;
-  height: 100%;
+  min-height: var(--app-height);
+  height: var(--app-height);
   margin: 0;
   padding: 0;
   overflow: hidden;
+  overflow: clip;
   overscroll-behavior: none;
   -webkit-text-size-adjust: none;
 }
@@ -51,10 +54,12 @@ body {
   color: #f8f9fc;
   position: relative;
   width: 100%;
-  height: 100%;
+  min-height: var(--app-height);
+  height: var(--app-height);
   margin: 0;
   padding: 0;
   overflow: hidden;
+  overflow: clip;
   overscroll-behavior: none;
   touch-action: manipulation;
   -webkit-user-select: none;
@@ -392,10 +397,11 @@ input:focus-visible {
 
 /* Canvas Area — full-bleed edge-to-edge past bottom safe area */
 #gameCanvas {
-  position: fixed;
-  inset: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
-  height: 100%;
+  height: var(--app-height);
   display: block;
   cursor: grab;
   touch-action: none;
@@ -409,7 +415,7 @@ input:focus-visible {
 
 /* First-Visit Hint */
 .onboarding-hint {
-  position: fixed;
+  position: absolute;
   bottom: calc(68px + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%);
@@ -708,7 +714,7 @@ input:focus-visible {
 
 /* Bottom Right Mini Bar */
 #bottomBar {
-  position: fixed;
+  position: absolute;
   bottom: calc(10px + env(safe-area-inset-bottom, 0px));
   right: calc(12px + env(safe-area-inset-right, 0px));
   display: flex;
@@ -787,10 +793,11 @@ input:focus-visible {
 
 /* Slide-Up Bottom Drawer Menu */
 .drawer-overlay {
-  position: fixed;
-  inset: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
-  height: 100%;
+  height: var(--app-height);
   background: rgba(0, 0, 0, 0);
   display: flex;
   flex-direction: column;
@@ -1668,10 +1675,11 @@ input:focus-visible {
 
 /* Modals Overlay */
 .modal {
-  position: fixed;
-  inset: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
-  height: 100%;
+  height: var(--app-height);
   background: rgba(13, 11, 26, 0.78);
   display: none;
   justify-content: center;
