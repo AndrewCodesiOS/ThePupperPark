@@ -4116,7 +4116,23 @@ export function initPupperPark(): void {
     return { width, height, visibleHeight };
   }
 
+  const isAppleTouchDevice =
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  let orientationRecoveryTimers: number[] = [];
+
+  function resetPhantomScroll(): void {
+    const activeTag = document.activeElement?.tagName;
+    if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') return;
+    if (window.scrollX !== 0 || window.scrollY !== 0) {
+      window.scrollTo(0, 0);
+    }
+    if (document.documentElement.scrollTop !== 0) document.documentElement.scrollTop = 0;
+    if (document.body.scrollTop !== 0) document.body.scrollTop = 0;
+  }
+
   function resize(): void {
+    resetPhantomScroll();
     const { width, height, visibleHeight } = getViewportSize();
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     viewportW = width;
@@ -4138,11 +4154,56 @@ export function initPupperPark(): void {
     }
   }
 
+  function recoverViewportAfterOrientationChange(): void {
+    orientationRecoveryTimers.forEach(id => window.clearTimeout(id));
+    orientationRecoveryTimers = [];
+
+    const runViewportPass = (reparseViewportFit: boolean) => {
+      resetPhantomScroll();
+      if (reparseViewportFit && isAppleTouchDevice) {
+        const metaViewport = document.querySelector('meta[name="viewport"]');
+        if (metaViewport) {
+          const current =
+            metaViewport.getAttribute('content') ||
+            'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
+          const coverContent = current.includes('viewport-fit=')
+            ? current.replace(/viewport-fit=[^,\s]+/, 'viewport-fit=cover')
+            : `${current}, viewport-fit=cover`;
+          const autoContent = coverContent.replace(/viewport-fit=cover/, 'viewport-fit=auto');
+
+          // Force iOS/iPadOS WebKit standalone PWA to flush its cached orientation viewport-fit box
+          metaViewport.setAttribute('content', autoContent);
+          void document.documentElement.offsetHeight;
+          requestAnimationFrame(() => {
+            metaViewport.setAttribute('content', coverContent);
+            resetPhantomScroll();
+            void document.documentElement.offsetHeight;
+            resize();
+          });
+          return;
+        }
+      }
+
+      void document.documentElement.offsetHeight;
+      resize();
+    };
+
+    runViewportPass(false);
+    orientationRecoveryTimers.push(window.setTimeout(() => runViewportPass(true), 180));
+    orientationRecoveryTimers.push(window.setTimeout(() => runViewportPass(false), 450));
+  }
+
   window.addEventListener('resize', resize);
-  window.addEventListener('orientationchange', () => {
-    resize();
-    setTimeout(resize, 150);
-  });
+  window.addEventListener('orientationchange', recoverViewportAfterOrientationChange);
+  if (screen.orientation && typeof screen.orientation.addEventListener === 'function') {
+    screen.orientation.addEventListener('change', recoverViewportAfterOrientationChange);
+  }
+  const orientationMql = typeof window.matchMedia === 'function'
+    ? window.matchMedia('(orientation: landscape)')
+    : null;
+  if (orientationMql && typeof orientationMql.addEventListener === 'function') {
+    orientationMql.addEventListener('change', recoverViewportAfterOrientationChange);
+  }
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', resize);
     window.visualViewport.addEventListener('scroll', resize);
