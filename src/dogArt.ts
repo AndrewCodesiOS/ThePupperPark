@@ -13,6 +13,7 @@ export interface DogRenderParams {
   moodWagAmp: number;
   tailWag: number;
   earBounce: number;
+  isDrinking?: boolean;
 }
 
 function clampByte(n: number): number {
@@ -326,9 +327,75 @@ function drawMouthAndTongue(
   isJoyful: boolean,
   showTongue: boolean,
   animPhase: number,
-  strokeColor = '#2a2224'
+  strokeColor = '#2a2224',
+  isDrinking = false
 ): void {
   if (isSleeping) return;
+
+  if (isDrinking) {
+    // Open drinking mouth with rhythmic animated lapping pink dog tongue dipping into the water
+    const lapRaw = Math.sin(animPhase * 2.6);
+    const lapExtend = Math.max(0, lapRaw);
+    const tipX = x + 1.1 + lapExtend * 2.4;
+    const tipY = y + 1.5 + lapExtend * 2.15;
+
+    // Subtle open mouth interior behind tongue
+    c.fillStyle = '#5a2230';
+    c.beginPath();
+    c.ellipse(x + 0.65, y + 0.55, 1.9, 1.15 + lapExtend * 0.25, 0.12, 0, Math.PI * 2);
+    c.fill();
+
+    // Soft mouth line along upper lip
+    c.strokeStyle = strokeColor;
+    c.lineWidth = 1.05;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(x - 1.7, y - 0.05);
+    c.quadraticCurveTo(x + 0.3, y + 0.85, x + 2.35, y - 0.25);
+    c.stroke();
+
+    // Lapping dog tongue scooping forward-and-down into the bowl
+    c.fillStyle = '#ff6f91';
+    c.strokeStyle = '#c84364';
+    c.lineWidth = 0.6;
+    c.beginPath();
+    c.moveTo(x - 0.35, y + 0.5);
+    c.quadraticCurveTo(x - 0.5 + lapExtend * 0.4, tipY + 0.35, tipX, tipY + 0.55);
+    c.quadraticCurveTo(tipX + 1.55, tipY - 0.1, x + 2.05, y + 0.35);
+    c.closePath();
+    c.fill();
+    c.stroke();
+
+    // Center tongue groove & glossy wet specular sheen
+    c.strokeStyle = 'rgba(196, 58, 92, 0.45)';
+    c.lineWidth = 0.5;
+    c.beginPath();
+    c.moveTo(x + 0.65, y + 0.85);
+    c.quadraticCurveTo(x + 0.8 + lapExtend * 0.9, (y + tipY) * 0.55, tipX - 0.15, tipY - 0.1);
+    c.stroke();
+
+    c.fillStyle = 'rgba(255, 232, 238, 0.82)';
+    c.beginPath();
+    c.ellipse(
+      x + 0.75 + lapExtend * 0.9,
+      y + 1.2 + lapExtend * 0.85,
+      0.55,
+      0.9 + lapExtend * 0.45,
+      -0.45,
+      0,
+      Math.PI * 2
+    );
+    c.fill();
+
+    // Tiny sparkling water droplet clinging to tongue tip mid-lap
+    if (lapExtend > 0.5) {
+      c.fillStyle = `rgba(165, 245, 255, ${0.55 + (lapExtend - 0.5) * 0.8})`;
+      c.beginPath();
+      c.arc(tipX + 0.45, tipY + 0.5, 0.75, 0, Math.PI * 2);
+      c.fill();
+    }
+    return;
+  }
 
   // Soft friendly mouth curve
   c.strokeStyle = strokeColor;
@@ -360,6 +427,59 @@ function drawMouthAndTongue(
   }
 }
 
+interface DrinkHeadPoseOpts {
+  dipAngle?: number;
+  dipTx?: number;
+  dipTy?: number;
+  outlineColor?: string;
+}
+
+function withDrinkingHeadPose(
+  c: CanvasRenderingContext2D,
+  headX: number,
+  headY: number,
+  isDrinking: boolean,
+  animPhase: number,
+  neckTopCol: string,
+  neckBotCol: string,
+  drawHead: () => void,
+  opts: DrinkHeadPoseOpts = {}
+): void {
+  if (!isDrinking) {
+    drawHead();
+    return;
+  }
+
+  const lapPulse = Math.max(0, Math.sin(animPhase * 2.6));
+  const pivotX = headX - 2.0;
+  const pivotY = headY + 4.5;
+  const dipTx = opts.dipTx ?? Math.max(1.8, 15.0 - headX);
+  const dipTy = opts.dipTy ?? Math.max(0.2, -headY - 14.5);
+  const dipAngle = (opts.dipAngle ?? 0.56) + lapPulse * 0.085;
+
+  // Seamless shaded neck bridge connecting shoulders/chest to the dipped head
+  const neckMidX = headX - 1.6 + dipTx * 0.55;
+  const neckMidY = headY + 3.8 + dipTy * 0.55 + lapPulse * 0.45;
+  fillShadedEllipse(
+    c,
+    neckMidX,
+    neckMidY,
+    5.6,
+    4.3,
+    0.42,
+    neckTopCol,
+    neckBotCol,
+    opts.outlineColor ?? SOFT_OUTLINE
+  );
+
+  c.save();
+  c.translate(pivotX + dipTx, pivotY + dipTy + lapPulse * 0.85);
+  c.rotate(dipAngle);
+  c.translate(-pivotX, -pivotY);
+  drawHead();
+  c.restore();
+}
+
 export function drawIllustratedDog(c: CanvasRenderingContext2D, p: DogRenderParams): void {
   const {
     breed,
@@ -375,7 +495,8 @@ export function drawIllustratedDog(c: CanvasRenderingContext2D, p: DogRenderPara
     animPhase,
     moodWagAmp,
     tailWag,
-    earBounce
+    earBounce,
+    isDrinking = false
   } = p;
 
   const legH = 10.0;
@@ -462,50 +583,52 @@ export function drawIllustratedDog(c: CanvasRenderingContext2D, p: DogRenderPara
     // Far folded Aussie ear
     const headX = isSleeping ? 9.8 : 11.2;
     const headY = isSleeping ? -10.8 : -17.0;
-    c.fillStyle = shadeHex(coatDark, -0.2);
-    c.beginPath();
-    c.moveTo(headX + 1.0, headY - 4.2 + earBounce * 0.5);
-    c.quadraticCurveTo(headX + 5.8, headY - 8.2 + earBounce, headX + 6.4, headY - 1.8 + earBounce * 0.4);
-    c.closePath();
-    c.fill();
+    withDrinkingHeadPose(c, headX, headY, isDrinking, animPhase, whiteFur, shadeHex('#e6e2dc', 0), () => {
+      c.fillStyle = shadeHex(coatDark, -0.2);
+      c.beginPath();
+      c.moveTo(headX + 1.0, headY - 4.2 + earBounce * 0.5);
+      c.quadraticCurveTo(headX + 5.8, headY - 8.2 + earBounce, headX + 6.4, headY - 1.8 + earBounce * 0.4);
+      c.closePath();
+      c.fill();
 
-    // Round fluffy head
-    fillShadedEllipse(c, headX, headY, 7.6, 7.2, 0, coatMid, coatDark);
+      // Round fluffy head
+      fillShadedEllipse(c, headX, headY, 7.6, 7.2, 0, coatMid, coatDark);
 
-    // Copper cheek & brow blaze
-    c.fillStyle = tanPoints;
-    c.beginPath();
-    c.ellipse(headX + 1.8, headY + 1.8, 4.3, 3.1, 0.1, 0, Math.PI * 2);
-    c.fill();
+      // Copper cheek & brow blaze
+      c.fillStyle = tanPoints;
+      c.beginPath();
+      c.ellipse(headX + 1.8, headY + 1.8, 4.3, 3.1, 0.1, 0, Math.PI * 2);
+      c.fill();
 
-    // White muzzle & nose bridge blaze
-    fillShadedEllipse(c, headX + 5.6, headY + 2.1, 4.9, 3.3, 0.05, whiteFur, '#e7e4de');
-    c.fillStyle = whiteFur;
-    c.beginPath();
-    c.ellipse(headX + 3.4, headY - 0.6, 1.8, 3.2, -0.15, 0, Math.PI * 2);
-    c.fill();
+      // White muzzle & nose bridge blaze
+      fillShadedEllipse(c, headX + 5.6, headY + 2.1, 4.9, 3.3, 0.05, whiteFur, '#e7e4de');
+      c.fillStyle = whiteFur;
+      c.beginPath();
+      c.ellipse(headX + 3.4, headY - 0.6, 1.8, 3.2, -0.15, 0, Math.PI * 2);
+      c.fill();
 
-    // Near folded triangular Aussie ear
-    c.fillStyle = coatDark;
-    c.strokeStyle = SOFT_OUTLINE;
-    c.lineWidth = 0.8;
-    c.beginPath();
-    c.moveTo(headX - 4.5, headY - 3.6 + earBounce * 0.4);
-    c.quadraticCurveTo(headX - 7.8, headY - 7.2 + earBounce, headX - 5.2, headY + 1.4 + earBounce * 0.6);
-    c.quadraticCurveTo(headX - 1.4, headY - 0.4 + earBounce * 0.4, headX - 0.5, headY - 4.4 + earBounce * 0.4);
-    c.closePath();
-    c.fill();
-    c.stroke();
+      // Near folded triangular Aussie ear
+      c.fillStyle = coatDark;
+      c.strokeStyle = SOFT_OUTLINE;
+      c.lineWidth = 0.8;
+      c.beginPath();
+      c.moveTo(headX - 4.5, headY - 3.6 + earBounce * 0.4);
+      c.quadraticCurveTo(headX - 7.8, headY - 7.2 + earBounce, headX - 5.2, headY + 1.4 + earBounce * 0.6);
+      c.quadraticCurveTo(headX - 1.4, headY - 0.4 + earBounce * 0.4, headX - 0.5, headY - 4.4 + earBounce * 0.4);
+      c.closePath();
+      c.fill();
+      c.stroke();
 
-    // Copper eyebrow pip
-    c.fillStyle = tanPoints;
-    c.beginPath();
-    c.ellipse(headX + 3.2, headY - 2.4, 1.5, 1.0, -0.12, 0, Math.PI * 2);
-    c.fill();
+      // Copper eyebrow pip
+      c.fillStyle = tanPoints;
+      c.beginPath();
+      c.ellipse(headX + 3.2, headY - 2.4, 1.5, 1.0, -0.12, 0, Math.PI * 2);
+      c.fill();
 
-    drawMouthAndTongue(c, headX + 6.4, headY + 3.4, isSleeping, isJoyful, showTongue, animPhase);
-    drawGlossyNose(c, headX + 9.5, headY + 1.4, 1.85, 1.4);
-    drawDogEye(c, headX + 3.5, headY - 0.3, { isSleeping, isBlinking, isJoyful, irisColor: '#5c3a21' });
+      drawMouthAndTongue(c, headX + 6.4, headY + 3.4, isSleeping, isJoyful, showTongue, animPhase, '#2a2224', isDrinking);
+      drawGlossyNose(c, headX + 9.5, headY + 1.4, 1.85, 1.4);
+      drawDogEye(c, headX + 3.5, headY - 0.3, { isSleeping, isBlinking, isJoyful, irisColor: '#5c3a21' });
+    });
   } else if (breed === 'collie') {
     const coat = sc('#2b3137', -0.2);
     const coatTop = sc('#414a52', 0.02);
@@ -569,58 +692,60 @@ export function drawIllustratedDog(c: CanvasRenderingContext2D, p: DogRenderPara
     const headX = isSleeping ? 9.8 : 11.2;
     const headY = isSleeping ? -10.8 : -17.4;
 
-    // Far semi-tipped ear
-    c.fillStyle = shadeHex(coat, -0.2);
-    c.beginPath();
-    c.moveTo(headX + 0.5, headY - 4.4 + earBounce * 0.4);
-    c.lineTo(headX + 3.4, headY - 10.2 + earBounce);
-    c.lineTo(headX + 5.8, headY - 4.0 + earBounce * 0.4);
-    c.closePath();
-    c.fill();
+    withDrinkingHeadPose(c, headX, headY, isDrinking, animPhase, whiteFur, '#dfe5ec', () => {
+      // Far semi-tipped ear
+      c.fillStyle = shadeHex(coat, -0.2);
+      c.beginPath();
+      c.moveTo(headX + 0.5, headY - 4.4 + earBounce * 0.4);
+      c.lineTo(headX + 3.4, headY - 10.2 + earBounce);
+      c.lineTo(headX + 5.8, headY - 4.0 + earBounce * 0.4);
+      c.closePath();
+      c.fill();
 
-    // Sculpted Collie head
-    fillShadedEllipse(c, headX, headY, 7.2, 6.8, 0, coatTop, coat);
+      // Sculpted Collie head
+      fillShadedEllipse(c, headX, headY, 7.2, 6.8, 0, coatTop, coat);
 
-    // Classic sleek white Collie muzzle + nose blaze
-    c.fillStyle = whiteFur;
-    c.strokeStyle = SOFT_OUTLINE;
-    c.lineWidth = 0.8;
-    c.beginPath();
-    c.moveTo(headX + 1.0, headY - 0.2);
-    c.quadraticCurveTo(headX + 7.2, headY - 0.4, headX + 11.0, headY + 2.4);
-    c.quadraticCurveTo(headX + 9.2, headY + 5.2, headX + 2.0, headY + 4.8);
-    c.closePath();
-    c.fill();
-    c.stroke();
+      // Classic sleek white Collie muzzle + nose blaze
+      c.fillStyle = whiteFur;
+      c.strokeStyle = SOFT_OUTLINE;
+      c.lineWidth = 0.8;
+      c.beginPath();
+      c.moveTo(headX + 1.0, headY - 0.2);
+      c.quadraticCurveTo(headX + 7.2, headY - 0.4, headX + 11.0, headY + 2.4);
+      c.quadraticCurveTo(headX + 9.2, headY + 5.2, headX + 2.0, headY + 4.8);
+      c.closePath();
+      c.fill();
+      c.stroke();
 
-    // White forehead blaze stripe
-    c.fillStyle = whiteFur;
-    c.beginPath();
-    c.ellipse(headX + 3.8, headY - 1.2, 1.5, 3.3, -0.18, 0, Math.PI * 2);
-    c.fill();
+      // White forehead blaze stripe
+      c.fillStyle = whiteFur;
+      c.beginPath();
+      c.ellipse(headX + 3.8, headY - 1.2, 1.5, 3.3, -0.18, 0, Math.PI * 2);
+      c.fill();
 
-    // Near semi-tipped Collie ear with snowy inner tuft
-    c.fillStyle = coat;
-    c.strokeStyle = SOFT_OUTLINE;
-    c.lineWidth = 0.8;
-    c.beginPath();
-    c.moveTo(headX - 4.0, headY - 4.0 + earBounce * 0.4);
-    c.lineTo(headX - 4.8, headY - 10.6 + earBounce);
-    c.lineTo(headX + 0.8, headY - 4.6 + earBounce * 0.4);
-    c.closePath();
-    c.fill();
-    c.stroke();
-    c.fillStyle = whiteFur;
-    c.beginPath();
-    c.moveTo(headX - 3.6, headY - 6.8 + earBounce * 0.7);
-    c.lineTo(headX - 4.8, headY - 10.6 + earBounce);
-    c.lineTo(headX - 1.8, headY - 8.2 + earBounce * 0.8);
-    c.closePath();
-    c.fill();
+      // Near semi-tipped Collie ear with snowy inner tuft
+      c.fillStyle = coat;
+      c.strokeStyle = SOFT_OUTLINE;
+      c.lineWidth = 0.8;
+      c.beginPath();
+      c.moveTo(headX - 4.0, headY - 4.0 + earBounce * 0.4);
+      c.lineTo(headX - 4.8, headY - 10.6 + earBounce);
+      c.lineTo(headX + 0.8, headY - 4.6 + earBounce * 0.4);
+      c.closePath();
+      c.fill();
+      c.stroke();
+      c.fillStyle = whiteFur;
+      c.beginPath();
+      c.moveTo(headX - 3.6, headY - 6.8 + earBounce * 0.7);
+      c.lineTo(headX - 4.8, headY - 10.6 + earBounce);
+      c.lineTo(headX - 1.8, headY - 8.2 + earBounce * 0.8);
+      c.closePath();
+      c.fill();
 
-    drawMouthAndTongue(c, headX + 6.4, headY + 3.8, isSleeping, isJoyful, showTongue, animPhase);
-    drawGlossyNose(c, headX + 10.6, headY + 2.2, 1.75, 1.35);
-    drawDogEye(c, headX + 3.5, headY - 0.6, { isSleeping, isBlinking, isJoyful, irisColor: '#4a2f1b' });
+      drawMouthAndTongue(c, headX + 6.4, headY + 3.8, isSleeping, isJoyful, showTongue, animPhase, '#2a2224', isDrinking);
+      drawGlossyNose(c, headX + 10.6, headY + 2.2, 1.75, 1.35);
+      drawDogEye(c, headX + 3.5, headY - 0.6, { isSleeping, isBlinking, isJoyful, irisColor: '#4a2f1b' });
+    });
   } else if (breed === 'golden') {
     const coatTop = sc('#f7b731', 0.16);
     const coatBase = sc('#e8991a', -0.02);
@@ -685,33 +810,35 @@ export function drawIllustratedDog(c: CanvasRenderingContext2D, p: DogRenderPara
     const headX = isSleeping ? 9.8 : 11.2;
     const headY = isSleeping ? -10.4 : -16.6;
 
-    // Far velvety ear
-    c.fillStyle = shadeHex(coatShade, -0.15);
-    c.beginPath();
-    c.ellipse(headX + 3.6, headY + 1.8 + earBounce * 0.5, 2.8, 5.2, -0.22, 0, Math.PI * 2);
-    c.fill();
+    withDrinkingHeadPose(c, headX, headY, isDrinking, animPhase, coatTop, coatBase, () => {
+      // Far velvety ear
+      c.fillStyle = shadeHex(coatShade, -0.15);
+      c.beginPath();
+      c.ellipse(headX + 3.6, headY + 1.8 + earBounce * 0.5, 2.8, 5.2, -0.22, 0, Math.PI * 2);
+      c.fill();
 
-    // Broad warm Golden head
-    fillShadedEllipse(c, headX, headY, 7.5, 7.1, 0, coatTop, coatBase);
+      // Broad warm Golden head
+      fillShadedEllipse(c, headX, headY, 7.5, 7.1, 0, coatTop, coatBase);
 
-    // Friendly creamy muzzle
-    fillShadedEllipse(c, headX + 5.4, headY + 2.3, 5.1, 3.6, 0.04, creamFeather, coatTop);
+      // Friendly creamy muzzle
+      fillShadedEllipse(c, headX + 5.4, headY + 2.3, 5.1, 3.6, 0.04, creamFeather, coatTop);
 
-    // Near velvety floppy Golden ear with soft wave
-    c.fillStyle = coatShade;
-    c.strokeStyle = SOFT_OUTLINE;
-    c.lineWidth = 0.8;
-    c.beginPath();
-    c.moveTo(headX - 4.2, headY - 2.6 + earBounce * 0.4);
-    c.quadraticCurveTo(headX - 7.4, headY + 2.4 + earBounce * 0.7, headX - 3.6, headY + 6.4 + earBounce * 0.8);
-    c.quadraticCurveTo(headX - 0.2, headY + 3.2 + earBounce * 0.5, headX - 0.8, headY - 2.2 + earBounce * 0.4);
-    c.closePath();
-    c.fill();
-    c.stroke();
+      // Near velvety floppy Golden ear with soft wave
+      c.fillStyle = coatShade;
+      c.strokeStyle = SOFT_OUTLINE;
+      c.lineWidth = 0.8;
+      c.beginPath();
+      c.moveTo(headX - 4.2, headY - 2.6 + earBounce * 0.4);
+      c.quadraticCurveTo(headX - 7.4, headY + 2.4 + earBounce * 0.7, headX - 3.6, headY + 6.4 + earBounce * 0.8);
+      c.quadraticCurveTo(headX - 0.2, headY + 3.2 + earBounce * 0.5, headX - 0.8, headY - 2.2 + earBounce * 0.4);
+      c.closePath();
+      c.fill();
+      c.stroke();
 
-    drawMouthAndTongue(c, headX + 6.4, headY + 3.8, isSleeping, isJoyful, showTongue, animPhase, '#4a2b10');
-    drawGlossyNose(c, headX + 9.8, headY + 1.6, 1.9, 1.45);
-    drawDogEye(c, headX + 3.0, headY - 1.0, { isSleeping, isBlinking, isJoyful, irisColor: '#4e2c14' });
+      drawMouthAndTongue(c, headX + 6.4, headY + 3.8, isSleeping, isJoyful, showTongue, animPhase, '#4a2b10', isDrinking);
+      drawGlossyNose(c, headX + 9.8, headY + 1.6, 1.9, 1.45);
+      drawDogEye(c, headX + 3.0, headY - 1.0, { isSleeping, isBlinking, isJoyful, irisColor: '#4e2c14' });
+    });
   } else if (breed === 'husky') {
     const coatTop = sc('#7c8992', 0.08);
     const coatMid = sc('#5a656d', -0.12);
@@ -775,58 +902,60 @@ export function drawIllustratedDog(c: CanvasRenderingContext2D, p: DogRenderPara
     const headX = isSleeping ? 9.4 : 10.8;
     const headY = isSleeping ? -10.8 : -17.0;
 
-    // Far upright plush ear
-    c.fillStyle = darkTrim;
-    c.beginPath();
-    c.moveTo(headX + 0.6, headY - 4.4 + earBounce * 0.4);
-    c.lineTo(headX + 3.2, headY - 11.4 + earBounce);
-    c.lineTo(headX + 5.2, headY - 3.8 + earBounce * 0.4);
-    c.closePath();
-    c.fill();
+    withDrinkingHeadPose(c, headX, headY, isDrinking, animPhase, coatTop, coatMid, () => {
+      // Far upright plush ear
+      c.fillStyle = darkTrim;
+      c.beginPath();
+      c.moveTo(headX + 0.6, headY - 4.4 + earBounce * 0.4);
+      c.lineTo(headX + 3.2, headY - 11.4 + earBounce);
+      c.lineTo(headX + 5.2, headY - 3.8 + earBounce * 0.4);
+      c.closePath();
+      c.fill();
 
-    // Sculpted Husky head with dark cap
-    fillShadedEllipse(c, headX, headY, 7.3, 6.9, 0, coatTop, coatMid);
+      // Sculpted Husky head with dark cap
+      fillShadedEllipse(c, headX, headY, 7.3, 6.9, 0, coatTop, coatMid);
 
-    // Iconic white Husky mask + cheek fluff + muzzle
-    c.fillStyle = snowWhite;
-    c.beginPath();
-    c.ellipse(headX + 3.6, headY + 2.2, 6.0, 4.2, 0.04, 0, Math.PI * 2);
-    c.arc(headX + 0.8, headY + 1.0, 4.4, 0, Math.PI * 2);
-    c.fill();
-    // Classic forehead mask widow's peak
-    c.fillStyle = darkTrim;
-    c.beginPath();
-    c.ellipse(headX + 2.8, headY - 4.2, 3.6, 2.0, 0.2, 0, Math.PI * 2);
-    c.fill();
+      // Iconic white Husky mask + cheek fluff + muzzle
+      c.fillStyle = snowWhite;
+      c.beginPath();
+      c.ellipse(headX + 3.6, headY + 2.2, 6.0, 4.2, 0.04, 0, Math.PI * 2);
+      c.arc(headX + 0.8, headY + 1.0, 4.4, 0, Math.PI * 2);
+      c.fill();
+      // Classic forehead mask widow's peak
+      c.fillStyle = darkTrim;
+      c.beginPath();
+      c.ellipse(headX + 2.8, headY - 4.2, 3.6, 2.0, 0.2, 0, Math.PI * 2);
+      c.fill();
 
-    // Near upright plush Husky ear with warm pink-white inner fur
-    c.fillStyle = darkTrim;
-    c.strokeStyle = SOFT_OUTLINE;
-    c.lineWidth = 0.8;
-    c.beginPath();
-    c.moveTo(headX - 4.2, headY - 4.0 + earBounce * 0.4);
-    c.lineTo(headX - 1.4, headY - 11.8 + earBounce);
-    c.lineTo(headX + 2.2, headY - 3.6 + earBounce * 0.4);
-    c.closePath();
-    c.fill();
-    c.stroke();
-    c.fillStyle = snowWhite;
-    c.beginPath();
-    c.moveTo(headX - 2.8, headY - 4.4 + earBounce * 0.4);
-    c.lineTo(headX - 1.2, headY - 9.4 + earBounce * 0.9);
-    c.lineTo(headX + 0.8, headY - 4.2 + earBounce * 0.4);
-    c.closePath();
-    c.fill();
+      // Near upright plush Husky ear with warm pink-white inner fur
+      c.fillStyle = darkTrim;
+      c.strokeStyle = SOFT_OUTLINE;
+      c.lineWidth = 0.8;
+      c.beginPath();
+      c.moveTo(headX - 4.2, headY - 4.0 + earBounce * 0.4);
+      c.lineTo(headX - 1.4, headY - 11.8 + earBounce);
+      c.lineTo(headX + 2.2, headY - 3.6 + earBounce * 0.4);
+      c.closePath();
+      c.fill();
+      c.stroke();
+      c.fillStyle = snowWhite;
+      c.beginPath();
+      c.moveTo(headX - 2.8, headY - 4.4 + earBounce * 0.4);
+      c.lineTo(headX - 1.2, headY - 9.4 + earBounce * 0.9);
+      c.lineTo(headX + 0.8, headY - 4.2 + earBounce * 0.4);
+      c.closePath();
+      c.fill();
 
-    drawMouthAndTongue(c, headX + 5.8, headY + 3.6, isSleeping, isJoyful, showTongue, animPhase);
-    drawGlossyNose(c, headX + 9.2, headY + 1.5, 1.8, 1.35);
-    // Signature icy blue Husky eye!
-    drawDogEye(c, headX + 3.9, headY - 0.5, {
-      isSleeping,
-      isBlinking,
-      isJoyful,
-      irisColor: '#29b6f6',
-      radius: 1.75
+      drawMouthAndTongue(c, headX + 5.8, headY + 3.6, isSleeping, isJoyful, showTongue, animPhase, '#2a2224', isDrinking);
+      drawGlossyNose(c, headX + 9.2, headY + 1.5, 1.8, 1.35);
+      // Signature icy blue Husky eye!
+      drawDogEye(c, headX + 3.9, headY - 0.5, {
+        isSleeping,
+        isBlinking,
+        isJoyful,
+        irisColor: '#29b6f6',
+        radius: 1.75
+      });
     });
   } else if (breed === 'shiba') {
     const coatTop = sc('#e8751a', 0.14);
@@ -898,50 +1027,52 @@ export function drawIllustratedDog(c: CanvasRenderingContext2D, p: DogRenderPara
     const headX = isSleeping ? 9.2 : 10.6;
     const headY = isSleeping ? -10.5 : -16.5;
 
-    // Far perky triangular ear
-    c.fillStyle = warmShade;
-    c.beginPath();
-    c.moveTo(headX + 0.8, headY - 4.4 + earBounce * 0.4);
-    c.lineTo(headX + 3.4, headY - 11.2 + earBounce);
-    c.lineTo(headX + 5.2, headY - 3.6 + earBounce * 0.4);
-    c.closePath();
-    c.fill();
+    withDrinkingHeadPose(c, headX, headY, isDrinking, animPhase, coatTop, coatBase, () => {
+      // Far perky triangular ear
+      c.fillStyle = warmShade;
+      c.beginPath();
+      c.moveTo(headX + 0.8, headY - 4.4 + earBounce * 0.4);
+      c.lineTo(headX + 3.4, headY - 11.2 + earBounce);
+      c.lineTo(headX + 5.2, headY - 3.6 + earBounce * 0.4);
+      c.closePath();
+      c.fill();
 
-    // Plush round Shiba head & chubby cream cheeks
-    fillShadedEllipse(c, headX, headY, 7.3, 6.8, 0, coatTop, coatBase);
-    c.fillStyle = creamFur;
-    c.beginPath();
-    c.ellipse(headX + 2.8, headY + 2.4, 6.0, 3.8, 0.05, 0, Math.PI * 2);
-    c.fill();
+      // Plush round Shiba head & chubby cream cheeks
+      fillShadedEllipse(c, headX, headY, 7.3, 6.8, 0, coatTop, coatBase);
+      c.fillStyle = creamFur;
+      c.beginPath();
+      c.ellipse(headX + 2.8, headY + 2.4, 6.0, 3.8, 0.05, 0, Math.PI * 2);
+      c.fill();
 
-    // Cream eyebrow maro-dots
-    c.fillStyle = creamFur;
-    c.beginPath();
-    c.ellipse(headX + 3.2, headY - 2.4, 1.35, 0.9, -0.1, 0, Math.PI * 2);
-    c.fill();
+      // Cream eyebrow maro-dots
+      c.fillStyle = creamFur;
+      c.beginPath();
+      c.ellipse(headX + 3.2, headY - 2.4, 1.35, 0.9, -0.1, 0, Math.PI * 2);
+      c.fill();
 
-    // Near thick upright Shiba ear
-    c.fillStyle = warmShade;
-    c.strokeStyle = SOFT_OUTLINE;
-    c.lineWidth = 0.8;
-    c.beginPath();
-    c.moveTo(headX - 4.2, headY - 4.0 + earBounce * 0.4);
-    c.lineTo(headX - 1.2, headY - 11.8 + earBounce);
-    c.lineTo(headX + 2.6, headY - 3.2 + earBounce * 0.4);
-    c.closePath();
-    c.fill();
-    c.stroke();
-    c.fillStyle = creamFur;
-    c.beginPath();
-    c.moveTo(headX - 2.6, headY - 4.4 + earBounce * 0.4);
-    c.lineTo(headX - 1.0, headY - 9.2 + earBounce * 0.9);
-    c.lineTo(headX + 1.0, headY - 3.8 + earBounce * 0.4);
-    c.closePath();
-    c.fill();
+      // Near thick upright Shiba ear
+      c.fillStyle = warmShade;
+      c.strokeStyle = SOFT_OUTLINE;
+      c.lineWidth = 0.8;
+      c.beginPath();
+      c.moveTo(headX - 4.2, headY - 4.0 + earBounce * 0.4);
+      c.lineTo(headX - 1.2, headY - 11.8 + earBounce);
+      c.lineTo(headX + 2.6, headY - 3.2 + earBounce * 0.4);
+      c.closePath();
+      c.fill();
+      c.stroke();
+      c.fillStyle = creamFur;
+      c.beginPath();
+      c.moveTo(headX - 2.6, headY - 4.4 + earBounce * 0.4);
+      c.lineTo(headX - 1.0, headY - 9.2 + earBounce * 0.9);
+      c.lineTo(headX + 1.0, headY - 3.8 + earBounce * 0.4);
+      c.closePath();
+      c.fill();
 
-    drawMouthAndTongue(c, headX + 5.6, headY + 3.6, isSleeping, isJoyful, showTongue, animPhase, '#3e210e');
-    drawGlossyNose(c, headX + 8.8, headY + 1.8, 1.65, 1.3);
-    drawDogEye(c, headX + 3.6, headY - 0.5, { isSleeping, isBlinking, isJoyful, irisColor: '#3a2210', almond: true });
+      drawMouthAndTongue(c, headX + 5.6, headY + 3.6, isSleeping, isJoyful, showTongue, animPhase, '#3e210e', isDrinking);
+      drawGlossyNose(c, headX + 8.8, headY + 1.8, 1.65, 1.3);
+      drawDogEye(c, headX + 3.6, headY - 0.5, { isSleeping, isBlinking, isJoyful, irisColor: '#3a2210', almond: true });
+    });
   } else if (breed === 'shepherd') {
     const tanCoat = sc('#d6994c', 0.06);
     const tanChest = sc('#ebc383', 0.34);
@@ -1015,69 +1146,71 @@ export function drawIllustratedDog(c: CanvasRenderingContext2D, p: DogRenderPara
     const headX = isSleeping ? 10.0 : 11.4;
     const headY = isSleeping ? -11.0 : -17.8;
 
-    // Far tall pointed ear
-    c.fillStyle = darkTrim;
-    c.beginPath();
-    c.moveTo(headX - 0.6, headY - 3.4 + earBounce * 0.4);
-    c.lineTo(headX + 2.4, headY - 13.4 + earBounce);
-    c.lineTo(headX + 4.4, headY - 2.8 + earBounce * 0.4);
-    c.closePath();
-    c.fill();
+    withDrinkingHeadPose(c, headX, headY, isDrinking, animPhase, tanChest, tanCoat, () => {
+      // Far tall pointed ear
+      c.fillStyle = darkTrim;
+      c.beginPath();
+      c.moveTo(headX - 0.6, headY - 3.4 + earBounce * 0.4);
+      c.lineTo(headX + 2.4, headY - 13.4 + earBounce);
+      c.lineTo(headX + 4.4, headY - 2.8 + earBounce * 0.4);
+      c.closePath();
+      c.fill();
 
-    // Noble sculpted head
-    fillShadedEllipse(c, headX, headY, 7.2, 6.9, 0, tanChest, tanCoat);
+      // Noble sculpted head
+      fillShadedEllipse(c, headX, headY, 7.2, 6.9, 0, tanChest, tanCoat);
 
-    // Warm cheek fluff & dark widow's peak
-    c.fillStyle = tanChest;
-    c.beginPath();
-    c.ellipse(headX + 0.4, headY + 2.5, 5.2, 3.2, 0.1, 0, Math.PI * 2);
-    c.fill();
-    c.fillStyle = saddleBlack;
-    c.beginPath();
-    c.ellipse(headX + 2.0, headY - 3.0, 4.8, 2.6, 0.22, 0, Math.PI * 2);
-    c.fill();
+      // Warm cheek fluff & dark widow's peak
+      c.fillStyle = tanChest;
+      c.beginPath();
+      c.ellipse(headX + 0.4, headY + 2.5, 5.2, 3.2, 0.1, 0, Math.PI * 2);
+      c.fill();
+      c.fillStyle = saddleBlack;
+      c.beginPath();
+      c.ellipse(headX + 2.0, headY - 3.0, 4.8, 2.6, 0.22, 0, Math.PI * 2);
+      c.fill();
 
-    // Near tall proud upright German Shepherd ear
-    c.fillStyle = saddleBlack;
-    c.strokeStyle = SOFT_OUTLINE;
-    c.lineWidth = 0.8;
-    c.beginPath();
-    c.moveTo(headX - 5.4, headY - 3.4 + earBounce * 0.4);
-    c.lineTo(headX - 3.2, headY - 14.4 + earBounce);
-    c.lineTo(headX + 1.2, headY - 3.0 + earBounce * 0.4);
-    c.closePath();
-    c.fill();
-    c.stroke();
-    c.fillStyle = earInner;
-    c.beginPath();
-    c.moveTo(headX - 4.0, headY - 4.0 + earBounce * 0.4);
-    c.lineTo(headX - 2.7, headY - 11.2 + earBounce * 0.9);
-    c.lineTo(headX - 0.3, headY - 3.6 + earBounce * 0.4);
-    c.closePath();
-    c.fill();
+      // Near tall proud upright German Shepherd ear
+      c.fillStyle = saddleBlack;
+      c.strokeStyle = SOFT_OUTLINE;
+      c.lineWidth = 0.8;
+      c.beginPath();
+      c.moveTo(headX - 5.4, headY - 3.4 + earBounce * 0.4);
+      c.lineTo(headX - 3.2, headY - 14.4 + earBounce);
+      c.lineTo(headX + 1.2, headY - 3.0 + earBounce * 0.4);
+      c.closePath();
+      c.fill();
+      c.stroke();
+      c.fillStyle = earInner;
+      c.beginPath();
+      c.moveTo(headX - 4.0, headY - 4.0 + earBounce * 0.4);
+      c.lineTo(headX - 2.7, headY - 11.2 + earBounce * 0.9);
+      c.lineTo(headX - 0.3, headY - 3.6 + earBounce * 0.4);
+      c.closePath();
+      c.fill();
 
-    // Classic strong tapered black German Shepherd muzzle mask
-    c.fillStyle = saddleBlack;
-    c.beginPath();
-    c.moveTo(headX + 2.4, headY - 1.0);
-    c.lineTo(headX + 11.4, headY + 1.6);
-    c.lineTo(headX + 10.4, headY + 4.6);
-    c.lineTo(headX + 2.2, headY + 4.2);
-    c.closePath();
-    c.fill();
-    c.fillStyle = tanChest;
-    c.beginPath();
-    c.ellipse(headX + 6.2, headY + 4.3, 3.4, 1.35, 0.05, 0, Math.PI * 2);
-    c.fill();
+      // Classic strong tapered black German Shepherd muzzle mask
+      c.fillStyle = saddleBlack;
+      c.beginPath();
+      c.moveTo(headX + 2.4, headY - 1.0);
+      c.lineTo(headX + 11.4, headY + 1.6);
+      c.lineTo(headX + 10.4, headY + 4.6);
+      c.lineTo(headX + 2.2, headY + 4.2);
+      c.closePath();
+      c.fill();
+      c.fillStyle = tanChest;
+      c.beginPath();
+      c.ellipse(headX + 6.2, headY + 4.3, 3.4, 1.35, 0.05, 0, Math.PI * 2);
+      c.fill();
 
-    drawMouthAndTongue(c, headX + 7.4, headY + 4.4, isSleeping, isJoyful, showTongue, animPhase, '#11141a');
-    drawGlossyNose(c, headX + 11.4, headY + 2.1, 1.85, 1.4, '#0c0e12');
-    drawDogEye(c, headX + 3.5, headY - 0.5, {
-      isSleeping,
-      isBlinking,
-      isJoyful,
-      irisColor: '#7a451c',
-      radius: 1.75
+      drawMouthAndTongue(c, headX + 7.4, headY + 4.4, isSleeping, isJoyful, showTongue, animPhase, '#11141a', isDrinking);
+      drawGlossyNose(c, headX + 11.4, headY + 2.1, 1.85, 1.4, '#0c0e12');
+      drawDogEye(c, headX + 3.5, headY - 0.5, {
+        isSleeping,
+        isBlinking,
+        isJoyful,
+        irisColor: '#7a451c',
+        radius: 1.75
+      });
     });
   } else if (breed === 'beagle') {
     const tanTop = sc('#eb9234', 0.14);
@@ -1149,37 +1282,39 @@ export function drawIllustratedDog(c: CanvasRenderingContext2D, p: DogRenderPara
     const headX = isSleeping ? 9.2 : 10.6;
     const headY = isSleeping ? -10.2 : -15.4;
 
-    // Far velvety hound ear
-    c.fillStyle = shadeHex(earBrown, -0.2);
-    c.beginPath();
-    c.ellipse(headX + 3.4, headY + 2.4 + earBounce * 0.5, 2.8, 5.4, -0.2, 0, Math.PI * 2);
-    c.fill();
+    withDrinkingHeadPose(c, headX, headY, isDrinking, animPhase, tanTop, tanBase, () => {
+      // Far velvety hound ear
+      c.fillStyle = shadeHex(earBrown, -0.2);
+      c.beginPath();
+      c.ellipse(headX + 3.4, headY + 2.4 + earBounce * 0.5, 2.8, 5.4, -0.2, 0, Math.PI * 2);
+      c.fill();
 
-    // Warm tan Beagle head
-    fillShadedEllipse(c, headX, headY, 7.1, 6.7, 0, tanTop, tanBase);
+      // Warm tan Beagle head
+      fillShadedEllipse(c, headX, headY, 7.1, 6.7, 0, tanTop, tanBase);
 
-    // Crisp white muzzle & blaze
-    fillShadedEllipse(c, headX + 4.8, headY + 2.6, 5.1, 3.4, 0.04, whiteFur, '#e6e8ec');
-    c.fillStyle = whiteFur;
-    c.beginPath();
-    c.ellipse(headX + 2.8, headY - 0.6, 1.5, 2.9, -0.14, 0, Math.PI * 2);
-    c.fill();
+      // Crisp white muzzle & blaze
+      fillShadedEllipse(c, headX + 4.8, headY + 2.6, 5.1, 3.4, 0.04, whiteFur, '#e6e8ec');
+      c.fillStyle = whiteFur;
+      c.beginPath();
+      c.ellipse(headX + 2.8, headY - 0.6, 1.5, 2.9, -0.14, 0, Math.PI * 2);
+      c.fill();
 
-    // Long velvety rounded near Beagle ear
-    fillShadedEllipse(
-      c,
-      headX - 3.2,
-      headY + 3.4 + earBounce * 0.7,
-      3.7,
-      6.8,
-      0.16,
-      earBrown,
-      shadeHex(earBrown, -0.22)
-    );
+      // Long velvety rounded near Beagle ear
+      fillShadedEllipse(
+        c,
+        headX - 3.2,
+        headY + 3.4 + earBounce * 0.7,
+        3.7,
+        6.8,
+        0.16,
+        earBrown,
+        shadeHex(earBrown, -0.22)
+      );
 
-    drawMouthAndTongue(c, headX + 5.6, headY + 4.0, isSleeping, isJoyful, showTongue, animPhase, '#3e2723');
-    drawGlossyNose(c, headX + 9.0, headY + 2.1, 1.7, 1.35);
-    drawDogEye(c, headX + 3.1, headY - 0.7, { isSleeping, isBlinking, isJoyful, irisColor: '#4e2f1a' });
+      drawMouthAndTongue(c, headX + 5.6, headY + 4.0, isSleeping, isJoyful, showTongue, animPhase, '#3e2723', isDrinking);
+      drawGlossyNose(c, headX + 9.0, headY + 2.1, 1.7, 1.35);
+      drawDogEye(c, headX + 3.1, headY - 0.7, { isSleeping, isBlinking, isJoyful, irisColor: '#4e2f1a' });
+    });
   } else if (breed === 'labrador') {
     // Full artistic overhaul for Labrador Retriever!
     const coatTop = sc('#f4c459', 0.18);
@@ -1248,33 +1383,35 @@ export function drawIllustratedDog(c: CanvasRenderingContext2D, p: DogRenderPara
     const headX = isSleeping ? 9.8 : 11.2;
     const headY = isSleeping ? -10.5 : -16.6;
 
-    // Far folded Lab ear
-    c.fillStyle = shadeHex(earCol, -0.2);
-    c.beginPath();
-    c.ellipse(headX + 3.5, headY + 1.4 + earBounce * 0.5, 2.6, 4.8, -0.22, 0, Math.PI * 2);
-    c.fill();
+    withDrinkingHeadPose(c, headX, headY, isDrinking, animPhase, coatTop, coatBase, () => {
+      // Far folded Lab ear
+      c.fillStyle = shadeHex(earCol, -0.2);
+      c.beginPath();
+      c.ellipse(headX + 3.5, headY + 1.4 + earBounce * 0.5, 2.6, 4.8, -0.22, 0, Math.PI * 2);
+      c.fill();
 
-    // Broad, gentle Labrador head
-    fillShadedEllipse(c, headX, headY, 7.5, 7.1, 0, coatTop, coatBase);
+      // Broad, gentle Labrador head
+      fillShadedEllipse(c, headX, headY, 7.5, 7.1, 0, coatTop, coatBase);
 
-    // Soft broad friendly Lab muzzle
-    fillShadedEllipse(c, headX + 5.6, headY + 2.3, 5.3, 3.8, 0.04, creamChest, coatTop);
+      // Soft broad friendly Lab muzzle
+      fillShadedEllipse(c, headX + 5.6, headY + 2.3, 5.3, 3.8, 0.04, creamChest, coatTop);
 
-    // Near folded triangular Labrador ear
-    c.fillStyle = earCol;
-    c.strokeStyle = SOFT_OUTLINE;
-    c.lineWidth = 0.8;
-    c.beginPath();
-    c.moveTo(headX - 4.0, headY - 3.2 + earBounce * 0.4);
-    c.quadraticCurveTo(headX - 6.8, headY + 1.8 + earBounce * 0.7, headX - 2.8, headY + 5.6 + earBounce * 0.7);
-    c.quadraticCurveTo(headX + 0.4, headY + 2.2 + earBounce * 0.5, headX - 0.2, headY - 2.8 + earBounce * 0.4);
-    c.closePath();
-    c.fill();
-    c.stroke();
+      // Near folded triangular Labrador ear
+      c.fillStyle = earCol;
+      c.strokeStyle = SOFT_OUTLINE;
+      c.lineWidth = 0.8;
+      c.beginPath();
+      c.moveTo(headX - 4.0, headY - 3.2 + earBounce * 0.4);
+      c.quadraticCurveTo(headX - 6.8, headY + 1.8 + earBounce * 0.7, headX - 2.8, headY + 5.6 + earBounce * 0.7);
+      c.quadraticCurveTo(headX + 0.4, headY + 2.2 + earBounce * 0.5, headX - 0.2, headY - 2.8 + earBounce * 0.4);
+      c.closePath();
+      c.fill();
+      c.stroke();
 
-    drawMouthAndTongue(c, headX + 6.6, headY + 4.0, isSleeping, isJoyful, showTongue, animPhase, '#4f3312');
-    drawGlossyNose(c, headX + 10.2, headY + 1.6, 1.95, 1.45);
-    drawDogEye(c, headX + 3.2, headY - 1.2, { isSleeping, isBlinking, isJoyful, irisColor: '#563315', radius: 1.7 });
+      drawMouthAndTongue(c, headX + 6.6, headY + 4.0, isSleeping, isJoyful, showTongue, animPhase, '#4f3312', isDrinking);
+      drawGlossyNose(c, headX + 10.2, headY + 1.6, 1.95, 1.45);
+      drawDogEye(c, headX + 3.2, headY - 1.2, { isSleeping, isBlinking, isJoyful, irisColor: '#563315', radius: 1.7 });
+    });
   } else if (breed === 'corgi') {
     const coatTop = sc('#f29944', 0.15);
     const coatBase = sc('#df7c29', -0.04);
@@ -1340,44 +1477,46 @@ export function drawIllustratedDog(c: CanvasRenderingContext2D, p: DogRenderPara
     const headX = isSleeping ? 9.6 : 11.0;
     const headY = isSleeping ? -9.6 : -14.8;
 
-    // Far oversized Corgi radar ear
-    c.fillStyle = saddle;
-    c.beginPath();
-    c.moveTo(headX - 0.4, headY - 4.0 + earBounce * 0.4);
-    c.quadraticCurveTo(headX + 2.8, headY - 13.6 + earBounce, headX + 4.8, headY - 3.6 + earBounce * 0.4);
-    c.closePath();
-    c.fill();
+    withDrinkingHeadPose(c, headX, headY, isDrinking, animPhase, coatTop, coatBase, () => {
+      // Far oversized Corgi radar ear
+      c.fillStyle = saddle;
+      c.beginPath();
+      c.moveTo(headX - 0.4, headY - 4.0 + earBounce * 0.4);
+      c.quadraticCurveTo(headX + 2.8, headY - 13.6 + earBounce, headX + 4.8, headY - 3.6 + earBounce * 0.4);
+      c.closePath();
+      c.fill();
 
-    // Round foxy head
-    fillShadedEllipse(c, headX, headY, 7.3, 6.9, 0, coatTop, coatBase);
+      // Round foxy head
+      fillShadedEllipse(c, headX, headY, 7.3, 6.9, 0, coatTop, coatBase);
 
-    // Near oversized upright Corgi radar ear
-    c.fillStyle = coatBase;
-    c.strokeStyle = SOFT_OUTLINE;
-    c.lineWidth = 0.8;
-    c.beginPath();
-    c.moveTo(headX - 5.2, headY - 3.4 + earBounce * 0.4);
-    c.quadraticCurveTo(headX - 4.2, headY - 14.8 + earBounce, headX + 1.2, headY - 4.0 + earBounce * 0.4);
-    c.closePath();
-    c.fill();
-    c.stroke();
-    c.fillStyle = earInner;
-    c.beginPath();
-    c.moveTo(headX - 3.8, headY - 4.2 + earBounce * 0.4);
-    c.quadraticCurveTo(headX - 3.2, headY - 11.6 + earBounce * 0.9, headX - 0.2, headY - 4.4 + earBounce * 0.4);
-    c.closePath();
-    c.fill();
+      // Near oversized upright Corgi radar ear
+      c.fillStyle = coatBase;
+      c.strokeStyle = SOFT_OUTLINE;
+      c.lineWidth = 0.8;
+      c.beginPath();
+      c.moveTo(headX - 5.2, headY - 3.4 + earBounce * 0.4);
+      c.quadraticCurveTo(headX - 4.2, headY - 14.8 + earBounce, headX + 1.2, headY - 4.0 + earBounce * 0.4);
+      c.closePath();
+      c.fill();
+      c.stroke();
+      c.fillStyle = earInner;
+      c.beginPath();
+      c.moveTo(headX - 3.8, headY - 4.2 + earBounce * 0.4);
+      c.quadraticCurveTo(headX - 3.2, headY - 11.6 + earBounce * 0.9, headX - 0.2, headY - 4.4 + earBounce * 0.4);
+      c.closePath();
+      c.fill();
 
-    // White cheek & muzzle blaze
-    fillShadedEllipse(c, headX + 5.0, headY + 2.0, 5.2, 3.5, 0.05, whiteFur, '#ece7df');
-    c.fillStyle = whiteFur;
-    c.beginPath();
-    c.ellipse(headX + 2.8, headY - 0.4, 2.2, 3.4, -0.1, 0, Math.PI * 2);
-    c.fill();
+      // White cheek & muzzle blaze
+      fillShadedEllipse(c, headX + 5.0, headY + 2.0, 5.2, 3.5, 0.05, whiteFur, '#ece7df');
+      c.fillStyle = whiteFur;
+      c.beginPath();
+      c.ellipse(headX + 2.8, headY - 0.4, 2.2, 3.4, -0.1, 0, Math.PI * 2);
+      c.fill();
 
-    drawMouthAndTongue(c, headX + 6.0, headY + 3.4, isSleeping, isJoyful, showTongue, animPhase, '#4a2910');
-    drawGlossyNose(c, headX + 9.5, headY + 1.4, 1.7, 1.35);
-    drawDogEye(c, headX + 3.2, headY - 0.8, { isSleeping, isBlinking, isJoyful, irisColor: '#4e2c14' });
+      drawMouthAndTongue(c, headX + 6.0, headY + 3.4, isSleeping, isJoyful, showTongue, animPhase, '#4a2910', isDrinking);
+      drawGlossyNose(c, headX + 9.5, headY + 1.4, 1.7, 1.35);
+      drawDogEye(c, headX + 3.2, headY - 0.8, { isSleeping, isBlinking, isJoyful, irisColor: '#4e2c14' });
+    }, { dipAngle: 0.5 });
   } else if (breed === 'dachshund') {
     const coatTop = sc('#54352a', 0.08);
     const coatBase = sc('#38221b', -0.12);
@@ -1441,43 +1580,45 @@ export function drawIllustratedDog(c: CanvasRenderingContext2D, p: DogRenderPara
     const headX = isSleeping ? 11.4 : 13.0;
     const headY = isSleeping ? -9.2 : -13.4;
 
-    // Far hound ear
-    c.fillStyle = shadeHex(earCol, -0.15);
-    c.beginPath();
-    c.ellipse(headX + 2.4, headY + 2.6 + earBounce * 0.5, 2.4, 5.2, -0.22, 0, Math.PI * 2);
-    c.fill();
+    withDrinkingHeadPose(c, headX, headY, isDrinking, animPhase, coatTop, coatBase, () => {
+      // Far hound ear
+      c.fillStyle = shadeHex(earCol, -0.15);
+      c.beginPath();
+      c.ellipse(headX + 2.4, headY + 2.6 + earBounce * 0.5, 2.4, 5.2, -0.22, 0, Math.PI * 2);
+      c.fill();
 
-    // Sleek Dachshund head
-    fillShadedEllipse(c, headX, headY, 6.3, 6.0, 0, coatTop, coatBase);
+      // Sleek Dachshund head
+      fillShadedEllipse(c, headX, headY, 6.3, 6.0, 0, coatTop, coatBase);
 
-    // Distinctively long tapered snout
-    fillShadedEllipse(c, headX + 5.8, headY + 1.2, 5.4, 2.7, 0.08, coatTop, coatBase);
+      // Distinctively long tapered snout
+      fillShadedEllipse(c, headX + 5.8, headY + 1.2, 5.4, 2.7, 0.08, coatTop, coatBase);
 
-    // Tan muzzle & cheek trim
-    c.fillStyle = tanPts;
-    c.beginPath();
-    c.ellipse(headX + 4.6, headY + 2.3, 4.1, 1.75, 0.06, 0, Math.PI * 2);
-    c.fill();
+      // Tan muzzle & cheek trim
+      c.fillStyle = tanPts;
+      c.beginPath();
+      c.ellipse(headX + 4.6, headY + 2.3, 4.1, 1.75, 0.06, 0, Math.PI * 2);
+      c.fill();
 
-    // Long velvety sweeping Dachshund ear
-    fillShadedEllipse(c, headX - 2.6, headY + 3.6 + earBounce * 0.7, 3.5, 6.9, 0.18, earCol, shadeHex(earCol, -0.2));
+      // Long velvety sweeping Dachshund ear
+      fillShadedEllipse(c, headX - 2.6, headY + 3.6 + earBounce * 0.7, 3.5, 6.9, 0.18, earCol, shadeHex(earCol, -0.2));
 
-    // Signature tan eyebrow dot
-    c.fillStyle = tanPts;
-    c.beginPath();
-    c.ellipse(headX + 2.5, headY - 2.3, 1.3, 0.9, -0.1, 0, Math.PI * 2);
-    c.fill();
+      // Signature tan eyebrow dot
+      c.fillStyle = tanPts;
+      c.beginPath();
+      c.ellipse(headX + 2.5, headY - 2.3, 1.3, 0.9, -0.1, 0, Math.PI * 2);
+      c.fill();
 
-    drawMouthAndTongue(c, headX + 6.4, headY + 2.8, isSleeping, isJoyful, showTongue, animPhase, '#140c0a');
-    drawGlossyNose(c, headX + 10.8, headY + 1.3, 1.6, 1.25);
-    drawDogEye(c, headX + 2.6, headY - 0.5, {
-      isSleeping,
-      isBlinking,
-      isJoyful,
-      irisColor: '#4e2912',
-      lidColor: '#f4e6da',
-      radius: 1.55
-    });
+      drawMouthAndTongue(c, headX + 6.4, headY + 2.8, isSleeping, isJoyful, showTongue, animPhase, '#140c0a', isDrinking);
+      drawGlossyNose(c, headX + 10.8, headY + 1.3, 1.6, 1.25);
+      drawDogEye(c, headX + 2.6, headY - 0.5, {
+        isSleeping,
+        isBlinking,
+        isJoyful,
+        irisColor: '#4e2912',
+        lidColor: '#f4e6da',
+        radius: 1.55
+      });
+    }, { dipAngle: 0.46, dipTy: 0 });
   } else if (breed === 'samoyed') {
     const coat = isShiny ? shadeHex(shinyColor, 0.22) : '#fbfdff';
     const fluffShade = isShiny ? shadeHex(shinyColor, -0.12) : '#d0dff0';
@@ -1547,48 +1688,50 @@ export function drawIllustratedDog(c: CanvasRenderingContext2D, p: DogRenderPara
     const headX = isSleeping ? 9.6 : 11.0;
     const headY = isSleeping ? -10.8 : -16.8;
 
-    // Far ear
-    c.fillStyle = fluffShade;
-    c.beginPath();
-    c.moveTo(headX - 0.2, headY - 3.6 + earBounce * 0.4);
-    c.lineTo(headX + 2.4, headY - 10.2 + earBounce);
-    c.lineTo(headX + 4.4, headY - 3.2 + earBounce * 0.4);
-    c.closePath();
-    c.fill();
+    withDrinkingHeadPose(c, headX, headY, isDrinking, animPhase, brightFluff, fluffShade, () => {
+      // Far ear
+      c.fillStyle = fluffShade;
+      c.beginPath();
+      c.moveTo(headX - 0.2, headY - 3.6 + earBounce * 0.4);
+      c.lineTo(headX + 2.4, headY - 10.2 + earBounce);
+      c.lineTo(headX + 4.4, headY - 3.2 + earBounce * 0.4);
+      c.closePath();
+      c.fill();
 
-    // Plush round Samoyed head & fluffy cheeks
-    fillShadedEllipse(c, headX, headY, 7.8, 7.4, 0, brightFluff, fluffShade, 'rgba(108, 128, 158, 0.32)');
-    c.fillStyle = brightFluff;
-    c.beginPath();
-    c.arc(headX - 1.2, headY + 1.0, 5.0, 0, Math.PI * 2);
-    c.fill();
+      // Plush round Samoyed head & fluffy cheeks
+      fillShadedEllipse(c, headX, headY, 7.8, 7.4, 0, brightFluff, fluffShade, 'rgba(108, 128, 158, 0.32)');
+      c.fillStyle = brightFluff;
+      c.beginPath();
+      c.arc(headX - 1.2, headY + 1.0, 5.0, 0, Math.PI * 2);
+      c.fill();
 
-    // Perky triangular near ear with blush pink inside
-    c.fillStyle = coat;
-    c.strokeStyle = 'rgba(108, 128, 158, 0.35)';
-    c.lineWidth = 0.85;
-    c.beginPath();
-    c.moveTo(headX - 4.8, headY - 3.6 + earBounce * 0.4);
-    c.lineTo(headX - 2.2, headY - 11.0 + earBounce);
-    c.lineTo(headX + 1.2, headY - 3.4 + earBounce * 0.4);
-    c.closePath();
-    c.fill();
-    c.stroke();
-    c.fillStyle = earInner;
-    c.beginPath();
-    c.moveTo(headX - 3.5, headY - 4.2 + earBounce * 0.4);
-    c.lineTo(headX - 2.0, headY - 8.8 + earBounce * 0.9);
-    c.lineTo(headX, headY - 4.0 + earBounce * 0.4);
-    c.closePath();
-    c.fill();
+      // Perky triangular near ear with blush pink inside
+      c.fillStyle = coat;
+      c.strokeStyle = 'rgba(108, 128, 158, 0.35)';
+      c.lineWidth = 0.85;
+      c.beginPath();
+      c.moveTo(headX - 4.8, headY - 3.6 + earBounce * 0.4);
+      c.lineTo(headX - 2.2, headY - 11.0 + earBounce);
+      c.lineTo(headX + 1.2, headY - 3.4 + earBounce * 0.4);
+      c.closePath();
+      c.fill();
+      c.stroke();
+      c.fillStyle = earInner;
+      c.beginPath();
+      c.moveTo(headX - 3.5, headY - 4.2 + earBounce * 0.4);
+      c.lineTo(headX - 2.0, headY - 8.8 + earBounce * 0.9);
+      c.lineTo(headX, headY - 4.0 + earBounce * 0.4);
+      c.closePath();
+      c.fill();
 
-    // Neat snowy muzzle
-    fillShadedEllipse(c, headX + 5.4, headY + 2.2, 4.9, 3.4, 0, brightFluff, fluffShade, 'rgba(108, 128, 158, 0.28)');
+      // Neat snowy muzzle
+      fillShadedEllipse(c, headX + 5.4, headY + 2.2, 4.9, 3.4, 0, brightFluff, fluffShade, 'rgba(108, 128, 158, 0.28)');
 
-    // Iconic Samoyed "Sammy Smile" + joyful pink tongue
-    drawMouthAndTongue(c, headX + 6.4, headY + 3.2, isSleeping, true, showTongue, animPhase, '#2d3436');
-    drawGlossyNose(c, headX + 9.7, headY + 1.5, 1.75, 1.35);
-    drawDogEye(c, headX + 3.5, headY - 0.6, { isSleeping, isBlinking, isJoyful, irisColor: '#2d231d' });
+      // Iconic Samoyed "Sammy Smile" + joyful pink tongue
+      drawMouthAndTongue(c, headX + 6.4, headY + 3.2, isSleeping, true, showTongue, animPhase, '#2d3436', isDrinking);
+      drawGlossyNose(c, headX + 9.7, headY + 1.5, 1.75, 1.35);
+      drawDogEye(c, headX + 3.5, headY - 0.6, { isSleeping, isBlinking, isJoyful, irisColor: '#2d231d' });
+    }, { outlineColor: 'rgba(108, 128, 158, 0.30)' });
   } else if (breed === 'bernese') {
     const coatTop = sc('#343b48', 0.04);
     const coatBase = sc('#1e222a', -0.24);
@@ -1656,50 +1799,52 @@ export function drawIllustratedDog(c: CanvasRenderingContext2D, p: DogRenderPara
     const headX = isSleeping ? 10.2 : 11.6;
     const headY = isSleeping ? -11.4 : -18.0;
 
-    // Far floppy ear
-    c.fillStyle = shadeHex(coatBase, -0.18);
-    c.beginPath();
-    c.ellipse(headX + 3.6, headY + 2.2 + earBounce * 0.5, 2.6, 4.8, -0.2, 0, Math.PI * 2);
-    c.fill();
+    withDrinkingHeadPose(c, headX, headY, isDrinking, animPhase, coatTop, coatBase, () => {
+      // Far floppy ear
+      c.fillStyle = shadeHex(coatBase, -0.18);
+      c.beginPath();
+      c.ellipse(headX + 3.6, headY + 2.2 + earBounce * 0.5, 2.6, 4.8, -0.2, 0, Math.PI * 2);
+      c.fill();
 
-    // Noble round head
-    fillShadedEllipse(c, headX, headY, 7.9, 7.5, 0, coatTop, coatBase);
+      // Noble round head
+      fillShadedEllipse(c, headX, headY, 7.9, 7.5, 0, coatTop, coatBase);
 
-    // Warm rust cheek spot & eyebrow pip
-    c.fillStyle = rust;
-    c.beginPath();
-    c.ellipse(headX + 2.4, headY + 2.4, 3.4, 2.6, 0.1, 0, Math.PI * 2);
-    c.ellipse(headX + 3.6, headY - 2.5, 1.5, 1.1, -0.1, 0, Math.PI * 2);
-    c.fill();
+      // Warm rust cheek spot & eyebrow pip
+      c.fillStyle = rust;
+      c.beginPath();
+      c.ellipse(headX + 2.4, headY + 2.4, 3.4, 2.6, 0.1, 0, Math.PI * 2);
+      c.ellipse(headX + 3.6, headY - 2.5, 1.5, 1.1, -0.1, 0, Math.PI * 2);
+      c.fill();
 
-    // White muzzle blaze & subtle forehead stripe
-    fillShadedEllipse(c, headX + 5.9, headY + 2.8, 5.2, 3.5, 0, whiteFur, '#dfe5ed');
-    c.fillStyle = whiteFur;
-    c.beginPath();
-    c.ellipse(headX + 4.0, headY - 0.4, 1.3, 2.8, -0.16, 0, Math.PI * 2);
-    c.fill();
+      // White muzzle blaze & subtle forehead stripe
+      fillShadedEllipse(c, headX + 5.9, headY + 2.8, 5.2, 3.5, 0, whiteFur, '#dfe5ed');
+      c.fillStyle = whiteFur;
+      c.beginPath();
+      c.ellipse(headX + 4.0, headY - 0.4, 1.3, 2.8, -0.16, 0, Math.PI * 2);
+      c.fill();
 
-    // Soft triangular floppy near Bernese ear
-    c.fillStyle = shadeHex(coatBase, -0.22);
-    c.strokeStyle = SOFT_OUTLINE;
-    c.lineWidth = 0.8;
-    c.beginPath();
-    c.moveTo(headX - 4.8, headY - 2.5 + earBounce * 0.4);
-    c.quadraticCurveTo(headX - 7.4, headY + 3.2 + earBounce * 0.7, headX - 4.0, headY + 6.0 + earBounce * 0.7);
-    c.quadraticCurveTo(headX - 0.8, headY + 3.2 + earBounce * 0.5, headX - 1.0, headY - 2.2 + earBounce * 0.4);
-    c.closePath();
-    c.fill();
-    c.stroke();
+      // Soft triangular floppy near Bernese ear
+      c.fillStyle = shadeHex(coatBase, -0.22);
+      c.strokeStyle = SOFT_OUTLINE;
+      c.lineWidth = 0.8;
+      c.beginPath();
+      c.moveTo(headX - 4.8, headY - 2.5 + earBounce * 0.4);
+      c.quadraticCurveTo(headX - 7.4, headY + 3.2 + earBounce * 0.7, headX - 4.0, headY + 6.0 + earBounce * 0.7);
+      c.quadraticCurveTo(headX - 0.8, headY + 3.2 + earBounce * 0.5, headX - 1.0, headY - 2.2 + earBounce * 0.4);
+      c.closePath();
+      c.fill();
+      c.stroke();
 
-    drawMouthAndTongue(c, headX + 7.0, headY + 4.3, isSleeping, isJoyful, showTongue, animPhase, '#14171c');
-    drawGlossyNose(c, headX + 10.5, headY + 2.0, 1.95, 1.45, '#0f1217');
-    drawDogEye(c, headX + 3.6, headY - 0.2, {
-      isSleeping,
-      isBlinking,
-      isJoyful,
-      irisColor: '#583318',
-      lidColor: '#f8f9fa',
-      radius: 1.7
+      drawMouthAndTongue(c, headX + 7.0, headY + 4.3, isSleeping, isJoyful, showTongue, animPhase, '#14171c', isDrinking);
+      drawGlossyNose(c, headX + 10.5, headY + 2.0, 1.95, 1.45, '#0f1217');
+      drawDogEye(c, headX + 3.6, headY - 0.2, {
+        isSleeping,
+        isBlinking,
+        isJoyful,
+        irisColor: '#583318',
+        lidColor: '#f8f9fa',
+        radius: 1.7
+      });
     });
   } else if (breed === 'dalmatian') {
     const coatTop = isShiny ? shadeHex(shinyColor, 0.3) : '#ffffff';
@@ -1780,43 +1925,45 @@ export function drawIllustratedDog(c: CanvasRenderingContext2D, p: DogRenderPara
     const headX = isSleeping ? 10.0 : 11.4;
     const headY = isSleeping ? -11.2 : -17.6;
 
-    // Far spotted floppy ear
-    c.fillStyle = shadeHex(coatBase, -0.14);
-    c.beginPath();
-    c.ellipse(headX + 3.4, headY + 1.8 + earBounce * 0.5, 2.5, 4.8, -0.2, 0, Math.PI * 2);
-    c.fill();
+    withDrinkingHeadPose(c, headX, headY, isDrinking, animPhase, coatTop, coatBase, () => {
+      // Far spotted floppy ear
+      c.fillStyle = shadeHex(coatBase, -0.14);
+      c.beginPath();
+      c.ellipse(headX + 3.4, headY + 1.8 + earBounce * 0.5, 2.5, 4.8, -0.2, 0, Math.PI * 2);
+      c.fill();
 
-    // Sculpted white head & clean tapered snout
-    fillShadedEllipse(c, headX, headY, 6.9, 6.6, 0, coatTop, coatBase, 'rgba(60, 72, 92, 0.32)');
-    fillShadedEllipse(c, headX + 5.8, headY + 2.2, 5.2, 3.2, 0.04, coatTop, coatBase, 'rgba(60, 72, 92, 0.28)');
+      // Sculpted white head & clean tapered snout
+      fillShadedEllipse(c, headX, headY, 6.9, 6.6, 0, coatTop, coatBase, 'rgba(60, 72, 92, 0.32)');
+      fillShadedEllipse(c, headX + 5.8, headY + 2.2, 5.2, 3.2, 0.04, coatTop, coatBase, 'rgba(60, 72, 92, 0.28)');
 
-    // Forehead & cheek spots
-    c.fillStyle = spot;
-    c.beginPath();
-    c.arc(headX + 1.8, headY - 3.6, 1.5, 0, Math.PI * 2);
-    c.arc(headX + 6.0, headY + 3.6, 1.05, 0, Math.PI * 2);
-    c.fill();
+      // Forehead & cheek spots
+      c.fillStyle = spot;
+      c.beginPath();
+      c.arc(headX + 1.8, headY - 3.6, 1.5, 0, Math.PI * 2);
+      c.arc(headX + 6.0, headY + 3.6, 1.05, 0, Math.PI * 2);
+      c.fill();
 
-    // High-set spotted velvety floppy Dalmatian ear
-    c.fillStyle = coatTop;
-    c.strokeStyle = 'rgba(60, 72, 92, 0.35)';
-    c.lineWidth = 0.85;
-    c.beginPath();
-    c.moveTo(headX - 4.8, headY - 3.0 + earBounce * 0.4);
-    c.quadraticCurveTo(headX - 7.4, headY + 2.6 + earBounce * 0.7, headX - 4.2, headY + 5.8 + earBounce * 0.7);
-    c.quadraticCurveTo(headX - 0.8, headY + 2.8 + earBounce * 0.5, headX - 1.2, headY - 2.6 + earBounce * 0.4);
-    c.closePath();
-    c.fill();
-    c.stroke();
-    c.fillStyle = spot;
-    c.beginPath();
-    c.arc(headX - 4.0, headY - 0.2 + earBounce * 0.5, 1.9, 0, Math.PI * 2);
-    c.arc(headX - 4.6, headY + 3.6 + earBounce * 0.7, 1.45, 0, Math.PI * 2);
-    c.fill();
+      // High-set spotted velvety floppy Dalmatian ear
+      c.fillStyle = coatTop;
+      c.strokeStyle = 'rgba(60, 72, 92, 0.35)';
+      c.lineWidth = 0.85;
+      c.beginPath();
+      c.moveTo(headX - 4.8, headY - 3.0 + earBounce * 0.4);
+      c.quadraticCurveTo(headX - 7.4, headY + 2.6 + earBounce * 0.7, headX - 4.2, headY + 5.8 + earBounce * 0.7);
+      c.quadraticCurveTo(headX - 0.8, headY + 2.8 + earBounce * 0.5, headX - 1.2, headY - 2.6 + earBounce * 0.4);
+      c.closePath();
+      c.fill();
+      c.stroke();
+      c.fillStyle = spot;
+      c.beginPath();
+      c.arc(headX - 4.0, headY - 0.2 + earBounce * 0.5, 1.9, 0, Math.PI * 2);
+      c.arc(headX - 4.6, headY + 3.6 + earBounce * 0.7, 1.45, 0, Math.PI * 2);
+      c.fill();
 
-    drawMouthAndTongue(c, headX + 6.8, headY + 3.7, isSleeping, isJoyful, showTongue, animPhase, '#1c222b');
-    drawGlossyNose(c, headX + 10.4, headY + 1.8, 1.75, 1.35, '#0f1217');
-    drawDogEye(c, headX + 3.0, headY - 0.4, { isSleeping, isBlinking, isJoyful, irisColor: '#3f2818' });
+      drawMouthAndTongue(c, headX + 6.8, headY + 3.7, isSleeping, isJoyful, showTongue, animPhase, '#1c222b', isDrinking);
+      drawGlossyNose(c, headX + 10.4, headY + 1.8, 1.75, 1.35, '#0f1217');
+      drawDogEye(c, headX + 3.0, headY - 0.4, { isSleeping, isBlinking, isJoyful, irisColor: '#3f2818' });
+    }, { outlineColor: 'rgba(60, 72, 92, 0.30)' });
   } else {
     // Borzoi (graceful sighthound with long aristocratic snout & silky feathered coat)
     const coatTop = isShiny ? shadeHex(shinyColor, 0.36) : '#fffbf3';
@@ -1897,56 +2044,58 @@ export function drawIllustratedDog(c: CanvasRenderingContext2D, p: DogRenderPara
     const headX = isSleeping ? 10.0 : 11.4;
     const headY = isSleeping ? -11.4 : -18.2;
 
-    // Slender aristocratic head + fawn crown
-    fillShadedEllipse(c, headX, headY, 5.7, 5.1, -0.12, coatTop, coatBase, 'rgba(92, 74, 54, 0.28)');
-    c.fillStyle = fawn;
-    c.beginPath();
-    c.ellipse(headX - 0.8, headY - 1.6, 4.2, 2.7, -0.15, 0, Math.PI * 2);
-    c.fill();
+    withDrinkingHeadPose(c, headX, headY, isDrinking, animPhase, coatTop, coatBase, () => {
+      // Slender aristocratic head + fawn crown
+      fillShadedEllipse(c, headX, headY, 5.7, 5.1, -0.12, coatTop, coatBase, 'rgba(92, 74, 54, 0.28)');
+      c.fillStyle = fawn;
+      c.beginPath();
+      c.ellipse(headX - 0.8, headY - 1.6, 4.2, 2.7, -0.15, 0, Math.PI * 2);
+      c.fill();
 
-    // Swept-back silky rose ear
-    c.fillStyle = deepFawn;
-    c.strokeStyle = SOFT_OUTLINE;
-    c.lineWidth = 0.75;
-    c.beginPath();
-    c.moveTo(headX - 3.8, headY - 2.2 + earBounce * 0.4);
-    c.quadraticCurveTo(headX - 8.8, headY + 0.6 + earBounce * 0.6, headX - 5.8, headY + 4.0 + earBounce * 0.7);
-    c.quadraticCurveTo(headX - 2.4, headY + 2.0 + earBounce * 0.5, headX - 1.4, headY - 1.6 + earBounce * 0.4);
-    c.closePath();
-    c.fill();
-    c.stroke();
+      // Swept-back silky rose ear
+      c.fillStyle = deepFawn;
+      c.strokeStyle = SOFT_OUTLINE;
+      c.lineWidth = 0.75;
+      c.beginPath();
+      c.moveTo(headX - 3.8, headY - 2.2 + earBounce * 0.4);
+      c.quadraticCurveTo(headX - 8.8, headY + 0.6 + earBounce * 0.6, headX - 5.8, headY + 4.0 + earBounce * 0.7);
+      c.quadraticCurveTo(headX - 2.4, headY + 2.0 + earBounce * 0.5, headX - 1.4, headY - 1.6 + earBounce * 0.4);
+      c.closePath();
+      c.fill();
+      c.stroke();
 
-    // Iconic ultra-long gently arched Borzoi Roman snout
-    c.fillStyle = coatTop;
-    c.strokeStyle = 'rgba(92, 74, 54, 0.28)';
-    c.lineWidth = 0.85;
-    c.beginPath();
-    c.moveTo(headX + 2.2, headY - 3.0);
-    c.quadraticCurveTo(headX + 10.4, headY - 2.4, headX + 16.6, headY + 2.8);
-    c.lineTo(headX + 15.4, headY + 4.6);
-    c.quadraticCurveTo(headX + 8.8, headY + 3.4, headX + 1.8, headY + 3.0);
-    c.closePath();
-    c.fill();
-    c.stroke();
+      // Iconic ultra-long gently arched Borzoi Roman snout
+      c.fillStyle = coatTop;
+      c.strokeStyle = 'rgba(92, 74, 54, 0.28)';
+      c.lineWidth = 0.85;
+      c.beginPath();
+      c.moveTo(headX + 2.2, headY - 3.0);
+      c.quadraticCurveTo(headX + 10.4, headY - 2.4, headX + 16.6, headY + 2.8);
+      c.lineTo(headX + 15.4, headY + 4.6);
+      c.quadraticCurveTo(headX + 8.8, headY + 3.4, headX + 1.8, headY + 3.0);
+      c.closePath();
+      c.fill();
+      c.stroke();
 
-    // Silky highlight along bridge of the long snoot
-    c.strokeStyle = silkBright;
-    c.lineWidth = 1.3;
-    c.lineCap = 'round';
-    c.beginPath();
-    c.moveTo(headX + 4.4, headY - 2.0);
-    c.quadraticCurveTo(headX + 10.0, headY - 1.3, headX + 14.6, headY + 2.2);
-    c.stroke();
+      // Silky highlight along bridge of the long snoot
+      c.strokeStyle = silkBright;
+      c.lineWidth = 1.3;
+      c.lineCap = 'round';
+      c.beginPath();
+      c.moveTo(headX + 4.4, headY - 2.0);
+      c.quadraticCurveTo(headX + 10.0, headY - 1.3, headX + 14.6, headY + 2.2);
+      c.stroke();
 
-    drawMouthAndTongue(c, headX + 11.4, headY + 4.2, isSleeping, isJoyful, showTongue, animPhase, '#3d2c20');
-    drawGlossyNose(c, headX + 16.6, headY + 3.2, 1.7, 1.3, '#11141a');
-    drawDogEye(c, headX + 3.0, headY - 0.6, {
-      isSleeping,
-      isBlinking,
-      isJoyful,
-      irisColor: '#2c1e16',
-      almond: true,
-      radius: 1.6
-    });
+      drawMouthAndTongue(c, headX + 11.4, headY + 4.2, isSleeping, isJoyful, showTongue, animPhase, '#3d2c20', isDrinking);
+      drawGlossyNose(c, headX + 16.6, headY + 3.2, 1.7, 1.3, '#11141a');
+      drawDogEye(c, headX + 3.0, headY - 0.6, {
+        isSleeping,
+        isBlinking,
+        isJoyful,
+        irisColor: '#2c1e16',
+        almond: true,
+        radius: 1.6
+      });
+    }, { dipAngle: 0.42, dipTx: 1.6, dipTy: 2.8, outlineColor: 'rgba(92, 74, 54, 0.28)' });
   }
 }

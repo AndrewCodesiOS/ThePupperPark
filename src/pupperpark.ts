@@ -58,7 +58,8 @@ export type DecorType =
   | 'hydrant'
   | 'slide'
   | 'lamp'
-  | 'goldenHydrant';
+  | 'goldenHydrant'
+  | 'doghouseManor';
 
 export type CustomTileStyle = 'cobble' | 'sand' | 'clover';
 export type TileStyle = 'grass' | CustomTileStyle;
@@ -136,7 +137,15 @@ export function initPupperPark(): void {
   const TIMED_TREAT_MAX_STACKS = 5;
 
   const DOGHOUSE_TILE = { gx: 1, gy: 1 };
+  const GRAND_DOGHOUSE_ANCHOR = { gx: 0, gy: 0 };
+  const GRAND_DOGHOUSE_TILES: ReadonlyArray<{ gx: number; gy: number }> = [
+    { gx: 0, gy: 0 },
+    { gx: 1, gy: 0 },
+    { gx: 0, gy: 1 },
+    { gx: 1, gy: 1 }
+  ];
   const WATER_BOWL_POS = { gx: 1.96, gy: 1.44 };
+  const GRAND_WATER_BOWL_POS = { gx: 1.96, gy: 1.42 };
   const STARTER_TREE_TILE = { gx: 5, gy: 1 };
 
   const DECOR_TYPES: DecorType[] = [
@@ -146,7 +155,8 @@ export function initPupperPark(): void {
     'lamp',
     'fountain',
     'slide',
-    'goldenHydrant'
+    'goldenHydrant',
+    'doghouseManor'
   ];
 
   const DECOR_CONFIG: Record<DecorType, {
@@ -276,6 +286,22 @@ export function initPupperPark(): void {
       payoutBonus: 0.10,
       paceBonus: 0.05,
       cozyFloor: 8.0
+    },
+    doghouseManor: {
+      cost: 10000,
+      max: 1,
+      tileWidth: 2,
+      buyLabel: 'Buy Manor',
+      placePrompt: 'Upgrading doghouse to the 4-tile Grand Doghouse Manor!',
+      ownedId: 'ownedDecorDoghouseManor',
+      countId: 'countDecorDoghouseManor',
+      buyBtnId: 'btnBuyDecorDoghouseManor',
+      placeBtnId: 'btnPlaceDecorDoghouseManor',
+      xpBonus: 0.10,
+      magicBonus: 0.06,
+      payoutBonus: 0.15,
+      paceBonus: 0.08,
+      cozyFloor: 15.0
     }
   };
 
@@ -305,7 +331,8 @@ export function initPupperPark(): void {
       hydrant: 0,
       slide: 0,
       lamp: 0,
-      goldenHydrant: 0
+      goldenHydrant: 0,
+      doghouseManor: 0
     };
   }
 
@@ -2104,7 +2131,22 @@ export function initPupperPark(): void {
     { gx: 4, gy: 4, label: 'Gold Shrooms', color: '#ffeaa7', capDark: '#e1a12b', glow: 'rgba(255, 234, 167, 0.44)' }
   ];
 
+  function isGrandDoghouseTile(gx: number, gy: number): boolean {
+    return gx >= 0 && gx <= 1 && gy >= 0 && gy <= 1;
+  }
+
+  function hasGrandDoghousePlaced(): boolean {
+    return Array.isArray(state.placedDecorations) && state.placedDecorations.some(d => d.type === 'doghouseManor');
+  }
+
+  function getWaterBowlPos(): { gx: number; gy: number } {
+    return hasGrandDoghousePlaced() ? GRAND_WATER_BOWL_POS : WATER_BOWL_POS;
+  }
+
   function getDecorFootprint(type: DecorType, gx: number, gy: number): Array<{ gx: number; gy: number }> {
+    if (type === 'doghouseManor') {
+      return GRAND_DOGHOUSE_TILES.map(t => ({ gx: t.gx, gy: t.gy }));
+    }
     const width = DECOR_CONFIG[type]?.tileWidth || 1;
     const tiles: Array<{ gx: number; gy: number }> = [];
     for (let dx = 0; dx < width; dx++) {
@@ -2226,9 +2268,13 @@ export function initPupperPark(): void {
   function rebuildCanvasDogsFromRoster(): void {
     dogs.length = 0;
     state.roster.forEach(entry => {
+      const safePos = pushOutsideDoghouseObstacle(
+        1.5 + Math.random() * 4,
+        1.5 + Math.random() * 4
+      );
       dogs.push(new Dog(
-        1.5 + Math.random() * 4,
-        1.5 + Math.random() * 4,
+        safePos.gx,
+        safePos.gy,
         entry.id,
         entry.breed,
         Boolean(entry.isShiny),
@@ -3445,6 +3491,113 @@ export function initPupperPark(): void {
     sfx.gather();
   }
 
+  function placeGrandDoghouseManor(): void {
+    const cfg = DECOR_CONFIG.doghouseManor;
+    const placedCount = state.placedDecorations.filter(d => d.type === 'doghouseManor').length;
+    const available = (state.decorInventory.doghouseManor || 0) - placedCount;
+    if (available <= 0 || placedCount >= cfg.max) return;
+
+    // Automatically return any placed decor overlapping the 3 tiles behind the doghouse (or the doghouse tile) to inventory
+    const keptDecor: PlacedDecor[] = [];
+    let returnedCount = 0;
+    let removedSlide = false;
+    let removedFountain = false;
+    state.placedDecorations.forEach(dec => {
+      const footprint = getDecorFootprint(dec.type, dec.gx, dec.gy);
+      const overlapsManor = footprint.some(t => isGrandDoghouseTile(t.gx, t.gy));
+      if (overlapsManor) {
+        returnedCount += 1;
+        if (dec.type === 'slide') removedSlide = true;
+        if (dec.type === 'fountain') removedFountain = true;
+      } else {
+        keptDecor.push(dec);
+      }
+    });
+
+    keptDecor.push({
+      type: 'doghouseManor',
+      gx: GRAND_DOGHOUSE_ANCHOR.gx,
+      gy: GRAND_DOGHOUSE_ANCHOR.gy
+    });
+    state.placedDecorations = keptDecor;
+
+    // Safely release any pups sliding/drinking on evicted decor or standing inside the new 2x2 manor footprint
+    dogs.forEach(d => {
+      if (removedSlide) d.cancelSlide();
+      if (removedFountain) d.cancelDrink(true);
+      if (d.drinkTarget?.kind === 'bowl') d.cancelDrink();
+      if (isInsideDoghouseObstacle(d.gx, d.gy)) {
+        d.gx = 2.15 + Math.random() * 0.45;
+        d.gy = 2.15 + Math.random() * 0.45;
+        d.targetGx = d.gx;
+        d.targetGy = d.gy;
+        if (d.state === 'SLEEP') {
+          d.state = 'IDLE';
+          d.timer = 0.8;
+        }
+      } else if (isInsideDoghouseObstacle(d.targetGx, d.targetGy)) {
+        const safeTarget = pushOutsideDoghouseObstacle(d.targetGx, d.targetGy);
+        d.targetGx = safeTarget.gx;
+        d.targetGy = safeTarget.gy;
+      }
+    });
+
+    // Nudge any park toys sitting inside the new 2x2 manor footprint cleanly onto the front lawn
+    [tennisBall, frisbee, duck].forEach(toy => {
+      if (isInsideDoghouseObstacle(toy.gx, toy.gy)) {
+        const safe = pushOutsideDoghouseObstacle(toy.gx, toy.gy);
+        toy.gx = safe.gx;
+        toy.gy = safe.gy;
+      }
+      if (isInsideDoghouseObstacle(toy.targetGx, toy.targetGy)) {
+        const safeT = pushOutsideDoghouseObstacle(toy.targetGx, toy.targetGy);
+        toy.targetGx = safeT.gx;
+        toy.targetGy = safeT.gy;
+      }
+    });
+
+    closeMenu();
+    addPackHappiness(8);
+    sfx.shiny();
+    triggerHaptic(35);
+
+    const manorCenter = gridToScreen(1.0, 1.0);
+    const s = getScale();
+    particles.push({
+      x: manorCenter.x,
+      y: manorCenter.y - 12 * s,
+      vx: 0,
+      vy: 0,
+      life: 0.85,
+      maxLife: 0.85,
+      color: '#ffeaa7',
+      size: 6,
+      isRing: true
+    });
+    for (let i = 0; i < 18; i++) {
+      const ang = (Math.PI * 2 * i) / 18 + Math.random() * 0.2;
+      const spd = 28 + Math.random() * 44;
+      particles.push({
+        x: manorCenter.x,
+        y: manorCenter.y - 18 * s,
+        vx: Math.cos(ang) * spd,
+        vy: Math.sin(ang) * spd - 26,
+        life: 0.75 + Math.random() * 0.4,
+        maxLife: 1.15,
+        color: i % 3 === 0 ? '#ffeaa7' : (i % 2 === 0 ? '#74b9ff' : '#ffffff'),
+        size: 2.5 + Math.random() * 2.2
+      });
+    }
+
+    const bannerMsg = returnedCount > 0
+      ? `Grand Doghouse Built! (${returnedCount} decor returned to inventory)`
+      : 'Grand Doghouse Manor Built!';
+    addFloatingText(manorCenter.x, manorCenter.y - 68 * s, bannerMsg, '#ffeaa7');
+
+    updateUI();
+    saveGame();
+  }
+
   DECOR_TYPES.forEach(type => {
     const cfg = DECOR_CONFIG[type];
     document.getElementById(cfg.buyBtnId)?.addEventListener('click', () => {
@@ -3465,6 +3618,10 @@ export function initPupperPark(): void {
       const placedCount = state.placedDecorations.filter(d => d.type === type).length;
       const available = (state.decorInventory[type] || 0) - placedCount;
       if (available <= 0 || placedCount >= cfg.max) return;
+      if (type === 'doghouseManor') {
+        placeGrandDoghouseManor();
+        return;
+      }
       startDecorPlacement(type, cfg.placePrompt);
     });
   });
@@ -3580,7 +3737,7 @@ export function initPupperPark(): void {
     state.placedDecorations = [];
     dogs.forEach(d => {
       d.cancelSlide();
-      d.cancelDrink(true);
+      d.cancelDrink();
     });
     showLandmarkToggleNote(null);
     state.packHappiness = Math.max(getCozyFloor(), Math.min(HAPPINESS_MAX, state.packHappiness || getCozyFloor()));
@@ -3947,8 +4104,11 @@ export function initPupperPark(): void {
       dog.cancelSlide();
       dog.cancelDrink();
       dog.onReachToy = null;
-      dog.targetGx = Math.max(0.5, Math.min(GRID_SIZE - 0.5, gx + (Math.random() - 0.5) * 0.8));
-      dog.targetGy = Math.max(0.5, Math.min(GRID_SIZE - 0.5, gy + (Math.random() - 0.5) * 0.8));
+      const rawGx = Math.max(0.5, Math.min(GRID_SIZE - 0.5, gx + (Math.random() - 0.5) * 0.8));
+      const rawGy = Math.max(0.5, Math.min(GRID_SIZE - 0.5, gy + (Math.random() - 0.5) * 0.8));
+      const safeTarget = pushOutsideDoghouseObstacle(rawGx, rawGy);
+      dog.targetGx = safeTarget.gx;
+      dog.targetGy = safeTarget.gy;
       dog.state = 'WALK';
       dog.petBounce = 0.35;
       if (idx === 0) {
@@ -4364,18 +4524,201 @@ export function initPupperPark(): void {
     });
   }
 
+  interface ObstacleBounds {
+    minGx: number;
+    maxGx: number;
+    minGy: number;
+    maxGy: number;
+  }
+
+  function getDoghouseBlockedBounds(): ObstacleBounds {
+    if (hasGrandDoghousePlaced()) {
+      // Full 2x2 Grand Doghouse Manor footprint: tiles (0,0), (1,0), (0,1), (1,1)
+      return { minGx: 0.0, maxGx: 2.04, minGy: 0.0, maxGy: 2.04 };
+    }
+    // Classic 1-tile doghouse footprint: tile (1,1)
+    return {
+      minGx: DOGHOUSE_TILE.gx - 0.04,
+      maxGx: DOGHOUSE_TILE.gx + 1.04,
+      minGy: DOGHOUSE_TILE.gy - 0.04,
+      maxGy: DOGHOUSE_TILE.gy + 1.04
+    };
+  }
+
+  function isInsideDoghouseObstacle(gx: number, gy: number): boolean {
+    const b = getDoghouseBlockedBounds();
+    return gx > b.minGx && gx < b.maxGx && gy > b.minGy && gy < b.maxGy;
+  }
+
+  function pushOutsideDoghouseObstacle(gx: number, gy: number): { gx: number; gy: number } {
+    const clampedGx = Math.max(0.32, Math.min(GRID_SIZE - 0.32, gx));
+    const clampedGy = Math.max(0.32, Math.min(GRID_SIZE - 0.32, gy));
+    const b = getDoghouseBlockedBounds();
+    if (!(clampedGx > b.minGx && clampedGx < b.maxGx && clampedGy > b.minGy && clampedGy < b.maxGy)) {
+      return { gx: clampedGx, gy: clampedGy };
+    }
+
+    const candidates: Array<{ gx: number; gy: number; dist: number }> = [
+      { gx: b.maxGx + 0.04, gy: clampedGy, dist: Math.abs(b.maxGx + 0.04 - clampedGx) },
+      { gx: clampedGx, gy: b.maxGy + 0.04, dist: Math.abs(b.maxGy + 0.04 - clampedGy) }
+    ];
+    if (b.minGx >= 0.42) {
+      candidates.push({ gx: b.minGx - 0.04, gy: clampedGy, dist: Math.abs(clampedGx - (b.minGx - 0.04)) });
+    }
+    if (b.minGy >= 0.42) {
+      candidates.push({ gx: clampedGx, gy: b.minGy - 0.04, dist: Math.abs(clampedGy - (b.minGy - 0.04)) });
+    }
+    candidates.sort((a, c) => a.dist - c.dist);
+    return {
+      gx: Math.max(0.32, Math.min(GRID_SIZE - 0.32, candidates[0].gx)),
+      gy: Math.max(0.32, Math.min(GRID_SIZE - 0.32, candidates[0].gy))
+    };
+  }
+
+  function segmentIntersectsBox(
+    x0: number,
+    y0: number,
+    x1: number,
+    y1: number,
+    b: ObstacleBounds
+  ): boolean {
+    const dx = x1 - x0;
+    const dy = y1 - y0;
+    let tMin = 0;
+    let tMax = 1;
+
+    if (Math.abs(dx) < 1e-6) {
+      if (x0 <= b.minGx || x0 >= b.maxGx) return false;
+    } else {
+      const invD = 1 / dx;
+      let t1 = (b.minGx - x0) * invD;
+      let t2 = (b.maxGx - x0) * invD;
+      if (t1 > t2) { const tmp = t1; t1 = t2; t2 = tmp; }
+      tMin = Math.max(tMin, t1);
+      tMax = Math.min(tMax, t2);
+      if (tMin >= tMax) return false;
+    }
+
+    if (Math.abs(dy) < 1e-6) {
+      if (y0 <= b.minGy || y0 >= b.maxGy) return false;
+    } else {
+      const invD = 1 / dy;
+      let t1 = (b.minGy - y0) * invD;
+      let t2 = (b.maxGy - y0) * invD;
+      if (t1 > t2) { const tmp = t1; t1 = t2; t2 = tmp; }
+      tMin = Math.max(tMin, t1);
+      tMax = Math.min(tMax, t2);
+      if (tMin >= tMax) return false;
+    }
+
+    return tMax > 0.001 && tMin < 0.999;
+  }
+
+  function getDoghouseSteerTarget(
+    gx: number,
+    gy: number,
+    targetGx: number,
+    targetGy: number
+  ): { gx: number; gy: number } {
+    const b = getDoghouseBlockedBounds();
+    const innerBox: ObstacleBounds = {
+      minGx: b.minGx + 0.02,
+      maxGx: b.maxGx - 0.02,
+      minGy: b.minGy + 0.02,
+      maxGy: b.maxGy - 0.02
+    };
+    if (!segmentIntersectsBox(gx, gy, targetGx, targetGy, innerBox)) {
+      return { gx: targetGx, gy: targetGy };
+    }
+
+    const pad = 0.14;
+    const corners: Array<{ gx: number; gy: number }> = [];
+    const leftX = b.minGx - pad;
+    const rightX = b.maxGx + pad;
+    const topY = b.minGy - pad;
+    const botY = b.maxGy + pad;
+
+    corners.push({ gx: rightX, gy: botY });
+    if (leftX >= 0.35) corners.push({ gx: leftX, gy: botY });
+    if (topY >= 0.35) corners.push({ gx: rightX, gy: topY });
+    if (leftX >= 0.35 && topY >= 0.35) corners.push({ gx: leftX, gy: topY });
+
+    const bothClear: Array<{ gx: number; gy: number; score: number }> = [];
+    const firstClear: Array<{ gx: number; gy: number; score: number }> = [];
+
+    for (const c of corners) {
+      if (Math.hypot(c.gx - gx, c.gy - gy) < 0.06) continue;
+      const leg1Blocked = segmentIntersectsBox(gx, gy, c.gx, c.gy, innerBox);
+      if (leg1Blocked) continue;
+      const leg2Blocked = segmentIntersectsBox(c.gx, c.gy, targetGx, targetGy, innerBox);
+      const score = Math.hypot(c.gx - gx, c.gy - gy) + Math.hypot(targetGx - c.gx, targetGy - c.gy);
+      if (!leg2Blocked) {
+        bothClear.push({ gx: c.gx, gy: c.gy, score });
+      } else {
+        firstClear.push({ gx: c.gx, gy: c.gy, score });
+      }
+    }
+
+    if (bothClear.length > 0) {
+      bothClear.sort((a, c) => a.score - c.score);
+      return { gx: bothClear[0].gx, gy: bothClear[0].gy };
+    }
+    if (firstClear.length > 0) {
+      firstClear.sort((a, c) => a.score - c.score);
+      return { gx: firstClear[0].gx, gy: firstClear[0].gy };
+    }
+    return { gx: rightX, gy: botY };
+  }
+
+  function getSideDrinkSpot(
+    waterGx: number,
+    waterGy: number,
+    sideOffsetPx: number,
+    dyPx: number,
+    dogGx: number,
+    dogGy: number
+  ): { gx: number; gy: number } {
+    const waterScreen = gridToScreen(waterGx, waterGy);
+    const s = getScale();
+    const rawOptions = [
+      screenToGrid(waterScreen.x + sideOffsetPx * s, waterScreen.y + dyPx * s),
+      screenToGrid(waterScreen.x - sideOffsetPx * s, waterScreen.y + dyPx * s)
+    ];
+
+    const scored = rawOptions.map(raw => {
+      const clampedGx = Math.max(0.35, Math.min(GRID_SIZE - 0.35, raw.gx));
+      const clampedGy = Math.max(0.35, Math.min(GRID_SIZE - 0.35, raw.gy));
+      const blocked = isInsideDoghouseObstacle(clampedGx, clampedGy);
+      const safe = blocked ? pushOutsideDoghouseObstacle(clampedGx, clampedGy) : { gx: clampedGx, gy: clampedGy };
+      const finalGx = Math.max(0.35, Math.min(GRID_SIZE - 0.35, safe.gx));
+      const finalGy = Math.max(0.35, Math.min(GRID_SIZE - 0.35, safe.gy));
+      const finalScreen = gridToScreen(finalGx, finalGy);
+      const horizSep = Math.abs(finalScreen.x - waterScreen.x) / Math.max(0.01, s);
+      const distFromDog = Math.hypot(finalGx - dogGx, finalGy - dogGy);
+      // Strongly prefer unobstructed side spots with clean horizontal separation so the body never covers the bowl
+      const penalty = (blocked ? 8 : 0) + Math.max(0, sideOffsetPx * 0.72 - horizSep) * 0.4;
+      return { gx: finalGx, gy: finalGy, score: penalty + distFromDog * 0.15 };
+    });
+
+    scored.sort((a, b) => a.score - b.score);
+    return { gx: scored[0].gx, gy: scored[0].gy };
+  }
+
   function getAvailableWaterSource(dog: Dog): DrinkTarget | null {
     const candidates: DrinkTarget[] = [];
+    const bowlPos = getWaterBowlPos();
 
     const bowlBusy = dogs.some(d => d !== dog && d.drinkTarget?.key === 'bowl');
     if (!bowlBusy) {
+      // Stand cleanly beside the bowl (outside the doghouse tile(s)) so the torso never covers the bowl
+      const sideSpot = getSideDrinkSpot(bowlPos.gx, bowlPos.gy, 23.5, 1.5, dog.gx, dog.gy);
       candidates.push({
         kind: 'bowl',
         key: 'bowl',
-        waterGx: WATER_BOWL_POS.gx,
-        waterGy: WATER_BOWL_POS.gy,
-        standGx: WATER_BOWL_POS.gx + 0.24,
-        standGy: WATER_BOWL_POS.gy + 0.16
+        waterGx: bowlPos.gx,
+        waterGy: bowlPos.gy,
+        standGx: sideSpot.gx,
+        standGy: sideSpot.gy
       });
     }
 
@@ -4389,14 +4732,7 @@ export function initPupperPark(): void {
 
         const centerGx = dec.gx + 0.5;
         const centerGy = dec.gy + 0.5;
-        const dx = dog.gx - centerGx;
-        const dy = dog.gy - centerGy;
-        const dist = Math.hypot(dx, dy);
-        // Approach the fountain basin rim from the dog's side (default front-right rim)
-        const dirX = dist > 0.08 ? dx / dist : 0.72;
-        const dirY = dist > 0.08 ? dy / dist : 0.69;
-        const standGx = Math.max(0.35, Math.min(GRID_SIZE - 0.35, centerGx + dirX * 0.56));
-        const standGy = Math.max(0.35, Math.min(GRID_SIZE - 0.35, centerGy + dirY * 0.56));
+        const safeStand = getSideDrinkSpot(centerGx, centerGy, 31.5, 3.2, dog.gx, dog.gy);
 
         fountainCandidates.push({
           kind: 'fountain',
@@ -4405,8 +4741,8 @@ export function initPupperPark(): void {
           gy: dec.gy,
           waterGx: centerGx,
           waterGy: centerGy,
-          standGx,
-          standGy
+          standGx: safeStand.gx,
+          standGy: safeStand.gy
         });
       }
     }
@@ -4451,10 +4787,11 @@ export function initPupperPark(): void {
     blinkTimer: number;
 
     constructor(gx: number, gy: number, rosterId: string, breed = 'aussie', isShiny = false, shinyColor: string | null = null) {
-      this.gx = gx;
-      this.gy = gy;
-      this.targetGx = gx;
-      this.targetGy = gy;
+      const safeStart = pushOutsideDoghouseObstacle(gx, gy);
+      this.gx = safeStart.gx;
+      this.gy = safeStart.gy;
+      this.targetGx = safeStart.gx;
+      this.targetGy = safeStart.gy;
       this.state = 'IDLE';
       this.timer = 0.5 + Math.random() * 1.5;
       this.facingRight = Math.random() > 0.5;
@@ -4642,7 +4979,7 @@ export function initPupperPark(): void {
     enterSleep(): void {
       this.cancelSlide();
       this.cancelDrink();
-      if (isNearSlideZone(this.gx, this.gy)) {
+      if (isNearSlideZone(this.gx, this.gy) || isInsideDoghouseObstacle(this.gx, this.gy)) {
         this.pickNewTarget();
         return;
       }
@@ -4769,8 +5106,16 @@ export function initPupperPark(): void {
       this.onReachSlide = null;
       this.drinkTarget = null;
       this.onReachWater = null;
-      this.targetGx = 0.7 + Math.random() * (GRID_SIZE - 1.4);
-      this.targetGy = 0.7 + Math.random() * (GRID_SIZE - 1.4);
+      let rx = 0.7 + Math.random() * (GRID_SIZE - 1.4);
+      let ry = 0.7 + Math.random() * (GRID_SIZE - 1.4);
+      for (let attempt = 0; attempt < 12; attempt++) {
+        if (!isInsideDoghouseObstacle(rx, ry)) break;
+        rx = 0.7 + Math.random() * (GRID_SIZE - 1.4);
+        ry = 0.7 + Math.random() * (GRID_SIZE - 1.4);
+      }
+      const safeDest = pushOutsideDoghouseObstacle(rx, ry);
+      this.targetGx = safeDest.gx;
+      this.targetGy = safeDest.gy;
       this.state = 'WALK';
     }
 
@@ -4815,7 +5160,9 @@ export function initPupperPark(): void {
           ? 9 * Math.min(1.45, visualPace)
           : this.state === 'SLEEP'
             ? 1.4
-            : 5 * Math.min(1.35, visualPace)
+            : this.state === 'DRINK'
+              ? 7.4
+              : 5 * Math.min(1.35, visualPace)
       );
       this.wagPhase += dt * (
         this.state === 'SLEEP'
@@ -4938,17 +5285,20 @@ export function initPupperPark(): void {
         if (Math.abs(waterPos.x - dogPos.x) > 0.5) {
           this.facingRight = waterPos.x >= dogPos.x;
         }
-        if (Math.random() < dt * 4.5) {
+        if (Math.sin(this.animPhase * 2.6) > 0.25 && Math.random() < dt * 7.5) {
           const s = getScale();
+          const splashX = this.drinkTarget.kind === 'fountain'
+            ? waterPos.x + (this.facingRight ? -10 : 10) * s + (Math.random() - 0.5) * 6 * s
+            : waterPos.x + (Math.random() - 0.5) * 7 * s;
           particles.push({
-            x: waterPos.x + (Math.random() - 0.5) * 10 * s,
-            y: waterPos.y - 3 * s,
+            x: splashX,
+            y: waterPos.y - 3.6 * s,
             vx: (Math.random() - 0.5) * 20,
-            vy: -16 - Math.random() * 14,
-            life: 0.36,
-            maxLife: 0.36,
+            vy: -15 - Math.random() * 14,
+            life: 0.34,
+            maxLife: 0.34,
             color: Math.random() < 0.5 ? '#81ecec' : '#dff9fb',
-            size: 2.0 * s
+            size: 1.9 * s
           });
         }
         this.timer -= dt;
@@ -4968,23 +5318,23 @@ export function initPupperPark(): void {
       } else if (this.state === 'IDLE') {
         this.timer -= dt * visualPace;
         if (this.timer <= 0) {
-          if (Math.random() < 0.28 && !isNearSlideZone(this.gx, this.gy)) {
+          if (Math.random() < 0.28 && !isNearSlideZone(this.gx, this.gy) && !isInsideDoghouseObstacle(this.gx, this.gy)) {
             this.enterSleep();
           } else {
             this.pickNewTarget();
           }
         }
       } else if (this.state === 'WALK') {
+        // Ensure final destination never lies inside the doghouse tile(s)
+        if (isInsideDoghouseObstacle(this.targetGx, this.targetGy)) {
+          const safeT = pushOutsideDoghouseObstacle(this.targetGx, this.targetGy);
+          this.targetGx = safeT.gx;
+          this.targetGy = safeT.gy;
+        }
+
         const dx = this.targetGx - this.gx;
         const dy = this.targetGy - this.gy;
         const dist = Math.hypot(dx, dy);
-
-        const currentScreenPos = gridToScreen(this.gx, this.gy);
-        const targetScreenPos = gridToScreen(this.targetGx, this.targetGy);
-        const screenDeltaX = targetScreenPos.x - currentScreenPos.x;
-        if (Math.abs(screenDeltaX) > 0.5) {
-          this.facingRight = screenDeltaX >= 0;
-        }
 
         if (dist < 0.08) {
           this.gx = this.targetGx;
@@ -5023,11 +5373,35 @@ export function initPupperPark(): void {
             triggerPerkDraft();
           }
         } else {
-          this.gx += (dx / dist) * walkSpeed * dt;
-          this.gy += (dy / dist) * walkSpeed * dt;
+          // Steer cleanly around the doghouse tile(s) so pups never walk through the doghouse
+          const steer = getDoghouseSteerTarget(this.gx, this.gy, this.targetGx, this.targetGy);
+          const sdx = steer.gx - this.gx;
+          const sdy = steer.gy - this.gy;
+          const sDist = Math.hypot(sdx, sdy);
+
+          const currentScreenPos = gridToScreen(this.gx, this.gy);
+          const steerScreenPos = gridToScreen(steer.gx, steer.gy);
+          const screenDeltaX = steerScreenPos.x - currentScreenPos.x;
+          if (Math.abs(screenDeltaX) > 0.5) {
+            this.facingRight = screenDeltaX >= 0;
+          }
+
+          if (sDist > 0.001) {
+            const step = Math.min(sDist, walkSpeed * dt);
+            this.gx += (sdx / sDist) * step;
+            this.gy += (sdy / sDist) * step;
+          }
+
           const edgeMargin = this.slideTarget ? 0.2 : 0.3;
           this.gx = Math.max(edgeMargin, Math.min(GRID_SIZE - edgeMargin, this.gx));
           this.gy = Math.max(edgeMargin, Math.min(GRID_SIZE - edgeMargin, this.gy));
+
+          // Hard safety invariant: never allow a dog inside the doghouse tile(s)
+          if (isInsideDoghouseObstacle(this.gx, this.gy)) {
+            const pushed = pushOutsideDoghouseObstacle(this.gx, this.gy);
+            this.gx = pushed.gx;
+            this.gy = pushed.gy;
+          }
         }
       } else if (this.state === 'DIG') {
         this.timer -= dt;
@@ -5188,14 +5562,14 @@ export function initPupperPark(): void {
         : isOnSlide
           ? this.slideElevation
           : isDrinking
-            ? -Math.abs(Math.sin(this.animPhase * 2.4)) * 1.4 + petHop
+            ? petHop
             : (this.state === 'WALK' ? Math.abs(Math.sin(this.animPhase)) * 3 : 0) + feastJump + petHop;
       const poseTilt = isSleeping
         ? 0
         : isOnSlide
           ? this.slideTilt
           : isDrinking
-            ? 0.22 + Math.sin(this.animPhase * 2.4) * 0.06
+            ? 0.04
             : (this.state === 'DIG' ? 0.25 : 0);
 
       c.translate(0, -bounce);
@@ -5214,7 +5588,7 @@ export function initPupperPark(): void {
       const isBlinking = !isSleeping && this.blinkTimer < 0.13;
       const isJoyful = !isSleeping && !isDrinking && (this.petBounce > 0.05 || this.state === 'SLIDE_DOWN' || state.feastAnimTimer > 0);
       const showTongue = isDrinking
-        ? Math.sin(this.animPhase * 2.4) > -0.1
+        ? true
         : isJoyful || (!isSleeping && moodInfo.tier === 'ecstatic' && Math.sin(this.wagPhase * 0.45) > 0.35);
       const earBounce = isSleeping
         ? 0
@@ -5238,7 +5612,8 @@ export function initPupperPark(): void {
         animPhase: this.animPhase,
         moodWagAmp,
         tailWag,
-        earBounce
+        earBounce,
+        isDrinking
       });
 
       c.restore();
@@ -5405,7 +5780,8 @@ export function initPupperPark(): void {
         modal.style.display = 'none';
 
         if (isFirstDiamondBowl) {
-          const bowlPos = gridToScreen(WATER_BOWL_POS.gx, WATER_BOWL_POS.gy);
+          const curBowlPos = getWaterBowlPos();
+          const bowlPos = gridToScreen(curBowlPos.gx, curBowlPos.gy);
           particles.push({
             x: bowlPos.x,
             y: bowlPos.y - 4 * getScale(),
@@ -5964,6 +6340,419 @@ export function initPupperPark(): void {
     ctx.restore();
   }
 
+  function drawGrandDoghouseManor(): void {
+    const pos = gridToScreen(1.0, 1.0);
+    const scale = getScale();
+    const glowStrength = Math.min(1, 0.34 + weatherWeights.twilight * 0.9 + weatherWeights.rain * 0.45);
+    const cosA = Math.cos(cameraAngle);
+    const sinA = Math.sin(cameraAngle);
+    const viewingBack = (cosA + sinA) < 0;
+
+    ctx.save();
+    ctx.translate(pos.x, pos.y);
+    ctx.scale(scale, scale);
+
+    // Grand soft estate ground shadow spanning the 2x2 footprint
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.38)';
+    ctx.beginPath();
+    ctx.ellipse(0, 14, 62, 26, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Flagstone & cedar wrap-around veranda foundation
+    ctx.fillStyle = '#5c4b42';
+    ctx.strokeStyle = '#3a2b22';
+    ctx.lineWidth = 1.25;
+    ctx.beginPath();
+    ctx.roundRect(-52, 4, 104, 12, 4);
+    ctx.fill();
+    ctx.stroke();
+
+    // Upper cedar porch deck planking
+    ctx.fillStyle = '#7c4820';
+    ctx.strokeStyle = '#4a280e';
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.roundRect(-49, 1, 98, 7, 2.5);
+    ctx.fill();
+    ctx.stroke();
+
+    // Warm golden ambient spill onto the front lawn
+    if (!viewingBack) {
+      const porchGlow = ctx.createRadialGradient(0, 14, 4, 0, 14, 58);
+      porchGlow.addColorStop(0, `rgba(255, 232, 152, ${0.44 * glowStrength})`);
+      porchGlow.addColorStop(0.55, `rgba(255, 206, 110, ${0.16 * glowStrength})`);
+      porchGlow.addColorStop(1, 'rgba(255, 234, 167, 0)');
+      ctx.fillStyle = porchGlow;
+      ctx.beginPath();
+      ctx.ellipse(0, 14, 58, 24, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Cozy brick chimney rising from the left roof slope + animated smoke puffs
+    const chimX = -30;
+    const chimTopY = -66;
+    ctx.fillStyle = '#a44a3f';
+    ctx.strokeStyle = '#5c251f';
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.roundRect(chimX - 5.5, chimTopY, 11, 24, 1.5);
+    ctx.fill();
+    ctx.stroke();
+    // Brick mortar stripes & cream cap
+    ctx.strokeStyle = 'rgba(245, 224, 205, 0.35)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(chimX - 5, chimTopY + 6);
+    ctx.lineTo(chimX + 5, chimTopY + 6);
+    ctx.moveTo(chimX - 5, chimTopY + 12);
+    ctx.lineTo(chimX + 5, chimTopY + 12);
+    ctx.stroke();
+    ctx.fillStyle = '#e7d7bf';
+    ctx.strokeStyle = '#5c251f';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(chimX - 7, chimTopY - 3, 14, 3.8, 1.2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Gentle rising chimney smoke wisps
+    for (let i = 0; i < 3; i++) {
+      const cyc = (fountainAnimPhase * 0.24 + i / 3) % 1;
+      const sx = chimX + Math.sin(cyc * Math.PI * 2 + i) * 4.5 + cyc * 5;
+      const sy = chimTopY - 6 - cyc * 24;
+      const sr = 2.6 + cyc * 4.2;
+      const sa = (1 - cyc) * 0.36;
+      ctx.fillStyle = `rgba(235, 242, 250, ${sa})`;
+      ctx.beginPath();
+      ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Left & Right side wing cedar walls
+    const wingGrad = ctx.createLinearGradient(-44, -36, 44, 2);
+    wingGrad.addColorStop(0, viewingBack ? '#7c471e' : '#a86730');
+    wingGrad.addColorStop(0.55, viewingBack ? '#6b3c18' : '#8f5222');
+    wingGrad.addColorStop(1, viewingBack ? '#573012' : '#733f18');
+    ctx.fillStyle = wingGrad;
+    ctx.strokeStyle = '#4a260c';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.roundRect(-45, -34, 90, 36.5, [2.5, 2.5, 0, 0]);
+    ctx.fill();
+    ctx.stroke();
+
+    // Clapboard siding lines across wings
+    ctx.strokeStyle = 'rgba(54, 28, 10, 0.42)';
+    ctx.lineWidth = 0.85;
+    for (let py = -29; py <= -3; py += 5) {
+      ctx.beginPath();
+      ctx.moveTo(-44, py);
+      ctx.lineTo(44, py);
+      ctx.stroke();
+    }
+
+    // Cream corner pillars & decorative base wainscoting
+    ctx.fillStyle = '#f2e5d0';
+    ctx.fillRect(-45.5, -34, 3.4, 36.5);
+    ctx.fillRect(42.1, -34, 3.4, 36.5);
+    ctx.fillStyle = 'rgba(242, 229, 208, 0.85)';
+    ctx.fillRect(-44.5, -3.2, 89, 2.6);
+
+    // Side wing multi-pane glowing windows (visible on both front & back!)
+    const drawManorWindow = (wx: number, wy: number, w: number, h: number, withFlowerBox: boolean) => {
+      const winHalo = ctx.createRadialGradient(wx, wy, 1, wx, wy, 16);
+      winHalo.addColorStop(0, `rgba(255, 236, 158, ${0.55 * glowStrength})`);
+      winHalo.addColorStop(1, 'rgba(255, 214, 112, 0)');
+      ctx.fillStyle = winHalo;
+      ctx.beginPath();
+      ctx.arc(wx, wy, 16, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#f5ead6';
+      ctx.strokeStyle = '#532c10';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(wx - w / 2 - 1.8, wy - h / 2 - 1.8, w + 3.6, h + 3.6, 2);
+      ctx.fill();
+      ctx.stroke();
+
+      const paneGrad = ctx.createLinearGradient(wx, wy - h / 2, wx, wy + h / 2);
+      paneGrad.addColorStop(0, '#fff7c4');
+      paneGrad.addColorStop(1, '#f6be4f');
+      ctx.fillStyle = paneGrad;
+      ctx.fillRect(wx - w / 2, wy - h / 2, w, h);
+
+      // Window muntin crossbars
+      ctx.strokeStyle = '#734018';
+      ctx.lineWidth = 1.05;
+      ctx.beginPath();
+      ctx.moveTo(wx, wy - h / 2);
+      ctx.lineTo(wx, wy + h / 2);
+      ctx.moveTo(wx - w / 2, wy);
+      ctx.lineTo(wx + w / 2, wy);
+      ctx.stroke();
+
+      if (withFlowerBox) {
+        // Tiny wooden flower box with colorful blossoms
+        ctx.fillStyle = '#6c3e1b';
+        ctx.strokeStyle = '#3d200a';
+        ctx.lineWidth = 0.85;
+        ctx.beginPath();
+        ctx.roundRect(wx - w / 2 - 2.4, wy + h / 2 + 1.2, w + 4.8, 4.2, 1.2);
+        ctx.fill();
+        ctx.stroke();
+        const blooms = ['#ff7675', '#ffeaa7', '#fd79a8', '#55efc4'];
+        for (let b = 0; b < 4; b++) {
+          const bx = wx - w / 2 - 0.5 + b * ((w + 1) / 3);
+          ctx.fillStyle = '#2ecc71';
+          ctx.beginPath();
+          ctx.arc(bx, wy + h / 2 + 0.8, 1.6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = blooms[b % blooms.length];
+          ctx.beginPath();
+          ctx.arc(bx, wy + h / 2 + 0.2, 1.25, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    };
+
+    drawManorWindow(-32.5, -17.5, 11.5, 11.5, !viewingBack);
+    drawManorWindow(32.5, -17.5, 11.5, 11.5, !viewingBack);
+
+    // Wide lower slate-blue wing roof spanning the entire 2x2 manor
+    const wideRoofGrad = ctx.createLinearGradient(-56, -54, 56, -30);
+    wideRoofGrad.addColorStop(0, '#5a90be');
+    wideRoofGrad.addColorStop(0.5, '#3b6d98');
+    wideRoofGrad.addColorStop(1, '#264a6a');
+    ctx.fillStyle = wideRoofGrad;
+    ctx.strokeStyle = '#1b354c';
+    ctx.lineWidth = 1.25;
+    ctx.beginPath();
+    ctx.moveTo(-55, -31.5);
+    ctx.lineTo(-34, -52);
+    ctx.lineTo(34, -52);
+    ctx.lineTo(55, -31.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Subtle shingle rows along side roof slopes
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+    ctx.lineWidth = 0.85;
+    for (let row = 0; row < 3; row++) {
+      const y = -36 - row * 5;
+      const inset = row * 6.2;
+      ctx.beginPath();
+      ctx.moveTo(-49 + inset, y);
+      ctx.lineTo(49 - inset, y);
+      ctx.stroke();
+    }
+
+    // Center projecting 2-story Grand Pavilion
+    const pavGrad = ctx.createLinearGradient(-22, -48, 22, 4);
+    pavGrad.addColorStop(0, viewingBack ? '#864e22' : '#b77237');
+    pavGrad.addColorStop(0.55, viewingBack ? '#73411a' : '#9b5a26');
+    pavGrad.addColorStop(1, viewingBack ? '#5c3313' : '#7b4319');
+    ctx.fillStyle = pavGrad;
+    ctx.strokeStyle = '#4a260c';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.roundRect(-22, -45, 44, 48.5, [2, 2, 0, 0]);
+    ctx.fill();
+    ctx.stroke();
+
+    // Center pavilion clapboard lines & cream columns
+    ctx.strokeStyle = 'rgba(54, 28, 10, 0.38)';
+    ctx.lineWidth = 0.85;
+    for (let py = -40; py <= -2; py += 5) {
+      ctx.beginPath();
+      ctx.moveTo(-21, py);
+      ctx.lineTo(21, py);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#f5ead6';
+    ctx.fillRect(-22.8, -44.5, 3.6, 48);
+    ctx.fillRect(19.2, -44.5, 3.6, 48);
+
+    if (viewingBack) {
+      // Grand rear stained-glass dormer window
+      drawManorWindow(0, -24, 16, 15, false);
+    } else {
+      // Grand arched cream doorway frame
+      ctx.fillStyle = '#f8efe0';
+      ctx.strokeStyle = '#5c3314';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(0, -14.5, 14.2, Math.PI, 0);
+      ctx.lineTo(14.2, 3.5);
+      ctx.lineTo(-14.2, 3.5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Deep cozy manor interior with warm inner glow
+      ctx.fillStyle = '#24140c';
+      ctx.beginPath();
+      ctx.arc(0, -14.2, 11.8, Math.PI, 0);
+      ctx.lineTo(11.8, 3.5);
+      ctx.lineTo(-11.8, 3.5);
+      ctx.closePath();
+      ctx.fill();
+
+      const innerWarm = ctx.createRadialGradient(0, -6, 1, 0, -6, 12);
+      innerWarm.addColorStop(0, `rgba(255, 200, 108, ${0.32 * glowStrength})`);
+      innerWarm.addColorStop(1, 'rgba(36, 20, 12, 0)');
+      ctx.fillStyle = innerWarm;
+      ctx.fillRect(-11.5, -24, 23, 27);
+
+      // Plush royal crimson pillow bed inside doorway with golden piping
+      ctx.fillStyle = '#c0392b';
+      ctx.beginPath();
+      ctx.ellipse(0, 2.2, 10.2, 3.4, 0, Math.PI, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#ffd55a';
+      ctx.lineWidth = 1.0;
+      ctx.beginPath();
+      ctx.moveTo(-6.5, 1.4);
+      ctx.lineTo(6.5, 1.4);
+      ctx.stroke();
+
+      // Wooden front porch steps leading onto the grass
+      ctx.fillStyle = '#9c602d';
+      ctx.strokeStyle = '#4a280e';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(-16.5, 4.5, 33, 4.4, 1.5);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#b4743b';
+      ctx.beginPath();
+      ctx.roundRect(-19, 8.6, 38, 4.2, 1.5);
+      ctx.fill();
+      ctx.stroke();
+
+      // Twin glowing brass porch lanterns flanking the grand entrance
+      [-17.2, 17.2].forEach(lx => {
+        const ly = -18.5;
+        const lHalo = ctx.createRadialGradient(lx, ly, 0.5, lx, ly, 10.5);
+        lHalo.addColorStop(0, `rgba(255, 245, 180, ${0.9 * glowStrength})`);
+        lHalo.addColorStop(1, 'rgba(255, 210, 105, 0)');
+        ctx.fillStyle = lHalo;
+        ctx.beginPath();
+        ctx.arc(lx, ly, 10.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#c88a1e';
+        ctx.fillRect(lx - 1.8, ly - 4.2, 3.6, 1.6);
+        ctx.fillStyle = '#fff2a8';
+        ctx.beginPath();
+        ctx.arc(lx, ly - 0.8, 2.3, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    // Tall central pitched grand manor gable roof
+    const mainRoofGrad = ctx.createLinearGradient(-32, -74, 32, -40);
+    mainRoofGrad.addColorStop(0, '#6ba4d4');
+    mainRoofGrad.addColorStop(0.5, '#4276a4');
+    mainRoofGrad.addColorStop(1, '#2a5276');
+    ctx.fillStyle = mainRoofGrad;
+    ctx.strokeStyle = '#1b354c';
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.moveTo(-33, -42);
+    ctx.lineTo(0, -74);
+    ctx.lineTo(33, -42);
+    ctx.lineTo(28.5, -39);
+    ctx.lineTo(0, -67.5);
+    ctx.lineTo(-28.5, -39);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Inner timber gable pediment triangle
+    ctx.fillStyle = viewingBack ? '#77431b' : '#945624';
+    ctx.beginPath();
+    ctx.moveTo(-25, -42);
+    ctx.lineTo(0, -66.8);
+    ctx.lineTo(25, -42);
+    ctx.closePath();
+    ctx.fill();
+
+    // Cream decorative bargeboard trim along the main peak
+    ctx.strokeStyle = '#f8efe0';
+    ctx.lineWidth = 2.4;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(-30.5, -40.8);
+    ctx.lineTo(0, -70.4);
+    ctx.lineTo(30.5, -40.8);
+    ctx.stroke();
+
+    // Second-story glowing round oculus dormer window in upper gable
+    ctx.fillStyle = '#f8efe0';
+    ctx.strokeStyle = '#532c10';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(0, -53.5, 6.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#ffeaa7';
+    ctx.beginPath();
+    ctx.arc(0, -53.5, 4.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#734018';
+    ctx.lineWidth = 0.85;
+    ctx.beginPath();
+    ctx.moveTo(0, -58);
+    ctx.lineTo(0, -49);
+    ctx.moveTo(-4.5, -53.5);
+    ctx.lineTo(4.5, -53.5);
+    ctx.stroke();
+
+    // Gilded royal bone nameplate mounted below the upper gable (front view)
+    if (!viewingBack) {
+      ctx.fillStyle = '#ffd55a';
+      ctx.strokeStyle = '#6c3e1b';
+      ctx.lineWidth = 0.85;
+      ctx.beginPath();
+      ctx.roundRect(-7.4, -40.8, 14.8, 4.6, 1.8);
+      ctx.fill();
+      ctx.stroke();
+      [-7.4, 7.4].forEach(bx => {
+        ctx.beginPath();
+        ctx.arc(bx, -40.0, 2.0, 0, Math.PI * 2);
+        ctx.arc(bx, -37.0, 2.0, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    // Gleaming 24k gold roof spire & miniature paw finial crowning the peak
+    ctx.strokeStyle = '#7c440e';
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(0, -72.5);
+    ctx.lineTo(0, -83.5);
+    ctx.stroke();
+    ctx.strokeStyle = '#ffe169';
+    ctx.lineWidth = 1.3;
+    ctx.stroke();
+
+    // Golden orb + tiny twinkling sparkle on spire tip
+    ctx.fillStyle = '#ffd55a';
+    ctx.strokeStyle = '#7c440e';
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.arc(0, -84.5, 3.1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    const spireGlint = 0.5 + 0.5 * Math.sin(fountainAnimPhase * 1.4);
+    drawMiniSparkle(0, -86.5, 2.2 + spireGlint * 1.6, '#fff9c4', 0.45 + spireGlint * 0.5);
+
+    ctx.restore();
+  }
+
   function hasDiamondBowl(): boolean {
     return state.perks.some(p => p && (p.id === 'bp_6' || p.name === 'Diamond Bowl'));
   }
@@ -5985,7 +6774,8 @@ export function initPupperPark(): void {
   }
 
   function drawDogWaterBowl(): void {
-    const pos = gridToScreen(WATER_BOWL_POS.gx, WATER_BOWL_POS.gy);
+    const bowlPos = getWaterBowlPos();
+    const pos = gridToScreen(bowlPos.gx, bowlPos.gy);
     const scale = getScale();
     const isBeingDrunk = dogs.some(d => d.state === 'DRINK' && d.drinkTarget?.kind === 'bowl');
     const isDiamond = hasDiamondBowl();
@@ -7434,7 +8224,8 @@ export function initPupperPark(): void {
       const entry = createRosterEntry(normBreed, isShiny, chosenColor);
       state.roster.push(entry);
       syncBreedCountsFromRoster();
-      dogs.push(new Dog(1.5, 1.5, entry.id, normBreed, isShiny, chosenColor));
+      const spawnPos = hasGrandDoghousePlaced() ? { gx: 2.22, gy: 2.22 } : { gx: 2.18, gy: 1.92 };
+      dogs.push(new Dog(spawnPos.gx, spawnPos.gy, entry.id, normBreed, isShiny, chosenColor));
 
       if (isShiny) {
         sfx.shiny();
@@ -8734,8 +9525,12 @@ export function initPupperPark(): void {
                 sfx.squeak();
                 addPackHappiness(1.5);
                 tennisBall.isRolling = true;
-                tennisBall.targetGx = Math.max(0.7, Math.min(GRID_SIZE - 0.7, tennisBall.gx + (Math.random() - 0.5) * 3.5));
-                tennisBall.targetGy = Math.max(0.7, Math.min(GRID_SIZE - 0.7, tennisBall.gy + (Math.random() - 0.5) * 3.5));
+                const safeBall = pushOutsideDoghouseObstacle(
+                  Math.max(0.7, Math.min(GRID_SIZE - 0.7, tennisBall.gx + (Math.random() - 0.5) * 3.5)),
+                  Math.max(0.7, Math.min(GRID_SIZE - 0.7, tennisBall.gy + (Math.random() - 0.5) * 3.5))
+                );
+                tennisBall.targetGx = safeBall.gx;
+                tennisBall.targetGy = safeBall.gy;
               };
             }
           }
@@ -8765,8 +9560,12 @@ export function initPupperPark(): void {
                 sfx.shiny();
                 addPackHappiness(1.5);
                 frisbee.isMoving = true;
-                frisbee.targetGx = Math.max(0.7, Math.min(GRID_SIZE - 0.7, frisbee.gx + (Math.random() - 0.5) * 3.5));
-                frisbee.targetGy = Math.max(0.7, Math.min(GRID_SIZE - 0.7, frisbee.gy + (Math.random() - 0.5) * 3.5));
+                const safeFrisbee = pushOutsideDoghouseObstacle(
+                  Math.max(0.7, Math.min(GRID_SIZE - 0.7, frisbee.gx + (Math.random() - 0.5) * 3.5)),
+                  Math.max(0.7, Math.min(GRID_SIZE - 0.7, frisbee.gy + (Math.random() - 0.5) * 3.5))
+                );
+                frisbee.targetGx = safeFrisbee.gx;
+                frisbee.targetGy = safeFrisbee.gy;
               };
             }
           }
@@ -8796,8 +9595,12 @@ export function initPupperPark(): void {
                 sfx.quack();
                 addPackHappiness(1.5);
                 duck.isMoved = true;
-                duck.targetGx = Math.max(0.7, Math.min(GRID_SIZE - 0.7, duck.gx + (Math.random() - 0.5) * 2.5));
-                duck.targetGy = Math.max(0.7, Math.min(GRID_SIZE - 0.7, duck.gy + (Math.random() - 0.5) * 2.5));
+                const safeDuck = pushOutsideDoghouseObstacle(
+                  Math.max(0.7, Math.min(GRID_SIZE - 0.7, duck.gx + (Math.random() - 0.5) * 2.5)),
+                  Math.max(0.7, Math.min(GRID_SIZE - 0.7, duck.gy + (Math.random() - 0.5) * 2.5))
+                );
+                duck.targetGx = safeDuck.gx;
+                duck.targetGy = safeDuck.gy;
               };
             }
           }
@@ -9157,8 +9960,19 @@ export function initPupperPark(): void {
 
       const renderables: Array<{ sortY: number; draw: () => void }> = [];
       const spRender = state.starterProps || createDefaultStarterProps();
-      renderables.push({ sortY: getCenteredTilePos(DOGHOUSE_TILE.gx, DOGHOUSE_TILE.gy).y, draw: drawDoghouse });
-      renderables.push({ sortY: gridToScreen(WATER_BOWL_POS.gx, WATER_BOWL_POS.gy).y, draw: drawDogWaterBowl });
+      if (hasGrandDoghousePlaced()) {
+        renderables.push({
+          sortY: gridToScreen(1.0, 1.0).y + 4 * getScale(),
+          draw: drawGrandDoghouseManor
+        });
+      } else {
+        renderables.push({
+          sortY: getCenteredTilePos(DOGHOUSE_TILE.gx, DOGHOUSE_TILE.gy).y,
+          draw: drawDoghouse
+        });
+      }
+      const activeBowlPos = getWaterBowlPos();
+      renderables.push({ sortY: gridToScreen(activeBowlPos.gx, activeBowlPos.gy).y, draw: drawDogWaterBowl });
       if (spRender.showTree !== false) {
         renderables.push({ sortY: getCenteredTilePos(STARTER_TREE_TILE.gx, STARTER_TREE_TILE.gy).y, draw: drawTree });
       }
@@ -9233,6 +10047,11 @@ export function initPupperPark(): void {
           const y1 = getCenteredTilePos(dog.slideTarget.gx, dog.slideTarget.gy).y;
           const y2 = getCenteredTilePos(dog.slideTarget.gx + 1, dog.slideTarget.gy).y;
           dogSortY = Math.max(y1, y2) + 2;
+        } else if (dog.state === 'DRINK' && dog.drinkTarget) {
+          const waterSortY = dog.drinkTarget.kind === 'bowl'
+            ? gridToScreen(activeBowlPos.gx, activeBowlPos.gy).y
+            : getCenteredTilePos(dog.drinkTarget.gx ?? 0, dog.drinkTarget.gy ?? 0).y;
+          dogSortY = Math.max(dogSortY, waterSortY + 1);
         }
         renderables.push({
           sortY: dogSortY,
