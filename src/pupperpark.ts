@@ -20,6 +20,7 @@ import {
   getTreasureCounts,
   getTreasureSetById,
   isSetCompleted,
+  preloadTreasureImages,
   rollSingleWeightedTreasure,
   rollWeightedTreasureOptions
 } from './treasures';
@@ -6856,6 +6857,9 @@ export function initPupperPark(): void {
 
   let activeTreasureSetFilter: 'all' | TreasureSetId = 'all';
   let treasureLockedHintTimer: number | null = null;
+  let lastTreasuresRenderKey = '';
+
+  preloadTreasureImages();
 
   function showTreasureLockedHint(message: string): void {
     const hintEl = document.getElementById('treasureLockedHint');
@@ -7000,8 +7004,21 @@ export function initPupperPark(): void {
   });
 
   function renderTreasuresTab(): void {
-    const bonuses = getPerkMultipliers();
     const counts = getTreasureCounts(state.perks);
+    const perkListContainer = document.getElementById('perkListContainer');
+
+    const countParts: string[] = [];
+    counts.forEach((rank, id) => {
+      countParts.push(`${id}:${rank}`);
+    });
+    countParts.sort();
+    const renderKey = `${activeTreasureSetFilter}|${countParts.join(',')}`;
+    if (perkListContainer && renderKey === lastTreasuresRenderKey && perkListContainer.childElementCount > 0) {
+      return;
+    }
+    lastTreasuresRenderKey = renderKey;
+
+    const bonuses = getPerkMultipliers();
 
     const perkCountEl = document.getElementById('perkCountDisplay');
     if (perkCountEl) perkCountEl.textContent = String(bonuses.discoveredCount);
@@ -7017,7 +7034,6 @@ export function initPupperPark(): void {
       summaryEl.textContent = formatActiveTreasureSummary(bonuses);
     }
 
-    const perkListContainer = document.getElementById('perkListContainer');
     if (!perkListContainer) return;
     perkListContainer.innerHTML = '';
 
@@ -7084,7 +7100,7 @@ export function initPupperPark(): void {
           img.className = 'treasure-tile-img';
           img.src = relic.imageUrl;
           img.alt = relic.name;
-          img.loading = 'lazy';
+          img.decoding = 'async';
           img.referrerPolicy = 'no-referrer';
           img.onerror = () => {
             img.onerror = null;

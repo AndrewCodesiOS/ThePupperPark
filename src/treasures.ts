@@ -1,21 +1,21 @@
 /// <reference types="vite/client" />
 
-import muddyMapImg from './assets/images/park_muddy_map_1795438663967.jpg';
-import lostCompassImg from './assets/images/park_lost_compass_1795438663525.jpg';
-import treatPouchImg from './assets/images/park_treat_pouch_1795438665066.jpg';
-import sturdyShovelImg from './assets/images/park_sturdy_shovel_1795438712867.jpg';
-import biscuitTinImg from './assets/images/park_biscuit_tin_1795438665003.jpg';
-import goldenTagImg from './assets/images/park_golden_tag_1795438664972.jpg';
-import goldenCollarImg from './assets/images/park_golden_collar_1795438664812.jpg';
-import diamondBowlImg from './assets/images/park_diamond_bowl_1795438663968.jpg';
-import mysticToyImg from './assets/images/park_mystic_toy_1795438664326.jpg';
-import starlightWhistleImg from './assets/images/park_starlight_whistle_1795438662571.jpg';
-import boneLanternImg from './assets/images/park_bone_lantern_1795438664585.jpg';
-import goodboyStashImg from './assets/images/park_goodboy_stash_1795438664713.jpg';
-import sunLeashImg from './assets/images/park_sun_leash_1795438664523.jpg';
-import moonstoneBellImg from './assets/images/park_moonstone_bell_1795438664334.jpg';
-import infiniteChestImg from './assets/images/park_infinite_chest_1795438665270.jpg';
-import firstCrownImg from './assets/images/park_first_crown_1795438664616.jpg';
+import muddyMapImg from './assets/images/park_muddy_map_1795438663967.webp';
+import lostCompassImg from './assets/images/park_lost_compass_1795438663525.webp';
+import treatPouchImg from './assets/images/park_treat_pouch_1795438665066.webp';
+import sturdyShovelImg from './assets/images/park_sturdy_shovel_1795438712867.webp';
+import biscuitTinImg from './assets/images/park_biscuit_tin_1795438665003.webp';
+import goldenTagImg from './assets/images/park_golden_tag_1795438664972.webp';
+import goldenCollarImg from './assets/images/park_golden_collar_1795438664812.webp';
+import diamondBowlImg from './assets/images/park_diamond_bowl_1795438663968.webp';
+import mysticToyImg from './assets/images/park_mystic_toy_1795438664326.webp';
+import starlightWhistleImg from './assets/images/park_starlight_whistle_1795438662571.webp';
+import boneLanternImg from './assets/images/park_bone_lantern_1795438664585.webp';
+import goodboyStashImg from './assets/images/park_goodboy_stash_1795438664713.webp';
+import sunLeashImg from './assets/images/park_sun_leash_1795438664523.webp';
+import moonstoneBellImg from './assets/images/park_moonstone_bell_1795438664334.webp';
+import infiniteChestImg from './assets/images/park_infinite_chest_1795438665270.webp';
+import firstCrownImg from './assets/images/park_first_crown_1795438664616.webp';
 
 export type TreasureRarity = 'Common' | 'Rare' | 'Legendary' | 'Mythic';
 export type TreasureSetId = 'explorer' | 'kennel' | 'arcane' | 'mythic';
@@ -671,4 +671,31 @@ export function formatActiveTreasureSummary(bonuses: TreasureBonuses): string {
     parts.push(`+${formatWholePct(bonuses.treasureOddsMult - 1)} Treasure Odds`);
   }
   return parts.length > 0 ? parts.join(' | ') : 'No relics discovered yet — keep digging!';
+}
+
+let treasurePreloadStarted = false;
+const preloadedTreasureImages: HTMLImageElement[] = [];
+
+export function preloadTreasureImages(): void {
+  if (treasurePreloadStarted || typeof window === 'undefined' || typeof Image === 'undefined') {
+    return;
+  }
+  treasurePreloadStarted = true;
+
+  const startPreload = (): void => {
+    for (const def of TREASURE_CATALOG) {
+      const img = new Image();
+      img.decoding = 'async';
+      img.referrerPolicy = 'no-referrer';
+      img.src = def.imageUrl;
+      preloadedTreasureImages.push(img);
+    }
+  };
+
+  const ric = (window as unknown as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
+  if (typeof ric === 'function') {
+    ric(startPreload, { timeout: 1500 });
+  } else {
+    window.setTimeout(startPreload, 400);
+  }
 }
