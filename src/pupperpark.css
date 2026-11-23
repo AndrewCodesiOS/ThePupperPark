@@ -1628,47 +1628,222 @@ input:focus-visible {
 /* Treasure Draft Modal */
 .perk-modal-window {
   width: 100%;
-  max-width: 440px;
-  max-height: 100%;
+  max-width: 780px;
+  max-height: 92vh;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 22px;
+  padding: 20px 22px 22px;
   border-radius: 22px;
-  border: 1.5px solid #f1c40f;
-  background: linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg-deep) 100%);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8);
+  border: 1.5px solid rgba(241, 196, 15, 0.72);
+  background: linear-gradient(180deg, #1f193d 0%, #130f27 100%);
+  box-shadow: 0 22px 52px rgba(0, 0, 0, 0.82);
   pointer-events: auto;
   text-align: left;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
 }
 
-#perkChoices {
+.perk-modal-head {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-top: 6px;
+  gap: 4px;
+}
+
+.perk-modal-title {
+  margin: 0;
+  color: #ffd166;
+  font-size: 1.28rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.perk-modal-subtitle {
+  margin: 0;
+  color: #c8d1e4;
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+#perkChoices.perk-choices-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 2px;
 }
 
 .perk-choice-btn {
-  background: rgba(28, 23, 52, 0.95);
-  border: 1.5px solid rgba(162, 155, 254, 0.45);
-  border-radius: 14px;
-  padding: 14px 16px;
+  background: rgba(24, 19, 48, 0.96);
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  padding: 12px;
   width: 100%;
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  transition: transform 0.14s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.16s, background-color 0.16s;
+  gap: 10px;
   text-align: left;
+  color: #f5f6fa;
+  font-variant-numeric: tabular-nums;
+  touch-action: manipulation;
+  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1), opacity 180ms ease;
 }
 
 .perk-choice-btn:hover {
-  border-color: #f1c40f;
-  background: rgba(45, 38, 80, 0.95);
-  transform: translateY(-2px);
+  transform: translateY(-3px);
+}
+
+.perk-choice-btn:active {
+  transform: translateY(0) scale(0.99);
+}
+
+.perk-choice-btn.rarity-common {
+  border-color: rgba(215, 201, 168, 0.42);
+}
+
+.perk-choice-btn.rarity-rare {
+  border-color: rgba(110, 198, 255, 0.56);
+}
+
+.perk-choice-btn.rarity-legendary {
+  border-color: rgba(255, 209, 102, 0.7);
+}
+
+.perk-choice-btn.rarity-mythic {
+  border-color: rgba(255, 130, 196, 0.78);
+}
+
+.perk-choice-art-wrap {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #120d24;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  flex-shrink: 0;
+}
+
+.perk-choice-btn.rarity-common .perk-choice-art-wrap {
+  box-shadow: 0 0 18px rgba(215, 201, 168, 0.18);
+}
+
+.perk-choice-btn.rarity-rare .perk-choice-art-wrap {
+  box-shadow: 0 0 20px rgba(64, 169, 255, 0.28);
+}
+
+.perk-choice-btn.rarity-legendary .perk-choice-art-wrap {
+  box-shadow: 0 0 22px rgba(241, 196, 15, 0.34);
+}
+
+.perk-choice-btn.rarity-mythic .perk-choice-art-wrap {
+  box-shadow: 0 0 24px rgba(232, 67, 147, 0.4);
+}
+
+.perk-choice-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.perk-choice-content {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  flex: 1;
+}
+
+.perk-choice-name {
+  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  font-weight: 800;
+  font-size: 0.96rem;
+  line-height: 1.22;
+  color: #ffffff;
+}
+
+.perk-choice-meta {
+  font-size: 0.73rem;
+  font-weight: 700;
+  color: #b8c2d4;
+  line-height: 1.3;
+}
+
+.perk-choice-state {
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: #55efc4;
+  line-height: 1.3;
+}
+
+.perk-choice-state.is-upgrade {
+  color: #ffd166;
+}
+
+.perk-choice-stats {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #e6ecf8;
+  line-height: 1.35;
+  margin-top: 2px;
+}
+
+.perk-choice-set-hint {
+  font-size: 0.71rem;
+  font-weight: 700;
+  color: #ffeaa7;
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+.perk-jackpot-card {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  padding: 20px;
+  border-radius: 16px;
+  background: rgba(34, 26, 66, 0.92);
+  border: 1.5px solid rgba(255, 209, 102, 0.65);
+}
+
+.perk-jackpot-card h3 {
+  margin: 0;
+  color: #ffd166;
+  font-size: 1.08rem;
+}
+
+.perk-jackpot-card p {
+  margin: 0;
+  color: #d6dff0;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 640px) {
+  .perk-modal-window {
+    max-width: 440px;
+    padding: 16px;
+  }
+
+  #perkChoices.perk-choices-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .perk-choice-btn {
+    flex-direction: row;
+    align-items: center;
+    padding: 10px;
+    gap: 12px;
+  }
+
+  .perk-choice-art-wrap {
+    width: 82px;
+    height: 82px;
+  }
 }
 
 /* Decor Sub-Tabs & Ground Tile Swatches */
@@ -1837,6 +2012,532 @@ input:focus-visible {
     radial-gradient(circle at 72% 66%, #ffeaa7 0 7%, transparent 8%),
     radial-gradient(circle at 64% 28%, #1e8449 0 16%, transparent 17%),
     linear-gradient(135deg, #27ae60 0%, #1d8a4b 100%);
+}
+
+/* Treasures Gallery, Sets & Tap-to-Inspect Lightbox */
+.treasure-overview-card {
+  border-color: rgba(255, 209, 102, 0.42);
+}
+
+.treasure-overview-title {
+  color: #ffd166;
+}
+
+.treasure-overview-meta {
+  font-variant-numeric: tabular-nums;
+  margin-top: 4px;
+}
+
+.treasure-active-summary {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #9be8d8;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+}
+
+.treasure-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 14px;
+  background: rgba(13, 11, 26, 0.6);
+  border: 1px solid var(--border-subtle);
+}
+
+.treasure-filter-btn {
+  flex: 1 1 auto;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #a9b4c9;
+  font-weight: 700;
+  font-size: 0.74rem;
+  padding: 7px 10px;
+  min-height: 34px;
+  border-radius: 10px;
+  cursor: pointer;
+  touch-action: manipulation;
+  white-space: nowrap;
+  transition: transform 150ms cubic-bezier(0.16, 1, 0.3, 1), opacity 150ms ease;
+}
+
+.treasure-filter-btn.active {
+  background: rgba(241, 196, 15, 0.18);
+  border-color: rgba(255, 209, 102, 0.55);
+  color: #ffeaa7;
+}
+
+.treasure-locked-hint {
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #d0d8eb;
+  font-size: 0.76rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.perk-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.treasure-set-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.treasure-set-section:first-child {
+  padding-top: 2px;
+  border-top: none;
+}
+
+.treasure-set-header {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.treasure-set-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.treasure-set-name {
+  margin: 0;
+  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.94rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.treasure-set-count {
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: #b8c2d4;
+  font-variant-numeric: tabular-nums;
+}
+
+.treasure-set-count.is-complete {
+  color: #55efc4;
+}
+
+.treasure-set-bonus {
+  font-size: 0.74rem;
+  color: #9ba7be;
+  line-height: 1.35;
+  font-variant-numeric: tabular-nums;
+}
+
+.treasure-set-bonus.is-complete {
+  color: #ffeaa7;
+  font-weight: 700;
+}
+
+.treasure-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (min-width: 520px) {
+  .treasure-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.treasure-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 8px;
+  border-radius: 14px;
+  background: rgba(24, 19, 48, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f5f6fa;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  font-variant-numeric: tabular-nums;
+  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1), opacity 180ms ease;
+}
+
+.treasure-tile:hover {
+  transform: translateY(-2px);
+}
+
+.treasure-tile:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.treasure-tile.rarity-common {
+  border-color: rgba(215, 201, 168, 0.38);
+}
+
+.treasure-tile.rarity-rare {
+  border-color: rgba(110, 198, 255, 0.5);
+}
+
+.treasure-tile.rarity-legendary {
+  border-color: rgba(255, 209, 102, 0.65);
+}
+
+.treasure-tile.rarity-mythic {
+  border-color: rgba(255, 130, 196, 0.72);
+}
+
+@keyframes relicMaxGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 1px rgba(255, 209, 102, 0.45), 0 0 14px rgba(255, 209, 102, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 0 1px rgba(255, 234, 167, 0.85), 0 0 20px rgba(241, 196, 15, 0.38);
+  }
+}
+
+.treasure-tile.is-maxed {
+  animation: relicMaxGlow 3.2s ease-in-out infinite;
+}
+
+.treasure-tile.is-locked {
+  background: rgba(17, 14, 34, 0.74);
+  border-color: rgba(255, 255, 255, 0.08);
+  opacity: 0.78;
+}
+
+.treasure-tile-thumb-wrap {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 40%, #2b224c 0%, #120d24 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.treasure-tile-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.treasure-tile-silhouette {
+  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  font-size: 1.55rem;
+  font-weight: 800;
+  color: rgba(190, 202, 226, 0.36);
+  letter-spacing: 0.06em;
+}
+
+.treasure-tile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.treasure-tile-name {
+  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.79rem;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.22;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.treasure-tile.is-locked .treasure-tile-name {
+  color: #8f9bb4;
+}
+
+.treasure-tile-meta {
+  font-size: 0.69rem;
+  font-weight: 700;
+  color: #b8c2d4;
+  line-height: 1.25;
+}
+
+/* Tap-to-Inspect Treasure Lightbox Modal */
+#treasureInspectModal {
+  z-index: 2600;
+}
+
+.treasure-inspect-window {
+  position: relative;
+  width: 100%;
+  max-width: 410px;
+  max-height: 92vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 20px;
+  border-radius: 22px;
+  border: 1.5px solid rgba(255, 255, 255, 0.16);
+  background: linear-gradient(180deg, #1f1a3e 0%, #130f27 100%);
+  box-shadow: 0 24px 56px rgba(0, 0, 0, 0.85);
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.treasure-inspect-x {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+}
+
+.treasure-inspect-art-wrap {
+  width: min(272px, 72vw);
+  aspect-ratio: 1 / 1;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #120d24;
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  margin-top: 6px;
+}
+
+.treasure-inspect-art-wrap.rarity-common {
+  border-color: rgba(215, 201, 168, 0.56);
+  box-shadow: 0 0 32px rgba(215, 201, 168, 0.24);
+}
+
+.treasure-inspect-art-wrap.rarity-rare {
+  border-color: rgba(110, 198, 255, 0.72);
+  box-shadow: 0 0 36px rgba(64, 169, 255, 0.34);
+}
+
+.treasure-inspect-art-wrap.rarity-legendary {
+  border-color: rgba(255, 209, 102, 0.82);
+  box-shadow: 0 0 40px rgba(241, 196, 15, 0.42);
+}
+
+.treasure-inspect-art-wrap.rarity-mythic {
+  border-color: rgba(255, 130, 196, 0.86);
+  box-shadow: 0 0 44px rgba(232, 67, 147, 0.48);
+}
+
+.treasure-inspect-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.treasure-inspect-body {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.treasure-inspect-title {
+  margin: 0;
+  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  font-size: 1.32rem;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.2;
+}
+
+.treasure-inspect-meta {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #b8c2d4;
+}
+
+.treasure-inspect-lore {
+  margin: 2px 0 4px;
+  font-size: 0.82rem;
+  color: #cfd8ea;
+  line-height: 1.48;
+  font-style: italic;
+}
+
+.treasure-inspect-rank-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(13, 10, 28, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.treasure-inspect-rank-label {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #ffeaa7;
+}
+
+.treasure-rank-pips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.treasure-rank-pip {
+  width: 16px;
+  height: 7px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.treasure-rank-pip.is-filled {
+  background: #ffd166;
+}
+
+.treasure-inspect-stats-box,
+.treasure-inspect-set-box {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(13, 10, 28, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.treasure-inspect-stat-heading {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #9ba7be;
+}
+
+.treasure-inspect-stat-value {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.35;
+}
+
+.treasure-inspect-next-rank {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #9be8d8;
+  margin-top: 2px;
+}
+
+.treasure-inspect-set-title {
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: #d6dff0;
+}
+
+.treasure-inspect-set-bonus {
+  font-size: 0.76rem;
+  color: #a9b4c9;
+  line-height: 1.35;
+}
+
+.treasure-inspect-set-box.is-complete {
+  border-color: rgba(85, 239, 196, 0.42);
+}
+
+.treasure-inspect-set-box.is-complete .treasure-inspect-set-title {
+  color: #55efc4;
+}
+
+.treasure-inspect-set-box.is-complete .treasure-inspect-set-bonus {
+  color: #ffeaa7;
+  font-weight: 700;
+}
+
+.treasure-inspect-done-btn {
+  width: 100%;
+  min-width: unset;
+  padding: 11px;
+}
+
+/* Offline Modal Treasure Card */
+.offline-treasure-card {
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(15, 11, 32, 0.72);
+  border: 1px solid rgba(255, 209, 102, 0.42);
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  text-align: left;
+}
+
+.offline-treasure-thumb {
+  width: 58px;
+  height: 58px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.offline-treasure-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.offline-treasure-kicker {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #ffd166;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.offline-treasure-name {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.offline-treasure-meta {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #c8d1e4;
+}
+
+/* Sandbox stack */
+.sandbox-btn-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.sandbox-chest-btn {
+  width: 100%;
+  min-width: unset;
+  padding: 10px;
+  background: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%);
+  color: #ffffff;
 }
 
 @media (prefers-reduced-motion: reduce) {

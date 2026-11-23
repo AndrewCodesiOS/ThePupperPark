@@ -1,4 +1,28 @@
 import { drawIllustratedDog } from './dogArt';
+import {
+  TREASURE_SETS,
+  RARITY_META,
+  MAX_RELIC_RANK,
+  MAXED_TREASURE_JACKPOT_MAGIC,
+  TREASURE_FALLBACK_SVG,
+  TreasureSetId,
+  OfflineTreasureResult,
+  TreasureBonuses,
+  computeTreasureBonuses,
+  createSavedPerkRecord,
+  formatActiveTreasureSummary,
+  formatRelicStatsAtRank,
+  formatRelicUpgradePreview,
+  getRankRoman,
+  getRelicRank,
+  getSetProgress,
+  getTreasureById,
+  getTreasureCounts,
+  getTreasureSetById,
+  isSetCompleted,
+  rollSingleWeightedTreasure,
+  rollWeightedTreasureOptions
+} from './treasures';
 
 export interface RosterEntry {
   id: string;
@@ -301,7 +325,7 @@ export function initPupperPark(): void {
 
   const HAPPINESS_BASE_FLOOR = 35;
   const HAPPINESS_MAX = 100;
-  const HAPPINESS_MAX_FLOOR = 75;
+  const HAPPINESS_MAX_FLOOR = 90;
   const HAPPINESS_COOL_RATE_PER_SEC = 0.12;
   const HAPPINESS_TREAT_TRICKLE_PER_SEC = 0.25;
   const HAPPINESS_OFFLINE_RATE_PER_HOUR = 14;
@@ -794,19 +818,6 @@ export function initPupperPark(): void {
     labrador:  { rank: 13, cost: 22000, costMult: 1.34, priceCap: 125000, walkMult: 1.20, digSec: 1.50, payoutMult: 1.80, scalingMult: 1.32, xpMult: 1.20, magicBonus: 0.050, treasureChance: 0.00012 },
     bernese:   { rank: 14, cost: 42000, costMult: 1.35, priceCap: 190000, walkMult: 1.10, digSec: 1.45, payoutMult: 2.10, scalingMult: 1.40, xpMult: 1.25, magicBonus: 0.065, treasureChance: 0.00032 }
   };
-
-  const PERK_POOL: PerkItem[] = [
-    { id: 'bp_1', name: 'Muddy Map', rarity: 'Common', desc: 'Slightly boosts bone payouts per dig (1.10x)', mult: 1.10 },
-    { id: 'bp_2', name: 'Lost Compass', rarity: 'Common', desc: 'Boosts bone payouts per dig (1.15x)', mult: 1.15 },
-    { id: 'bp_3', name: 'Canvas Treat Pouch', rarity: 'Common', desc: 'Boosts bone payouts per dig (1.20x)', mult: 1.20 },
-    { id: 'sp_1', name: 'Sturdy Shovel', rarity: 'Common', desc: 'Boosts dig payout scaling (1.10x)', workMult: 1.10 },
-    { id: 'bp_4', name: 'Golden Dog-Tag', rarity: 'Rare', desc: 'Boosts bone payouts per dig (1.30x)', mult: 1.30 },
-    { id: 'bp_5', name: 'Golden Collar', rarity: 'Rare', desc: 'Boosts bone payouts per dig (1.40x)', mult: 1.40 },
-    { id: 'mp_1', name: 'Mystic Chew Toy', rarity: 'Rare', desc: 'Boosts ✨ Magic Bone chance (+4%)', magicAdd: 0.04 },
-    { id: 'bp_6', name: 'Diamond Bowl', rarity: 'Legendary', desc: 'Massively boosts bone payouts per dig (1.80x)', mult: 1.80 },
-    { id: 'mp_2', name: 'The Golden Good-Boy Stash', rarity: 'Legendary', desc: 'Significantly boosts ✨ Magic Bone chance (+10%)', magicAdd: 0.10 },
-    { id: 'myth_1', name: 'The Infinite Toy Chest', rarity: 'Mythic', desc: 'Divine relic! Triples dig bones (3.0x) & boosts scaling (1.5x)', mult: 3.0, workMult: 1.5 }
-  ];
 
   function computeNextCappedCost(currentCost: number, mult: number, cap?: number): number {
     const safeCost = Math.max(1, Number(currentCost) || 1);
@@ -1481,7 +1492,8 @@ export function initPupperPark(): void {
   function getCozyFloor(): number {
     const toyFloor = getToyFloorBreakdown().floorBonus;
     const decorFloor = getDecorFloorBonus();
-    return Math.min(HAPPINESS_MAX_FLOOR, Math.round((HAPPINESS_BASE_FLOOR + toyFloor + decorFloor) * 10) / 10);
+    const treasureFloor = getPerkMultipliers().cozyFloorAdd;
+    return Math.min(HAPPINESS_MAX_FLOOR, Math.round((HAPPINESS_BASE_FLOOR + toyFloor + decorFloor + treasureFloor) * 10) / 10);
   }
 
   function getHappinessTierIndex(value: number): number {
@@ -1590,7 +1602,7 @@ export function initPupperPark(): void {
     const treatMult = state.xpTreatTimer > 0
       ? 1 + (TREAT_CONFIG.treatXp.xpBonus || 1.0)
       : 1;
-    return treatMult * getDecorBonuses().xpMult * getCurrentWeather().xpMult * getPackHappinessInfo().xpMult;
+    return treatMult * getDecorBonuses().xpMult * getCurrentWeather().xpMult * getPackHappinessInfo().xpMult * getPerkMultipliers().xpMult;
   }
 
   function getActiveCupMult(overrideActive?: boolean): number {
@@ -1720,7 +1732,7 @@ export function initPupperPark(): void {
 
   let pendingRetireDogId: string | null = null;
   let pendingRerollDogId: string | null = null;
-  let queuedAwayProgress: { actualEarned: number; estimatedDigs: number; foundTreasure: PerkItem | null } | null = null;
+  let queuedAwayProgress: { actualEarned: number; estimatedDigs: number; foundTreasure: OfflineTreasureResult | null } | null = null;
 
   function addFloatingText(x: number, y: number, text: string, color = '#ffeaa7'): void {
     floatingTexts.push({ x, y, text, color, age: 0, duration: 0.85 });
@@ -1833,16 +1845,8 @@ export function initPupperPark(): void {
     return state.roster.length;
   }
 
-  function getPerkMultipliers(): { boneMult: number; workBonus: number; magicBonus: number } {
-    let boneMult = 1;
-    let workBonus = 1;
-    let magicBonus = 0;
-    state.perks.forEach(p => {
-      if (p.mult) boneMult *= p.mult;
-      if (p.workMult) workBonus *= p.workMult;
-      if (p.magicAdd) magicBonus += p.magicAdd;
-    });
-    return { boneMult, workBonus, magicBonus };
+  function getPerkMultipliers(): TreasureBonuses {
+    return computeTreasureBonuses(state.perks);
   }
 
   function getDogDugScaling(entry: RosterEntry): number {
@@ -1900,13 +1904,13 @@ export function initPupperPark(): void {
     });
     const baconPaceMult = getActiveBaconPaceMult(overrides?.baconActive);
     const kongActive = typeof overrides?.kongActive === 'boolean' ? overrides.kongActive : state.kongTimer > 0;
-    const { workBonus, magicBonus } = getPerkMultipliers();
+    const { workBonus, magicBonus, paceMult: treasurePaceMult } = getPerkMultipliers();
     const decorBonuses = getDecorBonuses();
     const decorMagic = decorBonuses.magicAdd;
     const weather = getCurrentWeather();
     const moodInfo = getPackHappinessInfo();
 
-    const visualPace = Math.min(1.6, 1 + Math.log1p(Math.max(0, workBonus - 1)) * 0.25) * weather.digSpeedMult * moodInfo.paceMult * baconPaceMult * decorBonuses.paceMult;
+    const visualPace = Math.min(1.6, 1 + Math.log1p(Math.max(0, workBonus - 1)) * 0.25) * weather.digSpeedMult * moodInfo.paceMult * baconPaceMult * decorBonuses.paceMult * treasurePaceMult;
     const sleepDetours = 0.28 / 0.72;
     const avgIdleSec = 1.2 / visualPace;
     const avgSleepOverheadSec = sleepDetours * (4.6 / baconPaceMult + 1.4 / visualPace);
@@ -1961,16 +1965,14 @@ export function initPupperPark(): void {
     return Math.max(1, Math.floor(totalDigs));
   }
 
-  function rollOfflineTreasure(): PerkItem | null {
-    if (!Array.isArray(PERK_POOL) || PERK_POOL.length === 0) return null;
-    const shuffled = [...PERK_POOL].sort(() => 0.5 - Math.random());
-    const rolledThree = shuffled.slice(0, Math.min(3, shuffled.length));
-    const chosenPerk = rolledThree[Math.floor(Math.random() * rolledThree.length)];
-    if (!chosenPerk) return null;
-
-    const perkCopy = { ...chosenPerk };
-    state.perks.push(perkCopy);
-    return perkCopy;
+  function rollOfflineTreasure(): OfflineTreasureResult | null {
+    const result = rollSingleWeightedTreasure(state.perks);
+    if (result.kind === 'jackpot') {
+      state.magicBones += result.magicBones;
+      return result;
+    }
+    state.perks.push(createSavedPerkRecord(result.def, result.newRank));
+    return result;
   }
 
   function isModalCurrentlyOpen(modalId: string): boolean {
@@ -2017,7 +2019,7 @@ export function initPupperPark(): void {
     const avgPerDig = getAverageBonesPerDig();
     const earned = Math.floor(estimatedDigs * avgPerDig * state.idleMultiplier);
 
-    const offlineTreasureChance = Math.min(0.035, 0.002 + estimatedDigs * 0.0000015);
+    const offlineTreasureChance = Math.min(0.08, (0.002 + estimatedDigs * 0.0000015) * getPerkMultipliers().treasureOddsMult);
     const foundTreasure = Math.random() < offlineTreasureChance ? rollOfflineTreasure() : null;
 
     const actualEarned = earned > 0 ? addRegularBones(earned) : 0;
@@ -2547,7 +2549,7 @@ export function initPupperPark(): void {
     saveGameAt(Date.now());
   });
 
-  function showOfflineModal(earned: number, _estimatedDigs = 0, foundTreasure: PerkItem | null = null): void {
+  function showOfflineModal(earned: number, _estimatedDigs = 0, foundTreasure: OfflineTreasureResult | null = null): void {
     const modal = document.getElementById('offlineModal');
     const text = document.getElementById('offlineEarnings');
     if (text) {
@@ -2558,10 +2560,47 @@ export function initPupperPark(): void {
       text.appendChild(bonesLine);
 
       if (foundTreasure) {
-        const treasureLine = document.createElement('div');
-        treasureLine.style.cssText = 'margin-top: 10px; font-size: 0.9rem; font-weight: 700; color: #ffeaa7;';
-        treasureLine.textContent = `Treasure Dug Up While Away: ${foundTreasure.name} [${foundTreasure.rarity}] — ${foundTreasure.desc}`;
-        text.appendChild(treasureLine);
+        const card = document.createElement('div');
+        card.className = 'offline-treasure-card';
+        if (foundTreasure.kind === 'jackpot') {
+          card.innerHTML = `
+            <div class="offline-treasure-info">
+              <div class="offline-treasure-kicker">Relic Vault Mastered</div>
+              <div class="offline-treasure-name">Treasure Jackpot: +${foundTreasure.magicBones.toLocaleString()} ✨ Magic Bones</div>
+              <div class="offline-treasure-meta">All 16 relics are already at Rank V (MAX).</div>
+            </div>
+          `;
+        } else {
+          const { def, prevRank, newRank, completedSetName } = foundTreasure;
+          const meta = RARITY_META[def.rarity];
+          const progressTag = prevRank <= 0
+            ? 'New Discovery | Rank I'
+            : `Rank ${getRankRoman(prevRank)} → Rank ${getRankRoman(newRank)}`;
+          const statsLine = formatRelicStatsAtRank(def, newRank);
+
+          const img = document.createElement('img');
+          img.className = 'offline-treasure-thumb';
+          img.src = def.imageUrl;
+          img.alt = def.name;
+          img.referrerPolicy = 'no-referrer';
+          img.onerror = () => {
+            img.onerror = null;
+            img.src = TREASURE_FALLBACK_SVG;
+          };
+
+          const info = document.createElement('div');
+          info.className = 'offline-treasure-info';
+          info.innerHTML = `
+            <div class="offline-treasure-kicker">Found While Away | ${progressTag}</div>
+            <div class="offline-treasure-name">${def.name}</div>
+            <div class="offline-treasure-meta"><span style="color: ${meta.color};">${def.rarity}</span> | ${statsLine}</div>
+            ${completedSetName ? `<div class="offline-treasure-meta" style="color: #55efc4;">Set Bonus Activated: ${completedSetName}!</div>` : ''}
+          `;
+
+          card.appendChild(img);
+          card.appendChild(info);
+        }
+        text.appendChild(card);
       }
     }
     if (modal) {
@@ -3568,6 +3607,9 @@ export function initPupperPark(): void {
     if (resetConfirmModal) resetConfirmModal.style.display = 'none';
     if (retireConfirmModal) retireConfirmModal.style.display = 'none';
     if (rerollModal) rerollModal.style.display = 'none';
+    const perkModalEl = document.getElementById('perkModal');
+    if (perkModalEl) perkModalEl.style.display = 'none';
+    closeTreasureInspector();
     cancelDecorPlacement();
     closeMenu();
     updateUI();
@@ -3577,6 +3619,13 @@ export function initPupperPark(): void {
 
   document.getElementById('btnConfirmReset')?.addEventListener('click', () => {
     performReset(0, 0);
+  });
+
+  document.getElementById('btnTestTreasureChest')?.addEventListener('click', () => {
+    initAudio();
+    closeTreasureInspector();
+    closeMenu();
+    triggerPerkDraft();
   });
 
   document.getElementById('btnTestResetMax')?.addEventListener('click', () => {
@@ -4380,13 +4429,14 @@ export function initPupperPark(): void {
       }
 
       const cfg = BREED_CONFIG[this.breed] || BREED_CONFIG.aussie;
-      const { workBonus } = getPerkMultipliers();
+      const treasureBonuses = getPerkMultipliers();
+      const { workBonus } = treasureBonuses;
       const weather = getCurrentWeather();
       const moodInfo = getPackHappinessInfo();
 
       const baconPaceMult = getActiveBaconPaceMult();
       const decorPaceMult = getDecorBonuses().paceMult;
-      const visualPace = Math.min(1.6, 1 + Math.log1p(Math.max(0, workBonus - 1)) * 0.25) * weather.digSpeedMult * moodInfo.paceMult * baconPaceMult * decorPaceMult;
+      const visualPace = Math.min(1.6, 1 + Math.log1p(Math.max(0, workBonus - 1)) * 0.25) * weather.digSpeedMult * moodInfo.paceMult * baconPaceMult * decorPaceMult * treasureBonuses.paceMult;
       const walkSpeed = (cfg.walkMult || 1.1) * visualPace;
 
       this.animPhase += dt * (
@@ -4543,13 +4593,13 @@ export function initPupperPark(): void {
           this.state = 'DIG';
           this.timer = (cfg.digSec || 1.0) / visualPace;
 
-          const { magicBonus } = getPerkMultipliers();
+          const { magicBonus, treasureOddsMult } = getPerkMultipliers();
           const decorMagic = getDecorBonuses().magicAdd;
           const moodMagic = getPackHappinessInfo().magicAdd;
           const magicChanceTotal = Math.min(0.9, state.magicChance + magicBonus + decorMagic + weather.magicAdd + moodMagic + (cfg.magicBonus || 0));
           this.isMagicDig = state.kongTimer > 0 ? false : Math.random() < magicChanceTotal;
 
-          const treasureChance = (cfg.treasureChance || 0.00008) * weather.treasureMult;
+          const treasureChance = (cfg.treasureChance || 0.00008) * weather.treasureMult * treasureOddsMult;
           if (!state.isDraftingPerk && Math.random() < treasureChance) {
             triggerPerkDraft();
           }
@@ -4820,37 +4870,115 @@ export function initPupperPark(): void {
     sfx.shiny();
     triggerHaptic(25);
     const modal = document.getElementById('perkModal');
+    const subtitleEl = document.getElementById('perkModalSubtitle');
     const choicesContainer = document.getElementById('perkChoices');
     if (!modal || !choicesContainer) return;
 
     choicesContainer.innerHTML = '';
 
-    const shuffled = [...PERK_POOL].sort(() => 0.5 - Math.random());
-    const options = shuffled.slice(0, 3);
+    const counts = getTreasureCounts(state.perks);
+    const options = rollWeightedTreasureOptions(state.perks, 3);
 
-    options.forEach(perk => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'perk-choice-btn';
-
-      let rarityColor = '#a29bfe';
-      if (perk.rarity === 'Rare') rarityColor = '#0984e3';
-      if (perk.rarity === 'Legendary') rarityColor = '#f1c40f';
-      if (perk.rarity === 'Mythic') rarityColor = '#e84393';
-
-      btn.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-          <span style="font-weight: 800; font-size: 1rem; color: #fff;">${perk.name}</span>
-          <span style="font-size: 0.75rem; font-weight: 700; color: ${rarityColor};">[${perk.rarity}]</span>
-        </div>
-        <div style="font-size: 0.8rem; color: #b8c2d4; margin-top: 2px;">${perk.desc}</div>
+    if (options.length === 0) {
+      if (subtitleEl) {
+        subtitleEl.textContent = 'Every relic in your gallery has reached Rank V (MAX)!';
+      }
+      const jackpotCard = document.createElement('div');
+      jackpotCard.className = 'perk-jackpot-card';
+      jackpotCard.innerHTML = `
+        <h3>Master Collector Jackpot</h3>
+        <p>Your pack unearthed a golden vault chest overflowing with <strong>+${MAXED_TREASURE_JACKPOT_MAGIC.toLocaleString()} ✨ Magic Bones</strong>!</p>
       `;
-
-      btn.addEventListener('click', () => {
-        state.perks.push(perk);
+      const claimBtn = document.createElement('button');
+      claimBtn.type = 'button';
+      claimBtn.className = 'action-btn';
+      claimBtn.style.cssText = 'width: 100%; max-width: 240px; padding: 11px;';
+      claimBtn.textContent = `Claim +${MAXED_TREASURE_JACKPOT_MAGIC.toLocaleString()} ✨`;
+      claimBtn.addEventListener('click', () => {
+        state.magicBones += MAXED_TREASURE_JACKPOT_MAGIC;
         state.isDraftingPerk = false;
         modal.style.display = 'none';
-        sfx.upgrade();
+        sfx.shiny();
+        addFloatingText(viewportW / 2, viewportH * 0.34, `+${MAXED_TREASURE_JACKPOT_MAGIC} ✨ Vault Jackpot!`, '#ffeaa7');
+        updateUI();
+        saveGame();
+        flushQueuedAwayProgressIfReady();
+      });
+      jackpotCard.appendChild(claimBtn);
+      choicesContainer.appendChild(jackpotCard);
+      modal.style.display = 'flex';
+      return;
+    }
+
+    if (subtitleEl) {
+      subtitleEl.textContent = options.length === 1
+        ? 'Your pack uncovered the final relic needed to finish your collection!'
+        : `Your pack uncovered a buried chest! Choose 1 of ${options.length} relics to claim:`;
+    }
+
+    options.forEach(relic => {
+      const meta = RARITY_META[relic.rarity];
+      const setDef = getTreasureSetById(relic.setId);
+      const currentRank = getRelicRank(counts, relic.id);
+      const nextRank = Math.min(MAX_RELIC_RANK, currentRank + 1);
+      const setProg = getSetProgress(counts, relic.setId);
+      const willCompleteSet = currentRank === 0 && setProg.owned === setProg.total - 1;
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `perk-choice-btn ${meta.cssClass}`;
+
+      const artWrap = document.createElement('div');
+      artWrap.className = 'perk-choice-art-wrap';
+      const img = document.createElement('img');
+      img.className = 'perk-choice-img';
+      img.src = relic.imageUrl;
+      img.alt = relic.name;
+      img.referrerPolicy = 'no-referrer';
+      img.onerror = () => {
+        img.onerror = null;
+        img.src = TREASURE_FALLBACK_SVG;
+      };
+      artWrap.appendChild(img);
+
+      const content = document.createElement('div');
+      content.className = 'perk-choice-content';
+
+      const stateText = currentRank <= 0
+        ? 'New Discovery | Rank I'
+        : `Rank ${getRankRoman(currentRank)} → Rank ${getRankRoman(nextRank)}${nextRank >= MAX_RELIC_RANK ? ' (MAX)' : ''}`;
+      const statsPreview = formatRelicUpgradePreview(relic, currentRank);
+
+      content.innerHTML = `
+        <div class="perk-choice-name">${relic.name}</div>
+        <div class="perk-choice-meta"><span style="color: ${meta.color};">${relic.rarity}</span> | ${setDef ? setDef.shortName : ''}</div>
+        <div class="perk-choice-state${currentRank > 0 ? ' is-upgrade' : ''}">${stateText}</div>
+        <div class="perk-choice-stats">${statsPreview}</div>
+        ${willCompleteSet && setDef ? `<div class="perk-choice-set-hint">Completes ${setDef.name} Set!</div>` : ''}
+      `;
+
+      btn.appendChild(artWrap);
+      btn.appendChild(content);
+
+      btn.addEventListener('click', () => {
+        const beforeCounts = getTreasureCounts(state.perks);
+        const wasSetComplete = isSetCompleted(beforeCounts, relic.setId);
+        state.perks.push(createSavedPerkRecord(relic, nextRank));
+        const afterCounts = getTreasureCounts(state.perks);
+        const nowSetComplete = !wasSetComplete && isSetCompleted(afterCounts, relic.setId);
+
+        state.isDraftingPerk = false;
+        modal.style.display = 'none';
+
+        if (nowSetComplete && setDef) {
+          sfx.shiny();
+          triggerHaptic(35);
+          addFloatingText(viewportW / 2, viewportH * 0.30, `Set Complete: ${setDef.name}!`, '#55efc4');
+        } else {
+          sfx.upgrade();
+          addFloatingText(viewportW / 2, viewportH * 0.34, `${relic.name} | Rank ${getRankRoman(nextRank)}`, meta.color);
+        }
+
         updateUI();
         saveGame();
         flushQueuedAwayProgressIfReady();
@@ -6726,22 +6854,286 @@ export function initPupperPark(): void {
     buyTimedTreat('bacon', 'treatBacon');
   });
 
-  function formatStackedTreasureSummary(perk: PerkItem, count: number): string {
-    if (count <= 1) return perk.desc;
-    const parts: string[] = [];
-    if (perk.mult) {
-      const totalMult = Math.pow(perk.mult, count);
-      parts.push(`${totalMult.toFixed(2).replace(/\.?0+$/, '')}x dig bones`);
+  let activeTreasureSetFilter: 'all' | TreasureSetId = 'all';
+  let treasureLockedHintTimer: number | null = null;
+
+  function showTreasureLockedHint(message: string): void {
+    const hintEl = document.getElementById('treasureLockedHint');
+    if (!hintEl) return;
+    hintEl.textContent = message;
+    hintEl.style.display = 'block';
+    if (treasureLockedHintTimer !== null) {
+      window.clearTimeout(treasureLockedHintTimer);
     }
-    if (perk.workMult) {
-      const totalWork = Math.pow(perk.workMult, count);
-      parts.push(`${totalWork.toFixed(2).replace(/\.?0+$/, '')}x scaling`);
+    treasureLockedHintTimer = window.setTimeout(() => {
+      hintEl.style.display = 'none';
+      treasureLockedHintTimer = null;
+    }, 3200);
+  }
+
+  function closeTreasureInspector(): void {
+    const modal = document.getElementById('treasureInspectModal');
+    if (modal) modal.style.display = 'none';
+  }
+
+  function openTreasureInspector(relicId: string): void {
+    const relic = getTreasureById(relicId);
+    if (!relic) return;
+    const counts = getTreasureCounts(state.perks);
+    const rank = getRelicRank(counts, relic.id);
+    if (rank <= 0) {
+      showTreasureLockedHint('Undiscovered relic — unearthed by digging across the park.');
+      return;
     }
-    if (perk.magicAdd) {
-      const totalMagicPct = Math.round(perk.magicAdd * count * 1000) / 10;
-      parts.push(`+${totalMagicPct}% ✨ Magic Bone chance`);
+
+    const modal = document.getElementById('treasureInspectModal');
+    const artFrame = document.getElementById('inspectArtFrame');
+    const imgEl = document.getElementById('inspectRelicImg') as HTMLImageElement | null;
+    const nameEl = document.getElementById('inspectRelicName');
+    const metaEl = document.getElementById('inspectRelicMeta');
+    const loreEl = document.getElementById('inspectRelicLore');
+    const rankLabelEl = document.getElementById('inspectRelicRankLabel');
+    const rankPipsEl = document.getElementById('inspectRelicRankPips');
+    const statsEl = document.getElementById('inspectRelicStats');
+    const nextRankEl = document.getElementById('inspectRelicNextRank');
+    const setBoxEl = document.getElementById('inspectRelicSetBox');
+    const setTitleEl = document.getElementById('inspectRelicSetTitle');
+    const setBonusEl = document.getElementById('inspectRelicSetBonus');
+
+    const rarityMeta = RARITY_META[relic.rarity];
+    const setDef = getTreasureSetById(relic.setId);
+    const setProg = getSetProgress(counts, relic.setId);
+
+    if (artFrame) {
+      artFrame.className = `treasure-inspect-art-wrap ${rarityMeta.cssClass}`;
     }
-    return parts.length > 0 ? `Stacked (${count}x): ${parts.join(' & ')}` : perk.desc;
+    if (imgEl) {
+      imgEl.referrerPolicy = 'no-referrer';
+      imgEl.alt = relic.name;
+      imgEl.onerror = () => {
+        imgEl.onerror = null;
+        imgEl.src = TREASURE_FALLBACK_SVG;
+      };
+      imgEl.src = relic.imageUrl;
+    }
+    if (nameEl) nameEl.textContent = relic.name;
+    if (metaEl) {
+      metaEl.innerHTML = `<span style="color: ${rarityMeta.color};">${relic.rarity}</span> | ${setDef ? setDef.name : ''}`;
+    }
+    if (loreEl) loreEl.textContent = relic.lore;
+
+    if (rankLabelEl) {
+      rankLabelEl.textContent = rank >= MAX_RELIC_RANK
+        ? `Rank ${getRankRoman(rank)} / V (MAX)`
+        : `Rank ${getRankRoman(rank)} / V`;
+    }
+    if (rankPipsEl) {
+      rankPipsEl.innerHTML = '';
+      for (let i = 1; i <= MAX_RELIC_RANK; i++) {
+        const pip = document.createElement('span');
+        pip.className = `treasure-rank-pip${i <= rank ? ' is-filled' : ''}`;
+        rankPipsEl.appendChild(pip);
+      }
+    }
+
+    if (statsEl) {
+      statsEl.textContent = formatRelicStatsAtRank(relic, rank);
+    }
+    if (nextRankEl) {
+      if (rank >= MAX_RELIC_RANK) {
+        nextRankEl.textContent = 'Mastered — removed from future treasure chest drafts.';
+      } else {
+        const nextRoman = getRankRoman(rank + 1);
+        nextRankEl.textContent = `Next (Rank ${nextRoman}): ${formatRelicStatsAtRank(relic, rank + 1)}`;
+      }
+    }
+
+    if (setBoxEl && setDef) {
+      setBoxEl.classList.toggle('is-complete', setProg.completed);
+      if (setTitleEl) {
+        setTitleEl.textContent = setProg.completed
+          ? `${setDef.name} (${setProg.owned}/${setProg.total}) | Set Bonus Active`
+          : `${setDef.name} (${setProg.owned}/${setProg.total}) | Collect ${setProg.total - setProg.owned} more`;
+      }
+      if (setBonusEl) {
+        setBonusEl.textContent = setDef.bonusLabel;
+      }
+    }
+
+    if (modal) {
+      modal.style.display = 'flex';
+    }
+  }
+
+  document.getElementById('btnCloseTreasureInspect')?.addEventListener('click', closeTreasureInspector);
+  document.getElementById('btnDoneTreasureInspect')?.addEventListener('click', closeTreasureInspector);
+  document.getElementById('treasureInspectModal')?.addEventListener('click', (e: MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      closeTreasureInspector();
+    }
+  });
+  window.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (e.key === 'Escape' && isModalCurrentlyOpen('treasureInspectModal')) {
+      closeTreasureInspector();
+    }
+  });
+
+  document.querySelectorAll<HTMLButtonElement>('.treasure-filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetSet = btn.getAttribute('data-treasure-set');
+      if (
+        targetSet === 'all' ||
+        targetSet === 'explorer' ||
+        targetSet === 'kennel' ||
+        targetSet === 'arcane' ||
+        targetSet === 'mythic'
+      ) {
+        activeTreasureSetFilter = targetSet;
+        document.querySelectorAll<HTMLButtonElement>('.treasure-filter-btn').forEach(other => {
+          const isMatch = other === btn;
+          other.classList.toggle('active', isMatch);
+          other.setAttribute('aria-selected', isMatch ? 'true' : 'false');
+        });
+        renderTreasuresTab();
+      }
+    });
+  });
+
+  function renderTreasuresTab(): void {
+    const bonuses = getPerkMultipliers();
+    const counts = getTreasureCounts(state.perks);
+
+    const perkCountEl = document.getElementById('perkCountDisplay');
+    if (perkCountEl) perkCountEl.textContent = String(bonuses.discoveredCount);
+
+    const perkRanksEl = document.getElementById('perkRanksDisplay');
+    if (perkRanksEl) perkRanksEl.textContent = String(bonuses.totalRanks);
+
+    const perkSetsEl = document.getElementById('perkSetsDisplay');
+    if (perkSetsEl) perkSetsEl.textContent = String(bonuses.completedSets.length);
+
+    const summaryEl = document.getElementById('treasureActiveSummary');
+    if (summaryEl) {
+      summaryEl.textContent = formatActiveTreasureSummary(bonuses);
+    }
+
+    const perkListContainer = document.getElementById('perkListContainer');
+    if (!perkListContainer) return;
+    perkListContainer.innerHTML = '';
+
+    const setsToRender = activeTreasureSetFilter === 'all'
+      ? TREASURE_SETS
+      : TREASURE_SETS.filter(s => s.id === activeTreasureSetFilter);
+
+    setsToRender.forEach(setDef => {
+      const setProg = getSetProgress(counts, setDef.id);
+
+      const section = document.createElement('section');
+      section.className = 'treasure-set-section';
+
+      const header = document.createElement('div');
+      header.className = 'treasure-set-header';
+
+      const titleRow = document.createElement('div');
+      titleRow.className = 'treasure-set-title-row';
+
+      const setNameEl = document.createElement('h4');
+      setNameEl.className = 'treasure-set-name';
+      setNameEl.textContent = setDef.name;
+
+      const setCountEl = document.createElement('span');
+      setCountEl.className = `treasure-set-count${setProg.completed ? ' is-complete' : ''}`;
+      setCountEl.textContent = setProg.completed ? `${setProg.owned} / ${setProg.total} | Active` : `${setProg.owned} / ${setProg.total}`;
+
+      titleRow.appendChild(setNameEl);
+      titleRow.appendChild(setCountEl);
+
+      const bonusEl = document.createElement('div');
+      bonusEl.className = `treasure-set-bonus${setProg.completed ? ' is-complete' : ''}`;
+      bonusEl.textContent = setProg.completed
+        ? `Set Bonus Active: ${setDef.bonusLabel}`
+        : `4/4 Set Bonus: ${setDef.bonusLabel}`;
+
+      header.appendChild(titleRow);
+      header.appendChild(bonusEl);
+      section.appendChild(header);
+
+      const grid = document.createElement('div');
+      grid.className = 'treasure-grid';
+
+      setDef.relicIds.forEach(relicId => {
+        const relic = getTreasureById(relicId);
+        if (!relic) return;
+        const rank = getRelicRank(counts, relic.id);
+        const isDiscovered = rank > 0;
+        const isMaxed = rank >= MAX_RELIC_RANK;
+        const rarityMeta = RARITY_META[relic.rarity];
+
+        const tile = document.createElement('button');
+        tile.type = 'button';
+        tile.className = isDiscovered
+          ? `treasure-tile ${rarityMeta.cssClass}${isMaxed ? ' is-maxed' : ''}`
+          : 'treasure-tile is-locked';
+        tile.setAttribute('aria-label', isDiscovered ? `Inspect ${relic.name}, Rank ${getRankRoman(rank)}` : `Undiscovered ${relic.rarity} relic`);
+
+        const thumbWrap = document.createElement('div');
+        thumbWrap.className = 'treasure-tile-thumb-wrap';
+
+        if (isDiscovered) {
+          const img = document.createElement('img');
+          img.className = 'treasure-tile-img';
+          img.src = relic.imageUrl;
+          img.alt = relic.name;
+          img.loading = 'lazy';
+          img.referrerPolicy = 'no-referrer';
+          img.onerror = () => {
+            img.onerror = null;
+            img.src = TREASURE_FALLBACK_SVG;
+          };
+          thumbWrap.appendChild(img);
+        } else {
+          const sil = document.createElement('span');
+          sil.className = 'treasure-tile-silhouette';
+          sil.textContent = '???';
+          thumbWrap.appendChild(sil);
+        }
+
+        const info = document.createElement('div');
+        info.className = 'treasure-tile-info';
+
+        const nameDiv = document.createElement('div');
+        nameDiv.className = 'treasure-tile-name';
+        nameDiv.textContent = isDiscovered ? relic.name : 'Undiscovered';
+
+        const metaDiv = document.createElement('div');
+        metaDiv.className = 'treasure-tile-meta';
+        if (isDiscovered) {
+          const rankLabel = isMaxed ? 'Rank V MAX' : `Rank ${getRankRoman(rank)}`;
+          metaDiv.innerHTML = `<span style="color: ${rarityMeta.color};">${relic.rarity}</span> | ${rankLabel}`;
+        } else {
+          metaDiv.innerHTML = `<span style="color: ${rarityMeta.color};">${relic.rarity}</span> | Locked`;
+        }
+
+        info.appendChild(nameDiv);
+        info.appendChild(metaDiv);
+
+        tile.appendChild(thumbWrap);
+        tile.appendChild(info);
+
+        tile.addEventListener('click', () => {
+          if (isDiscovered) {
+            openTreasureInspector(relic.id);
+          } else {
+            showTreasureLockedHint(`Undiscovered ${relic.rarity} relic in ${setDef.name} — found by digging!`);
+          }
+        });
+
+        grid.appendChild(tile);
+      });
+
+      section.appendChild(grid);
+      perkListContainer.appendChild(section);
+    });
   }
 
   function formatTimedTreatCostLabel(cost: number, timer: number, treatKey: string, configKey: string): string {
@@ -6945,42 +7337,7 @@ export function initPupperPark(): void {
       }
     });
 
-    const perkCountEl = document.getElementById('perkCountDisplay');
-    if (perkCountEl) perkCountEl.textContent = String(state.perks.length);
-
-    const perkListContainer = document.getElementById('perkListContainer');
-    if (perkListContainer) {
-      perkListContainer.innerHTML = '';
-
-      const groupedPerks = new Map<string, { perk: PerkItem; count: number }>();
-      state.perks.forEach(p => {
-        const key = p.id || `${p.name}::${p.rarity}`;
-        const existing = groupedPerks.get(key);
-        if (!existing) {
-          groupedPerks.set(key, { perk: p, count: 1 });
-        } else {
-          existing.count += 1;
-        }
-      });
-
-      groupedPerks.forEach(({ perk, count }) => {
-        const div = document.createElement('div');
-        div.className = 'shop-card';
-        div.style.padding = '10px 14px';
-        const countLabel = count > 1 ? ` | x${count}` : '';
-        const summaryDesc = formatStackedTreasureSummary(perk, count);
-
-        div.innerHTML = `
-          <div class="shop-info">
-            <h4 style="color: #ffeaa7; font-size: 0.88rem;">
-              ${perk.name} <span style="font-size:0.74rem; color:#a29bfe; font-weight:600;">| ${perk.rarity}${countLabel}</span>
-            </h4>
-            <p style="font-size:0.74rem; margin:2px 0 0 0;">${summaryDesc}</p>
-          </div>
-        `;
-        perkListContainer.appendChild(div);
-      });
-    }
+    renderTreasuresTab();
 
     const decorBonuses = getDecorBonuses();
 

@@ -703,13 +703,26 @@
 
         <!-- Treasures Tab -->
         <div class="tab-content" id="tab-perks">
-          <div class="shop-card" style="border-color: rgba(241, 196, 15, 0.55);">
+          <div class="shop-card treasure-overview-card">
             <div class="shop-info">
-              <h3 style="color: #f1c40f;">Active Treasures Collection</h3>
-              <p>Treasures discovered by your pack boost dig payouts, magic chance, or scaling.</p>
-              <div class="shop-owned">Unlocked Treasures: <span id="perkCountDisplay">0</span></div>
+              <h3 class="treasure-overview-title">Relic Gallery &amp; Sets</h3>
+              <p>Uncover 16 illustrated relics by digging. Duplicates level up each relic to Rank V (MAX), and completing a 4-piece set activates its permanent Set Bonus.</p>
+              <div class="shop-owned treasure-overview-meta">
+                Discovered: <span id="perkCountDisplay">0</span> / 16 | Total Ranks: <span id="perkRanksDisplay">0</span> / 80 | Sets: <span id="perkSetsDisplay">0</span> / 4
+              </div>
+              <div id="treasureActiveSummary" class="treasure-active-summary">No relics discovered yet — keep digging!</div>
             </div>
           </div>
+
+          <div class="treasure-filter-bar" role="tablist" aria-label="Filter treasure sets">
+            <button type="button" class="treasure-filter-btn active" data-treasure-set="all" aria-selected="true">All Sets</button>
+            <button type="button" class="treasure-filter-btn" data-treasure-set="explorer" aria-selected="false">Explorer's Pack</button>
+            <button type="button" class="treasure-filter-btn" data-treasure-set="kennel" aria-selected="false">Gilded Kennel</button>
+            <button type="button" class="treasure-filter-btn" data-treasure-set="arcane" aria-selected="false">Arcane Playbox</button>
+            <button type="button" class="treasure-filter-btn" data-treasure-set="mythic" aria-selected="false">Mythic Vault</button>
+          </div>
+
+          <div id="treasureLockedHint" class="treasure-locked-hint" style="display: none;" role="status" aria-live="polite"></div>
           <div id="perkListContainer" class="perk-list-container"></div>
         </div>
 
@@ -1023,11 +1036,16 @@
           <div class="shop-card shop-card-vertical" style="border-color: rgba(255, 234, 167, 0.45);">
             <div class="shop-info">
               <h3 style="color: var(--gold);">Testing Sandbox</h3>
-              <p>Reset park to a fresh Biscuit starter with max Bones (1,000,000 🦴) and 20,000 Magic Bones ✨.</p>
+              <p>Reset park to a fresh Biscuit starter with max Bones (1,000,000 🦴) and 20,000 Magic Bones ✨, or open a test treasure chest draft.</p>
             </div>
-            <button type="button" id="btnTestResetMax" class="action-btn" style="background: linear-gradient(135deg, #f39c12 0%, #f1c40f 100%); color: #15112e; width: 100%; min-width: unset; padding: 10px;">
-              <span class="btn-name" style="color: #15112e;">Test Reset (1M 🦴 | 20k ✨)</span>
-            </button>
+            <div class="sandbox-btn-stack">
+              <button type="button" id="btnTestTreasureChest" class="action-btn sandbox-chest-btn">
+                <span class="btn-name">Test Treasure Chest</span>
+              </button>
+              <button type="button" id="btnTestResetMax" class="action-btn" style="background: linear-gradient(135deg, #f39c12 0%, #f1c40f 100%); color: #15112e; width: 100%; min-width: unset; padding: 10px;">
+                <span class="btn-name" style="color: #15112e;">Test Reset (1M 🦴 | 20k ✨)</span>
+              </button>
+            </div>
           </div>
 
           <div class="shop-card shop-card-vertical" style="border-color: rgba(255, 118, 117, 0.5);">
@@ -1091,9 +1109,40 @@
   <!-- Treasure Draft Modal -->
   <div id="perkModal" class="modal" style="display: none;">
     <div class="modal-window perk-modal-window">
-      <h2 style="color: #f1c40f; margin-bottom: 4px;">Rare Treasure Found!</h2>
-      <p style="color: #dcdde1; font-size: 0.85rem; margin-bottom: 12px;">Your pack uncovered a hidden treasure chest! Choose 1 of 3 treasures to claim:</p>
-      <div id="perkChoices"></div>
+      <div class="perk-modal-head">
+        <h2 class="perk-modal-title">Rare Treasure Found!</h2>
+        <p id="perkModalSubtitle" class="perk-modal-subtitle">Your pack uncovered a hidden treasure chest! Choose 1 of 3 relics to claim:</p>
+      </div>
+      <div id="perkChoices" class="perk-choices-grid"></div>
+    </div>
+  </div>
+
+  <!-- Treasure Tap-to-Inspect Lightbox Modal -->
+  <div id="treasureInspectModal" class="modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="inspectRelicName">
+    <div class="modal-window treasure-inspect-window">
+      <button type="button" id="btnCloseTreasureInspect" class="close-btn treasure-inspect-x" aria-label="Close treasure inspection">✕</button>
+      <div id="inspectArtFrame" class="treasure-inspect-art-wrap">
+        <img id="inspectRelicImg" class="treasure-inspect-img" src="" alt="" referrerpolicy="no-referrer" />
+      </div>
+      <div class="treasure-inspect-body">
+        <h2 id="inspectRelicName" class="treasure-inspect-title"></h2>
+        <div id="inspectRelicMeta" class="treasure-inspect-meta"></div>
+        <p id="inspectRelicLore" class="treasure-inspect-lore"></p>
+        <div class="treasure-inspect-rank-row">
+          <span id="inspectRelicRankLabel" class="treasure-inspect-rank-label"></span>
+          <div id="inspectRelicRankPips" class="treasure-rank-pips" aria-hidden="true"></div>
+        </div>
+        <div class="treasure-inspect-stats-box">
+          <div class="treasure-inspect-stat-heading">Active Relic Bonus</div>
+          <div id="inspectRelicStats" class="treasure-inspect-stat-value"></div>
+          <div id="inspectRelicNextRank" class="treasure-inspect-next-rank"></div>
+        </div>
+        <div id="inspectRelicSetBox" class="treasure-inspect-set-box">
+          <div id="inspectRelicSetTitle" class="treasure-inspect-set-title"></div>
+          <div id="inspectRelicSetBonus" class="treasure-inspect-set-bonus"></div>
+        </div>
+      </div>
+      <button type="button" id="btnDoneTreasureInspect" class="action-btn treasure-inspect-done-btn">Close</button>
     </div>
   </div>
 
