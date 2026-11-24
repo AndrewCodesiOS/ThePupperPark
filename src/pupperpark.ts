@@ -3117,6 +3117,7 @@ export function initPupperPark(): void {
       drawerWindow.style.height = '';
       drawerWindow.style.transform = '';
     }
+    hideRetireNotice();
   }
 
   bindReliableCloseButton(document.getElementById('btnCloseMenu'), closeMenu);
@@ -3219,6 +3220,8 @@ export function initPupperPark(): void {
       updateUI();
       if (tabId === 'tab-roster') {
         renderRosterTab();
+      } else {
+        hideRetireNotice();
       }
     });
   });
@@ -3522,6 +3525,53 @@ export function initPupperPark(): void {
     }
   });
 
+  const RETIRE_NOTICE_DURATION_MS = 4000;
+  const RETIRE_NOTICE_FADE_MS = 250;
+  let retireNoticeFadeTimer: number | null = null;
+  let retireNoticeHideTimer: number | null = null;
+
+  function clearRetireNoticeTimers(): void {
+    if (retireNoticeFadeTimer !== null) {
+      window.clearTimeout(retireNoticeFadeTimer);
+      retireNoticeFadeTimer = null;
+    }
+    if (retireNoticeHideTimer !== null) {
+      window.clearTimeout(retireNoticeHideTimer);
+      retireNoticeHideTimer = null;
+    }
+  }
+
+  function hideRetireNotice(): void {
+    clearRetireNoticeTimers();
+    const noticeEl = document.getElementById('retireNotice');
+    if (noticeEl) {
+      noticeEl.classList.remove('is-fading-out');
+      noticeEl.style.display = 'none';
+      noticeEl.textContent = '';
+    }
+  }
+
+  function showRetireNotice(message: string): void {
+    clearRetireNoticeTimers();
+    const noticeEl = document.getElementById('retireNotice');
+    if (!noticeEl) return;
+
+    noticeEl.classList.remove('is-fading-out');
+    noticeEl.textContent = message;
+    noticeEl.style.display = 'block';
+
+    retireNoticeFadeTimer = window.setTimeout(() => {
+      retireNoticeFadeTimer = null;
+      noticeEl.classList.add('is-fading-out');
+      retireNoticeHideTimer = window.setTimeout(() => {
+        retireNoticeHideTimer = null;
+        noticeEl.classList.remove('is-fading-out');
+        noticeEl.style.display = 'none';
+        noticeEl.textContent = '';
+      }, RETIRE_NOTICE_FADE_MS);
+    }, RETIRE_NOTICE_DURATION_MS);
+  }
+
   function retireDog(dogId: string): void {
     initAudio();
     if (state.roster.length <= 1) return;
@@ -3539,11 +3589,9 @@ export function initPupperPark(): void {
     rebuildCanvasDogsFromRoster();
     sfx.thud();
 
-    const noticeEl = document.getElementById('retireNotice');
-    if (noticeEl) {
-      noticeEl.textContent = `${retiredDog.name} retired! You received ${actualRefund.toLocaleString()} Bones (${refundPct}% of their ${Math.floor(retiredDog.bonesEarned).toLocaleString()} lifetime bones dug).`;
-      noticeEl.style.display = 'block';
-    }
+    showRetireNotice(
+      `${retiredDog.name} retired! You received ${actualRefund.toLocaleString()} Bones (${refundPct}% of their ${Math.floor(retiredDog.bonesEarned).toLocaleString()} lifetime bones dug).`
+    );
 
     updateUI();
     renderRosterTab();
@@ -4270,8 +4318,7 @@ export function initPupperPark(): void {
     tileRipples.length = 0;
     parkBarkCooldown = PARK_BARK_MIN_COOLDOWN + Math.random() * (PARK_BARK_MAX_COOLDOWN - PARK_BARK_MIN_COOLDOWN);
 
-    const noticeEl = document.getElementById('retireNotice');
-    if (noticeEl) noticeEl.style.display = 'none';
+    hideRetireNotice();
 
     if (resetConfirmModal) resetConfirmModal.style.display = 'none';
     if (retireConfirmModal) retireConfirmModal.style.display = 'none';

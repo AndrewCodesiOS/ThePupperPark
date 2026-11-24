@@ -996,6 +996,15 @@ input:focus-visible {
   color: var(--gold);
   font-size: 0.84rem;
   font-weight: 700;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.retire-notice.is-fading-out {
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
 }
 
 /* Pack Happiness Summary Card in Roster */

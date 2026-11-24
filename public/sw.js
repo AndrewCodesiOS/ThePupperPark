@@ -1,5 +1,5 @@
 // Bump CACHE_NAME whenever you update production files
-const CACHE_NAME = 'pupperpark-v6.6';
+const CACHE_NAME = 'pupperpark-v6.7';
 
 const ASSETS_TO_CACHE = [
   './',
