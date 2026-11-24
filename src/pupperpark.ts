@@ -3104,11 +3104,61 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     });
   }
 
+  let safeInsetProbeEl: HTMLDivElement | null = null;
+  let isAsymmetricPortraitSideInset = false;
+
+  function measureSideSafeInsets(): { left: number; right: number } {
+    if (!safeInsetProbeEl && document.body) {
+      safeInsetProbeEl = document.createElement('div');
+      safeInsetProbeEl.className = 'safe-inset-probe';
+      safeInsetProbeEl.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(safeInsetProbeEl);
+    }
+    if (!safeInsetProbeEl || typeof window.getComputedStyle !== 'function') {
+      return { left: 0, right: 0 };
+    }
+    const cs = window.getComputedStyle(safeInsetProbeEl);
+    return {
+      left: parseFloat(cs.paddingLeft) || 0,
+      right: parseFloat(cs.paddingRight) || 0
+    };
+  }
+
+  function syncAsymmetricSafeAreaMode(width: number, height: number): boolean {
+    const sideInsets = measureSideSafeInsets();
+    const next = height > width && Math.abs(sideInsets.right - sideInsets.left) >= 20;
+    const changed = next !== isAsymmetricPortraitSideInset;
+    isAsymmetricPortraitSideInset = next;
+    document.documentElement.classList.toggle('asymmetric-side-safe-area', next);
+    return changed;
+  }
+
+  function updateDrawerCutoutClearance(currentDrawerHeight: number): void {
+    if (!drawerWindow) return;
+    if (!isAsymmetricPortraitSideInset) {
+      drawerWindow.classList.remove('clears-side-cutout');
+      return;
+    }
+    const measuredH = viewportH > 0
+      ? viewportH
+      : (window.visualViewport?.height || window.innerHeight || document.documentElement.clientHeight || 640);
+    const drawerTop = measuredH - currentDrawerHeight;
+    drawerWindow.classList.toggle('clears-side-cutout', drawerTop < Math.round(measuredH * 0.25));
+  }
+
   function getDrawerSnapHeights(): { halfHeight: number; expandedHeight: number } {
     const measuredH = viewportH > 0
       ? viewportH
       : (window.visualViewport?.height || window.innerHeight || document.documentElement.clientHeight || 640);
     const vh = Math.max(320, Math.round(measuredH));
+    if (isAsymmetricPortraitSideInset) {
+      // On asymmetric portrait side-cutout screens (e.g. iPhone Duo front screen),
+      // keep half-sheet generous (56%) and expanded cleanly below the upper-side status cluster (74%)
+      // so the entire drawer spans full edge-to-edge width without overlapping the clock/Dynamic Island.
+      const expandedHeight = Math.max(300, Math.min(vh - 28, Math.round(vh * 0.74)));
+      const halfHeight = Math.max(250, Math.min(expandedHeight - 60, Math.round(vh * 0.56)));
+      return { halfHeight, expandedHeight };
+    }
     const expandedHeight = Math.max(300, Math.min(vh - 28, Math.round(vh * 0.9)));
     const halfHeight = Math.max(240, Math.min(expandedHeight - 60, Math.round(vh * 0.52)));
     return { halfHeight, expandedHeight };
@@ -3127,6 +3177,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     drawerWindow.classList.toggle('is-expanded', snap === 'expanded');
     drawerWindow.style.height = `${targetH}px`;
     drawerWindow.style.transform = '';
+    updateDrawerCutoutClearance(targetH);
     if (!animate) {
       void drawerWindow.offsetHeight;
       drawerWindow.classList.remove('is-dragging');
@@ -3155,6 +3206,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       drawerWindow.classList.toggle('is-expanded', initialSnap === 'expanded');
       drawerWindow.style.height = `${targetH}px`;
       drawerWindow.style.transform = '';
+      updateDrawerCutoutClearance(targetH);
     }
     if (gameModal) {
       gameModal.style.display = 'flex';
@@ -3186,7 +3238,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     }
     syncRootBackgroundColor();
     if (drawerWindow) {
-      drawerWindow.classList.remove('is-dragging', 'is-expanded');
+      drawerWindow.classList.remove('is-dragging', 'is-expanded', 'clears-side-cutout');
       drawerWindow.style.height = '';
       drawerWindow.style.transform = '';
     }
@@ -3232,11 +3284,13 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       drawerDismissOffset = 0;
       drawerWindow.style.height = `${Math.round(clampedHeight)}px`;
       drawerWindow.style.transform = '';
+      updateDrawerCutoutClearance(clampedHeight);
     } else {
       drawerDraggedHeight = halfHeight;
       drawerDismissOffset = halfHeight - rawTargetHeight;
       drawerWindow.style.height = `${halfHeight}px`;
       drawerWindow.style.transform = `translateY(${Math.round(drawerDismissOffset)}px)`;
+      updateDrawerCutoutClearance(halfHeight);
     }
   });
 
@@ -4503,8 +4557,11 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       document.documentElement.style.setProperty('--app-height', desiredAppHeight);
     }
 
+    const asymmetricModeChanged = syncAsymmetricSafeAreaMode(width, height);
+
     if (
       !force &&
+      !asymmetricModeChanged &&
       width === lastViewportW &&
       height === lastViewportH &&
       visibleHeight === lastVisibleH &&

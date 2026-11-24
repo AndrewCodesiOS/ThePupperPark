@@ -72,6 +72,18 @@ input:focus-visible {
   outline-offset: 2px;
 }
 
+.safe-inset-probe {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  visibility: hidden;
+  pointer-events: none;
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
 /* Unified Responsive Top HUD Header — prevents overlap at all viewport widths */
 .hud-header {
   position: fixed;
@@ -1630,6 +1642,14 @@ input:focus-visible {
   }
 }
 
+@media (max-width: 720px) {
+  .modal-tabs {
+    padding-right: 14px;
+    -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 calc(100% - 16px), transparent 100%);
+    mask-image: linear-gradient(90deg, #000 0%, #000 calc(100% - 16px), transparent 100%);
+  }
+}
+
 @media (max-width: 540px) {
   .modal-header {
     padding: 6px max(62px, calc(env(safe-area-inset-right, 0px) + 60px)) 10px max(12px, env(safe-area-inset-left, 0px));
@@ -1658,6 +1678,41 @@ input:focus-visible {
   #tab-decor .decor-btn-group {
     width: 100%;
   }
+}
+
+/* Portrait screens with an asymmetric upper-side safe-area cutout (e.g. iPhone Duo front screen):
+   Keep top HUD clear of the upper-side status/Dynamic Island, while reclaiming full edge-to-edge width
+   for the bottom menu drawer, centered modals, and bottom-right mini-bar where the sides are unobstructed. */
+html.asymmetric-side-safe-area #bottomBar {
+  right: 12px;
+}
+
+html.asymmetric-side-safe-area .modal-header {
+  padding: 6px max(64px, calc(50% - 364px)) 10px max(14px, calc(50% - 364px));
+  transition: padding-left 180ms ease, padding-right 180ms ease;
+}
+
+html.asymmetric-side-safe-area #btnCloseMenu {
+  right: 12px;
+  transition: right 180ms ease, background-color 0.16s, transform 0.12s;
+}
+
+html.asymmetric-side-safe-area .modal-body {
+  padding: 12px max(14px, calc(50% - 364px)) 16px max(14px, calc(50% - 364px));
+}
+
+/* If manually dragged into the upper side-cutout zone, yield header controls cleanly to the cutout */
+html.asymmetric-side-safe-area .drawer-window.clears-side-cutout .modal-header {
+  padding-right: max(64px, calc(env(safe-area-inset-right, 0px) + 60px));
+  padding-left: max(14px, env(safe-area-inset-left, 0px));
+}
+
+html.asymmetric-side-safe-area .drawer-window.clears-side-cutout #btnCloseMenu {
+  right: max(12px, env(safe-area-inset-right, 0px));
+}
+
+html.asymmetric-side-safe-area .modal {
+  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)) 16px;
 }
 
 /* Stats Grid */
