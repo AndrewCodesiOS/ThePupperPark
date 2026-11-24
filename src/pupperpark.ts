@@ -892,6 +892,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     starterProps: StarterPropsState;
     isPlacingDecor: boolean;
     activeDecorType: DecorType | null;
+    isClearingDecor: boolean;
     unlockedTiles: Record<CustomTileStyle, boolean>;
     tileMap: Record<string, CustomTileStyle>;
     isPaintingTiles: boolean;
@@ -950,6 +951,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     starterProps: createDefaultStarterProps(),
     isPlacingDecor: false,
     activeDecorType: null,
+    isClearingDecor: false,
     unlockedTiles: createDefaultUnlockedTiles(),
     tileMap: {},
     isPaintingTiles: false,
@@ -2618,6 +2620,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         state.isDraftingPerk = false;
         state.isPlacingDecor = false;
         state.activeDecorType = null;
+        state.isClearingDecor = false;
         state.isPaintingTiles = false;
         state.activeTileBrush = 'grass';
         if (typeof parsed.packHappiness !== 'number' || Number.isNaN(parsed.packHappiness)) {
@@ -3309,6 +3312,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     dismissOnboardingHint();
     cancelDecorPlacement();
     stopTilePaintMode();
+    stopSingleClearMode();
     openMenu('half');
     updateUI();
     renderRosterTab();
@@ -3979,11 +3983,171 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     });
   }
 
+  const DECOR_LABELS: Record<DecorType, string> = {
+    flowers: 'Flower Patch',
+    hydrant: 'Fire Hydrant',
+    tree: 'Park Tree',
+    lamp: 'Lamp Post',
+    fountain: 'Water Fountain',
+    slide: 'Dog Slide',
+    goldenHydrant: 'Golden Hydrant',
+    doghouseManor: 'Grand Doghouse Manor'
+  };
+
+  const TILE_LABELS: Record<TileStyle, string> = {
+    grass: 'Lush Grass',
+    cobble: 'Cobblestone',
+    sand: 'Sandy Dig Pit',
+    clover: 'Clover Meadow'
+  };
+
   function cancelDecorPlacement(): void {
     state.isPlacingDecor = false;
     state.activeDecorType = null;
     const banner = document.getElementById('placementBanner');
     if (banner) banner.style.display = 'none';
+  }
+
+  function stopSingleClearMode(): void {
+    state.isClearingDecor = false;
+    const banner = document.getElementById('clearDecorBanner');
+    if (banner) banner.style.display = 'none';
+    canvas.classList.remove('is-clearing-decor');
+  }
+
+  function startSingleClearMode(): void {
+    cancelDecorPlacement();
+    stopTilePaintMode();
+    state.isClearingDecor = true;
+    closeMenu();
+    const banner = document.getElementById('clearDecorBanner');
+    const bannerText = document.getElementById('clearDecorBannerText');
+    const hasDecor = state.placedDecorations.length > 0;
+    const hasTiles = Object.keys(state.tileMap || {}).length > 0;
+    if (bannerText) {
+      bannerText.textContent = (hasDecor || hasTiles)
+        ? 'Tap a highlighted tile to clear decor or custom ground'
+        : 'No placed decor or custom ground tiles to clear';
+    }
+    if (banner) banner.style.display = 'flex';
+    canvas.classList.add('is-clearing-decor');
+    sfx.gather();
+  }
+
+  function clearSingleTileAt(tx: number, ty: number): void {
+    const bannerText = document.getElementById('clearDecorBannerText');
+    const key = `${tx},${ty}`;
+    const tileScreen = getCenteredTilePos(tx, ty);
+    const scale = getScale();
+
+    // 1. Check if a placed decoration occupies this tile (supports multi-tile decor like slide & manor)
+    const decorIdx = state.placedDecorations.findIndex(dec =>
+      getDecorFootprint(dec.type, dec.gx, dec.gy).some(t => t.gx === tx && t.gy === ty)
+    );
+
+    if (decorIdx !== -1) {
+      const removed = state.placedDecorations[decorIdx];
+      const footprint = getDecorFootprint(removed.type, removed.gx, removed.gy);
+      state.placedDecorations.splice(decorIdx, 1);
+      invalidateNavCache();
+
+      dogs.forEach(d => {
+        if (removed.type === 'slide') d.cancelSlide();
+        if (removed.type === 'fountain' && d.drinkTarget?.kind === 'fountain' && d.drinkTarget.gx === removed.gx && d.drinkTarget.gy === removed.gy) {
+          d.cancelDrink(true);
+        }
+        if (removed.type === 'doghouseManor' && d.drinkTarget?.kind === 'bowl') {
+          d.cancelDrink();
+        }
+        d.clearNavPath();
+      });
+      if (removed.type === 'doghouseManor') {
+        nudgeEntitiesOutsideObstacles();
+      }
+      showLandmarkToggleNote(null);
+      state.packHappiness = Math.max(getCozyFloor(), Math.min(HAPPINESS_MAX, state.packHappiness || getCozyFloor()));
+
+      footprint.forEach(t => {
+        tileRipples.push({
+          gx: t.gx,
+          gy: t.gy,
+          age: 0,
+          duration: 0.45,
+          color: '#ff7675'
+        });
+      });
+
+      const label = DECOR_LABELS[removed.type] || 'Decor';
+      addFloatingText(tileScreen.x, tileScreen.y - 26 * scale, `Returned ${label}`, '#ffeaa7');
+      sfx.collect();
+      triggerHaptic(10);
+
+      if (bannerText) {
+        const hasTileUnder = Boolean(state.tileMap && state.tileMap[key]);
+        const anyLeft = state.placedDecorations.length > 0 || Object.keys(state.tileMap || {}).length > 0;
+        if (hasTileUnder) {
+          bannerText.textContent = `Returned ${label}! Tap again to clear custom ground.`;
+        } else if (!anyLeft) {
+          bannerText.textContent = 'All decor & custom ground cleared!';
+        } else {
+          bannerText.textContent = `Returned ${label} to inventory! Tap another tile or Done.`;
+        }
+      }
+
+      updateUI();
+      saveGame();
+      return;
+    }
+
+    // 2. Otherwise check if this tile has a custom ground style painted
+    const customTile = state.tileMap?.[key];
+    if (customTile) {
+      delete state.tileMap[key];
+      tileRipples.push({
+        gx: tx,
+        gy: ty,
+        age: 0,
+        duration: 0.42,
+        color: '#55efc4'
+      });
+      const tileLabel = TILE_LABELS[customTile] || 'Custom';
+      addFloatingText(tileScreen.x, tileScreen.y - 20 * scale, `Cleared ${tileLabel}`, '#55efc4');
+      sfx.collect();
+      triggerHaptic(8);
+
+      if (bannerText) {
+        const anyLeft = state.placedDecorations.length > 0 || Object.keys(state.tileMap || {}).length > 0;
+        bannerText.textContent = anyLeft
+          ? `Cleared ${tileLabel} tile! Tap another tile or Done.`
+          : 'All decor & custom ground cleared!';
+      }
+
+      updateUI();
+      saveGame();
+      return;
+    }
+
+    // 3. Nothing removable on this tile — provide gentle feedback
+    const sp = state.starterProps || createDefaultStarterProps();
+    const isStarterLandmark =
+      (tx === DOGHOUSE_TILE.gx && ty === DOGHOUSE_TILE.gy) ||
+      (sp.showTree && tx === STARTER_TREE_TILE.gx && ty === STARTER_TREE_TILE.gy) ||
+      mushrooms.some((m, idx) => sp.showMushrooms[idx] !== false && m.gx === tx && m.gy === ty);
+
+    tileRipples.push({
+      gx: tx,
+      gy: ty,
+      age: 0,
+      duration: 0.38,
+      color: 'rgba(255, 118, 117, 0.7)'
+    });
+    if (bannerText) {
+      bannerText.textContent = isStarterLandmark
+        ? 'Default landmarks can be toggled in the Decor menu'
+        : 'Nothing to clear there — tap a highlighted tile';
+    }
+    sfx.thud();
+    triggerHaptic(8);
   }
 
   function refreshTilePaintBar(): void {
@@ -4006,6 +4170,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
   function startTilePaintMode(brush: TileStyle): void {
     cancelDecorPlacement();
+    stopSingleClearMode();
     state.isPaintingTiles = true;
     state.activeTileBrush = brush;
     closeMenu();
@@ -4019,6 +4184,12 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
   document.getElementById('btnCancelPlacement')?.addEventListener('click', () => {
     initAudio();
     cancelDecorPlacement();
+  });
+
+  document.getElementById('btnDoneSingleClear')?.addEventListener('click', () => {
+    initAudio();
+    stopSingleClearMode();
+    sfx.collect();
   });
 
   document.getElementById('btnDoneTilePaint')?.addEventListener('click', () => {
@@ -4059,6 +4230,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
   function startDecorPlacement(type: DecorType, message: string): void {
     stopTilePaintMode();
+    stopSingleClearMode();
     state.isPlacingDecor = true;
     state.activeDecorType = type;
     closeMenu();
@@ -4221,9 +4393,29 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
   });
 
   const clearDecorConfirmModal = document.getElementById('clearDecorConfirmModal');
+  function syncClearDecorModalButtons(): void {
+    const decorCount = state.placedDecorations.length;
+    const tileCount = Object.keys(state.tileMap || {}).length;
+    const singleBtn = document.getElementById('btnStartSingleClear') as HTMLButtonElement | null;
+    const allBtn = document.getElementById('btnConfirmClearDecor') as HTMLButtonElement | null;
+    if (singleBtn) {
+      singleBtn.disabled = decorCount === 0 && tileCount === 0;
+    }
+    if (allBtn) {
+      allBtn.disabled = decorCount === 0;
+    }
+  }
+
   document.getElementById('btnClearDecor')?.addEventListener('click', () => {
     initAudio();
+    syncClearDecorModalButtons();
     if (clearDecorConfirmModal) clearDecorConfirmModal.style.display = 'flex';
+  });
+
+  document.getElementById('btnStartSingleClear')?.addEventListener('click', () => {
+    initAudio();
+    if (clearDecorConfirmModal) clearDecorConfirmModal.style.display = 'none';
+    startSingleClearMode();
   });
 
   document.getElementById('btnCancelClearDecor')?.addEventListener('click', () => {
@@ -4481,6 +4673,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       starterProps: createDefaultStarterProps(),
       isPlacingDecor: false,
       activeDecorType: null,
+      isClearingDecor: false,
       unlockedTiles: createDefaultUnlockedTiles(),
       tileMap: {},
       isPaintingTiles: false,
@@ -4543,6 +4736,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     stopDraftTreasureAnimations();
     closeTreasureInspector();
     cancelDecorPlacement();
+    stopSingleClearMode();
     closeMenu();
     updateUI();
     renderRosterTab();
@@ -4949,16 +5143,18 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     holdPosition = { x: e.clientX, y: e.clientY };
 
     if (holdTimer) clearTimeout(holdTimer);
-    holdTimer = setTimeout(() => {
-      holdTimer = null;
-      const rect = canvas.getBoundingClientRect();
-      const clickX = holdPosition.x - rect.left;
-      const clickY = holdPosition.y - rect.top;
-      const targetGrid = screenToGrid(clickX, clickY);
-      gatherPackAt(targetGrid.gx, targetGrid.gy, clickX, clickY);
-      isRotating = false;
-      dismissOnboardingHint();
-    }, HOLD_DURATION);
+    if (!state.isClearingDecor && !state.isPlacingDecor) {
+      holdTimer = setTimeout(() => {
+        holdTimer = null;
+        const rect = canvas.getBoundingClientRect();
+        const clickX = holdPosition.x - rect.left;
+        const clickY = holdPosition.y - rect.top;
+        const targetGrid = screenToGrid(clickX, clickY);
+        gatherPackAt(targetGrid.gx, targetGrid.gy, clickX, clickY);
+        isRotating = false;
+        dismissOnboardingHint();
+      }, HOLD_DURATION);
+    }
   });
 
   canvas.addEventListener('pointermove', (e: PointerEvent) => {
@@ -5090,6 +5286,16 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
           triggerHaptic(14);
           updateUI();
           saveGame();
+        }
+        return;
+      }
+
+      if (state.isClearingDecor) {
+        if (
+          gridPos.gx >= 0 && gridPos.gx <= GRID_SIZE &&
+          gridPos.gy >= 0 && gridPos.gy <= GRID_SIZE
+        ) {
+          clearSingleTileAt(clampTileIndex(gridPos.gx), clampTileIndex(gridPos.gy));
         }
         return;
       }
@@ -10976,6 +11182,10 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       cancelDecorPlacement();
       return true;
     }
+    if (state.isClearingDecor) {
+      stopSingleClearMode();
+      return true;
+    }
     if (state.isPaintingTiles) {
       stopTilePaintMode();
       return true;
@@ -11633,6 +11843,73 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
           ctx.moveTo(cPos.x + r, cPos.y - r * 0.55);
           ctx.lineTo(cPos.x - r, cPos.y + r * 0.55);
           ctx.stroke();
+        });
+        ctx.restore();
+      }
+
+      // Removable-Tile Overlay while in single-item clear mode
+      if (state.isClearingDecor) {
+        const decorTileKeys = new Set<string>();
+        state.placedDecorations.forEach(dec => {
+          getDecorFootprint(dec.type, dec.gx, dec.gy).forEach(t => {
+            decorTileKeys.add(`${t.gx},${t.gy}`);
+          });
+        });
+
+        const drawClearHighlight = (
+          ogx: number,
+          ogy: number,
+          fill: string,
+          stroke: string,
+          drawCross: boolean
+        ): void => {
+          const top = gridToScreen(ogx, ogy);
+          const right = gridToScreen(ogx + 1, ogy);
+          const bottom = gridToScreen(ogx + 1, ogy + 1);
+          const left = gridToScreen(ogx, ogy + 1);
+
+          ctx.beginPath();
+          ctx.moveTo(top.x, top.y);
+          ctx.lineTo(right.x, right.y);
+          ctx.lineTo(bottom.x, bottom.y);
+          ctx.lineTo(left.x, left.y);
+          ctx.closePath();
+          ctx.fillStyle = fill;
+          ctx.fill();
+          ctx.strokeStyle = stroke;
+          ctx.lineWidth = 1.65;
+          ctx.stroke();
+
+          if (drawCross) {
+            const cPos = getCenteredTilePos(ogx, ogy);
+            const r = 5.5 * getScale();
+            ctx.strokeStyle = 'rgba(255, 232, 232, 0.8)';
+            ctx.lineWidth = 1.6;
+            ctx.beginPath();
+            ctx.moveTo(cPos.x - r, cPos.y - r * 0.55);
+            ctx.lineTo(cPos.x + r, cPos.y + r * 0.55);
+            ctx.moveTo(cPos.x + r, cPos.y - r * 0.55);
+            ctx.lineTo(cPos.x - r, cPos.y + r * 0.55);
+            ctx.stroke();
+          }
+        };
+
+        ctx.save();
+        // Highlight custom ground tiles (amber) that don't have a placed decoration on top
+        Object.keys(state.tileMap || {}).forEach(key => {
+          if (decorTileKeys.has(key)) return;
+          const [gxStr, gyStr] = key.split(',');
+          const ogx = Number(gxStr);
+          const ogy = Number(gyStr);
+          drawClearHighlight(ogx, ogy, 'rgba(253, 203, 110, 0.22)', 'rgba(255, 234, 167, 0.82)', false);
+        });
+
+        // Highlight placed decoration footprints (coral)
+        decorTileKeys.forEach(key => {
+          const [gxStr, gyStr] = key.split(',');
+          const ogx = Number(gxStr);
+          const ogy = Number(gyStr);
+          drawClearHighlight(ogx, ogy, 'rgba(255, 107, 107, 0.24)', 'rgba(255, 118, 117, 0.85)', true);
         });
         ctx.restore();
       }

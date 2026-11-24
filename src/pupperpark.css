@@ -538,8 +538,71 @@ input:focus-visible {
   touch-action: manipulation;
 }
 
+.clear-decor-banner {
+  border-color: #ff7675;
+}
+
+.clear-decor-done-btn {
+  background: linear-gradient(135deg, #e17055 0%, #ff7675 100%);
+  border: none;
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.78rem;
+  padding: 6px 14px;
+  min-height: 32px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  touch-action: manipulation;
+}
+
+.clear-decor-choice-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.clear-decor-option-btn {
+  width: 100%;
+  min-width: unset;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  text-align: center;
+}
+
+.clear-decor-option-single {
+  background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
+}
+
+.clear-decor-option-all {
+  background: linear-gradient(135deg, #d63031 0%, #e17055 100%);
+}
+
+.clear-decor-option-sub {
+  font-size: 0.74rem;
+  font-weight: 600;
+  opacity: 0.9;
+  line-height: 1.25;
+}
+
+.clear-decor-cancel-btn {
+  width: 100%;
+  min-width: unset;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
 #gameCanvas.is-painting-tiles {
   cursor: crosshair;
+}
+
+#gameCanvas.is-clearing-decor {
+  cursor: pointer;
 }
 
 /* Floating Tile Paint Toolbar */

@@ -99,6 +99,7 @@
     html.splash-booting .action-toast,
     html.splash-booting .retired-dog-banner,
     html.splash-booting .placement-banner,
+    html.splash-booting .clear-decor-banner,
     html.splash-booting .paint-banner {
       visibility: hidden !important;
       opacity: 0 !important;
@@ -376,6 +377,12 @@
   <div id="placementBanner" class="placement-banner" style="display: none;">
     <span id="placementBannerText">Tap any park tile to place your decoration!</span>
     <button type="button" id="btnCancelPlacement" class="placement-cancel-btn">Cancel</button>
+  </div>
+
+  <!-- Single-Item Clear Helper Banner -->
+  <div id="clearDecorBanner" class="placement-banner clear-decor-banner" style="display: none;" role="region" aria-label="Single item clear mode">
+    <span id="clearDecorBannerText">Tap a highlighted tile to clear decor or custom ground</span>
+    <button type="button" id="btnDoneSingleClear" class="clear-decor-done-btn">Done</button>
   </div>
 
   <!-- Tile Paint Toolbar -->
@@ -1179,10 +1186,10 @@
             <div class="shop-card shop-card-vertical">
               <div class="shop-info">
                 <h3>Clear Park Layout</h3>
-                <p>Remove all placed decorations back to your inventory without changing painted ground tiles.</p>
+                <p>Remove single decorations or custom ground tiles directly on your park, or clear all placed decorations back to your inventory.</p>
               </div>
               <button type="button" id="btnClearDecor" class="action-btn" style="width: 100%; min-width: unset; padding: 10px;">
-                <span class="btn-name">Clear All Decor</span>
+                <span class="btn-name">Clear Decor</span>
               </button>
             </div>
           </div>
@@ -1451,14 +1458,21 @@
     </div>
   </div>
 
-  <!-- Clear Decor Confirmation Modal -->
+  <!-- Clear Decor Options Modal -->
   <div id="clearDecorConfirmModal" class="modal" style="display: none;">
-    <div class="modal-window offline-box" style="max-width: 360px;">
-      <h2>Clear Park Decor?</h2>
-      <p>Are you sure you want to remove all placed decorations from your park? They will be returned to your inventory.</p>
-      <div style="display: flex; gap: 10px; margin-top: 15px;">
-        <button type="button" id="btnCancelClearDecor" class="action-btn" style="background: rgba(255,255,255,0.12); flex: 1;">Cancel</button>
-        <button type="button" id="btnConfirmClearDecor" class="action-btn" style="flex: 1;">Yes, Clear</button>
+    <div class="modal-window offline-box" style="max-width: 370px;">
+      <h2>Clear Park Decor</h2>
+      <p>Choose to tap single tiles in your park to remove decor or custom ground, or clear all placed decorations back to your inventory.</p>
+      <div class="clear-decor-choice-stack">
+        <button type="button" id="btnStartSingleClear" class="action-btn clear-decor-option-btn clear-decor-option-single">
+          <span class="btn-name">Remove Single Items</span>
+          <span class="clear-decor-option-sub">View your park and tap any tile to clear decor or custom ground</span>
+        </button>
+        <button type="button" id="btnConfirmClearDecor" class="action-btn clear-decor-option-btn clear-decor-option-all">
+          <span class="btn-name">Clear All Decor</span>
+          <span class="clear-decor-option-sub">Return all placed decorations to your inventory</span>
+        </button>
+        <button type="button" id="btnCancelClearDecor" class="action-btn clear-decor-cancel-btn">Cancel</button>
       </div>
     </div>
   </div>
