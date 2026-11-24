@@ -2430,15 +2430,29 @@ export function initPupperPark(options: InitPupperParkOptions = {}): void {
   }> = [];
 
   function rebuildCanvasDogsFromRoster(): void {
+    invalidateNavCache();
     dogs.length = 0;
     state.roster.forEach(entry => {
-      const safePos = pushOutsideDoghouseObstacle(
+      let spawnPos = pushOutsideAllObstacles(
         1.5 + Math.random() * 4,
-        1.5 + Math.random() * 4
+        1.5 + Math.random() * 4,
+        0.12
       );
+      for (let attempt = 0; attempt < 16; attempt++) {
+        const candidate = pushOutsideAllObstacles(
+          0.8 + Math.random() * (GRID_SIZE - 1.6),
+          0.8 + Math.random() * (GRID_SIZE - 1.6),
+          0.12
+        );
+        const clearOfDogs = dogs.every(other => Math.hypot(other.gx - candidate.gx, other.gy - candidate.gy) >= 0.58);
+        if (!isPointBlockedByObstacle(candidate.gx, candidate.gy, 0.08) && clearOfDogs) {
+          spawnPos = candidate;
+          break;
+        }
+      }
       dogs.push(new Dog(
-        safePos.gx,
-        safePos.gy,
+        spawnPos.gx,
+        spawnPos.gy,
         entry.id,
         entry.breed,
         Boolean(entry.isShiny),
@@ -3889,6 +3903,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): void {
       gy: GRAND_DOGHOUSE_ANCHOR.gy
     });
     state.placedDecorations = keptDecor;
+    invalidateNavCache();
 
     // Safely release any pups sliding/drinking on evicted decor or standing inside the new 2x2 manor footprint
     dogs.forEach(d => {
@@ -3896,34 +3911,25 @@ export function initPupperPark(options: InitPupperParkOptions = {}): void {
       if (removedFountain) d.cancelDrink(true);
       if (d.drinkTarget?.kind === 'bowl') d.cancelDrink();
       if (isInsideDoghouseObstacle(d.gx, d.gy)) {
-        d.gx = 2.15 + Math.random() * 0.45;
-        d.gy = 2.15 + Math.random() * 0.45;
+        const safe = pushOutsideAllObstacles(2.15 + Math.random() * 0.45, 2.15 + Math.random() * 0.45, 0.08);
+        d.gx = safe.gx;
+        d.gy = safe.gy;
         d.targetGx = d.gx;
         d.targetGy = d.gy;
+        d.clearNavPath();
         if (d.state === 'SLEEP') {
           d.state = 'IDLE';
           d.timer = 0.8;
         }
-      } else if (isInsideDoghouseObstacle(d.targetGx, d.targetGy)) {
-        const safeTarget = pushOutsideDoghouseObstacle(d.targetGx, d.targetGy);
-        d.targetGx = safeTarget.gx;
-        d.targetGy = safeTarget.gy;
+      } else if (isPointBlockedByObstacle(d.targetGx, d.targetGy, 0.04)) {
+        const safeTarget = pushOutsideAllObstacles(d.targetGx, d.targetGy, 0.08);
+        d.setWalkTarget(safeTarget.gx, safeTarget.gy);
+      } else {
+        d.clearNavPath();
       }
     });
 
-    // Nudge any park toys sitting inside the new 2x2 manor footprint cleanly onto the front lawn
-    [tennisBall, frisbee, duck].forEach(toy => {
-      if (isInsideDoghouseObstacle(toy.gx, toy.gy)) {
-        const safe = pushOutsideDoghouseObstacle(toy.gx, toy.gy);
-        toy.gx = safe.gx;
-        toy.gy = safe.gy;
-      }
-      if (isInsideDoghouseObstacle(toy.targetGx, toy.targetGy)) {
-        const safeT = pushOutsideDoghouseObstacle(toy.targetGx, toy.targetGy);
-        toy.targetGx = safeT.gx;
-        toy.targetGy = safeT.gy;
-      }
-    });
+    nudgeEntitiesOutsideObstacles();
 
     closeMenu();
     addPackHappiness(8);
@@ -4048,6 +4054,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): void {
     state.starterProps = sp;
     if (sp.showTree) {
       sp.showTree = false;
+      invalidateNavCache();
       showLandmarkToggleNote(null);
       sfx.collect();
       triggerHaptic(8);
@@ -4063,6 +4070,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): void {
       return;
     }
     sp.showTree = true;
+    invalidateNavCache();
+    nudgeEntitiesOutsideObstacles();
     showLandmarkToggleNote(null);
     sfx.gather();
     triggerHaptic(10);
@@ -4078,6 +4087,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): void {
       const currentlyShown = sp.showMushrooms[idx] !== false;
       if (currentlyShown) {
         sp.showMushrooms[idx] = false;
+        invalidateNavCache();
         showLandmarkToggleNote(null);
         sfx.collect();
         triggerHaptic(8);
@@ -4093,6 +4103,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): void {
         return;
       }
       sp.showMushrooms[idx] = true;
+      invalidateNavCache();
+      nudgeEntitiesOutsideObstacles();
       showLandmarkToggleNote(null);
       sfx.gather();
       triggerHaptic(10);
@@ -4104,9 +4116,11 @@ export function initPupperPark(options: InitPupperParkOptions = {}): void {
   document.getElementById('btnConfirmClearDecor')?.addEventListener('click', () => {
     initAudio();
     state.placedDecorations = [];
+    invalidateNavCache();
     dogs.forEach(d => {
       d.cancelSlide();
       d.cancelDrink();
+      d.clearNavPath();
     });
     showLandmarkToggleNote(null);
     state.packHappiness = Math.max(getCozyFloor(), Math.min(HAPPINESS_MAX, state.packHappiness || getCozyFloor()));
@@ -4583,11 +4597,12 @@ export function initPupperPark(options: InitPupperParkOptions = {}): void {
       dog.cancelSlide();
       dog.cancelDrink();
       dog.onReachToy = null;
-      const rawGx = Math.max(0.5, Math.min(GRID_SIZE - 0.5, gx + (Math.random() - 0.5) * 0.8));
-      const rawGy = Math.max(0.5, Math.min(GRID_SIZE - 0.5, gy + (Math.random() - 0.5) * 0.8));
-      const safeTarget = pushOutsideDoghouseObstacle(rawGx, rawGy);
-      dog.targetGx = safeTarget.gx;
-      dog.targetGy = safeTarget.gy;
+      const angle = (Math.PI * 2 * idx) / Math.max(1, dogs.length);
+      const ringRadius = dogs.length > 1 ? 0.36 + (idx % 2) * 0.16 : 0;
+      const rawGx = Math.max(0.45, Math.min(GRID_SIZE - 0.45, gx + Math.cos(angle) * ringRadius));
+      const rawGy = Math.max(0.45, Math.min(GRID_SIZE - 0.45, gy + Math.sin(angle) * ringRadius));
+      const safeTarget = pushOutsideAllObstacles(rawGx, rawGy, 0.1);
+      dog.setWalkTarget(safeTarget.gx, safeTarget.gy);
       dog.state = 'WALK';
       dog.petBounce = 0.35;
       if (idx === 0) {
@@ -4853,6 +4868,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): void {
             gx: check.gx,
             gy: check.gy
           });
+          invalidateNavCache();
+          nudgeEntitiesOutsideObstacles();
           if (placedType === 'slide') {
             dogs.forEach(d => {
               d.slideCooldown = Math.min(d.slideCooldown, 1.2);
@@ -5014,6 +5031,26 @@ export function initPupperPark(options: InitPupperParkOptions = {}): void {
     maxGy: number;
   }
 
+  type StaticObstacle =
+    | { kind: 'box'; key: string; minGx: number; maxGx: number; minGy: number; maxGy: number }
+    | { kind: 'circle'; key: string; cx: number; cy: number; r: number };
+
+  const NAV_SUBDIV = 2;
+  const NAV_SIZE = GRID_SIZE * NAV_SUBDIV;
+  const NAV_CELL = 1 / NAV_SUBDIV;
+  const NAV_AGENT_PAD = 0.08;
+  const DOG_AVOID_RADIUS = 0.56;
+  const DOG_MIN_SEPARATION = 0.35;
+
+  let navCacheVersion = 0;
+  let navCacheBuiltForVersion = -1;
+  let cachedStaticObstacles: StaticObstacle[] = [];
+  let cachedNavBlocked: Uint8Array = new Uint8Array(NAV_SIZE * NAV_SIZE);
+
+  function invalidateNavCache(): void {
+    navCacheVersion += 1;
+  }
+
   function getDoghouseBlockedBounds(): ObstacleBounds {
     if (hasGrandDoghousePlaced()) {
       // Full 2x2 Grand Doghouse Manor footprint: tiles (0,0), (1,0), (0,1), (1,1)
@@ -5058,6 +5095,208 @@ export function initPupperPark(options: InitPupperParkOptions = {}): void {
     };
   }
 
+  function ensureNavCache(): void {
+    if (navCacheBuiltForVersion === navCacheVersion) return;
+    navCacheBuiltForVersion = navCacheVersion;
+
+    const obstacles: StaticObstacle[] = [];
+    const dh = getDoghouseBlockedBounds();
+    obstacles.push({
+      kind: 'box',
+      key: 'doghouse',
+      minGx: dh.minGx,
+      maxGx: dh.maxGx,
+      minGy: dh.minGy,
+      maxGy: dh.maxGy
+    });
+
+    const bowlPos = getWaterBowlPos();
+    obstacles.push({
+      kind: 'circle',
+      key: 'bowl',
+      cx: bowlPos.gx,
+      cy: bowlPos.gy,
+      r: 0.22
+    });
+
+    const sp = state.starterProps || createDefaultStarterProps();
+    if (sp.showTree !== false) {
+      obstacles.push({
+        kind: 'circle',
+        key: 'starterTree',
+        cx: STARTER_TREE_TILE.gx + 0.5,
+        cy: STARTER_TREE_TILE.gy + 0.5,
+        r: 0.36
+      });
+    }
+
+    mushrooms.forEach((m, idx) => {
+      if (sp.showMushrooms[idx] !== false) {
+        obstacles.push({
+          kind: 'circle',
+          key: `mushroom:${idx}`,
+          cx: m.gx + 0.5,
+          cy: m.gy + 0.5,
+          r: 0.30
+        });
+      }
+    });
+
+    if (Array.isArray(state.placedDecorations)) {
+      state.placedDecorations.forEach(dec => {
+        if (dec.type === 'flowers' || dec.type === 'doghouseManor') return;
+        if (dec.type === 'fountain') {
+          obstacles.push({
+            kind: 'circle',
+            key: `fountain:${dec.gx},${dec.gy}`,
+            cx: dec.gx + 0.5,
+            cy: dec.gy + 0.5,
+            r: 0.42
+          });
+        } else if (dec.type === 'slide') {
+          // Solid tower & chute body; leaves ladder entry (gx+0.26) and landing (gx+1.66) clear
+          obstacles.push({
+            kind: 'box',
+            key: `slide:${dec.gx},${dec.gy}`,
+            minGx: dec.gx + 0.28,
+            maxGx: dec.gx + 1.58,
+            minGy: dec.gy + 0.18,
+            maxGy: dec.gy + 0.82
+          });
+        } else if (dec.type === 'tree') {
+          obstacles.push({
+            kind: 'circle',
+            key: `tree:${dec.gx},${dec.gy}`,
+            cx: dec.gx + 0.5,
+            cy: dec.gy + 0.5,
+            r: 0.36
+          });
+        } else if (dec.type === 'hydrant' || dec.type === 'goldenHydrant') {
+          obstacles.push({
+            kind: 'circle',
+            key: `${dec.type}:${dec.gx},${dec.gy}`,
+            cx: dec.gx + 0.5,
+            cy: dec.gy + 0.5,
+            r: 0.30
+          });
+        } else if (dec.type === 'lamp') {
+          obstacles.push({
+            kind: 'circle',
+            key: `lamp:${dec.gx},${dec.gy}`,
+            cx: dec.gx + 0.5,
+            cy: dec.gy + 0.5,
+            r: 0.28
+          });
+        }
+      });
+    }
+
+    cachedStaticObstacles = obstacles;
+
+    const blocked = new Uint8Array(NAV_SIZE * NAV_SIZE);
+    for (let cy = 0; cy < NAV_SIZE; cy++) {
+      const wy = Math.max(0.32, Math.min(GRID_SIZE - 0.32, (cy + 0.5) * NAV_CELL));
+      for (let cx = 0; cx < NAV_SIZE; cx++) {
+        const wx = Math.max(0.32, Math.min(GRID_SIZE - 0.32, (cx + 0.5) * NAV_CELL));
+        let isBlocked = false;
+        for (let i = 0; i < obstacles.length; i++) {
+          if (pointIntersectsObstacle(wx, wy, obstacles[i], NAV_AGENT_PAD)) {
+            isBlocked = true;
+            break;
+          }
+        }
+        blocked[cy * NAV_SIZE + cx] = isBlocked ? 1 : 0;
+      }
+    }
+    cachedNavBlocked = blocked;
+  }
+
+  function pointIntersectsObstacle(gx: number, gy: number, obs: StaticObstacle, pad = 0): boolean {
+    if (obs.kind === 'box') {
+      return (
+        gx > obs.minGx - pad &&
+        gx < obs.maxGx + pad &&
+        gy > obs.minGy - pad &&
+        gy < obs.maxGy + pad
+      );
+    }
+    const r = obs.r + pad;
+    const dx = gx - obs.cx;
+    const dy = gy - obs.cy;
+    return dx * dx + dy * dy < r * r;
+  }
+
+  function isPointBlockedByObstacle(gx: number, gy: number, pad = 0, ignoreKey?: string): boolean {
+    ensureNavCache();
+    for (let i = 0; i < cachedStaticObstacles.length; i++) {
+      const obs = cachedStaticObstacles[i];
+      if (ignoreKey && obs.key === ignoreKey) continue;
+      if (pointIntersectsObstacle(gx, gy, obs, pad)) return true;
+    }
+    return false;
+  }
+
+  function pushOutsideAllObstacles(
+    gx: number,
+    gy: number,
+    pad = 0.03,
+    ignoreKey?: string
+  ): { gx: number; gy: number } {
+    ensureNavCache();
+    let x = Math.max(0.32, Math.min(GRID_SIZE - 0.32, gx));
+    let y = Math.max(0.32, Math.min(GRID_SIZE - 0.32, gy));
+
+    for (let iter = 0; iter < 5; iter++) {
+      let moved = false;
+      for (let i = 0; i < cachedStaticObstacles.length; i++) {
+        const obs = cachedStaticObstacles[i];
+        if (ignoreKey && obs.key === ignoreKey) continue;
+        if (!pointIntersectsObstacle(x, y, obs, pad)) continue;
+
+        moved = true;
+        if (obs.kind === 'box') {
+          const minX = obs.minGx - pad;
+          const maxX = obs.maxGx + pad;
+          const minY = obs.minGy - pad;
+          const maxY = obs.maxGy + pad;
+          const options: Array<{ x: number; y: number; dist: number }> = [
+            { x: maxX + 0.03, y, dist: Math.abs(maxX + 0.03 - x) },
+            { x, y: maxY + 0.03, dist: Math.abs(maxY + 0.03 - y) }
+          ];
+          if (minX >= 0.36) options.push({ x: minX - 0.03, y, dist: Math.abs(x - (minX - 0.03)) });
+          if (minY >= 0.36) options.push({ x, y: minY - 0.03, dist: Math.abs(y - (minY - 0.03)) });
+          options.sort((a, b) => a.dist - b.dist);
+          x = options[0].x;
+          y = options[0].y;
+        } else {
+          const dx = x - obs.cx;
+          const dy = y - obs.cy;
+          const d = Math.hypot(dx, dy);
+          const targetR = obs.r + pad + 0.03;
+          if (d < 1e-4) {
+            x = obs.cx + targetR;
+          } else {
+            x = obs.cx + (dx / d) * targetR;
+            y = obs.cy + (dy / d) * targetR;
+          }
+        }
+        x = Math.max(0.32, Math.min(GRID_SIZE - 0.32, x));
+        y = Math.max(0.32, Math.min(GRID_SIZE - 0.32, y));
+      }
+      if (!moved) break;
+    }
+
+    // If corner-trapped between obstacles, snap cleanly to the nearest walkable nav sub-cell
+    if (isPointBlockedByObstacle(x, y, 0.01, ignoreKey)) {
+      const cell = findNearestWalkableCell(x, y);
+      if (cell) {
+        return navCellToWorld(cell.cx, cell.cy);
+      }
+    }
+
+    return { gx: x, gy: y };
+  }
+
   function segmentIntersectsBox(
     x0: number,
     y0: number,
@@ -5097,60 +5336,316 @@ export function initPupperPark(options: InitPupperParkOptions = {}): void {
     return tMax > 0.001 && tMin < 0.999;
   }
 
-  function getDoghouseSteerTarget(
-    gx: number,
-    gy: number,
-    targetGx: number,
-    targetGy: number
-  ): { gx: number; gy: number } {
-    const b = getDoghouseBlockedBounds();
-    const innerBox: ObstacleBounds = {
-      minGx: b.minGx + 0.02,
-      maxGx: b.maxGx - 0.02,
-      minGy: b.minGy + 0.02,
-      maxGy: b.maxGy - 0.02
+  function segmentIntersectsCircle(
+    x0: number,
+    y0: number,
+    x1: number,
+    y1: number,
+    cx: number,
+    cy: number,
+    r: number
+  ): boolean {
+    const dx = x1 - x0;
+    const dy = y1 - y0;
+    const lenSq = dx * dx + dy * dy;
+    let t = 0;
+    if (lenSq > 1e-8) {
+      t = Math.max(0, Math.min(1, ((cx - x0) * dx + (cy - y0) * dy) / lenSq));
+    }
+    const nearX = x0 + t * dx;
+    const nearY = y0 + t * dy;
+    const ox = nearX - cx;
+    const oy = nearY - cy;
+    return ox * ox + oy * oy < r * r;
+  }
+
+  function segmentBlockedByObstacles(
+    x0: number,
+    y0: number,
+    x1: number,
+    y1: number,
+    pad = 0.04,
+    ignoreKey?: string
+  ): boolean {
+    ensureNavCache();
+    for (let i = 0; i < cachedStaticObstacles.length; i++) {
+      const obs = cachedStaticObstacles[i];
+      if (ignoreKey && obs.key === ignoreKey) continue;
+      if (obs.kind === 'box') {
+        if (segmentIntersectsBox(x0, y0, x1, y1, {
+          minGx: obs.minGx - pad,
+          maxGx: obs.maxGx + pad,
+          minGy: obs.minGy - pad,
+          maxGy: obs.maxGy + pad
+        })) {
+          return true;
+        }
+      } else if (segmentIntersectsCircle(x0, y0, x1, y1, obs.cx, obs.cy, obs.r + pad)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function worldToNavCell(gx: number, gy: number): { cx: number; cy: number } {
+    return {
+      cx: Math.max(0, Math.min(NAV_SIZE - 1, Math.floor(gx * NAV_SUBDIV))),
+      cy: Math.max(0, Math.min(NAV_SIZE - 1, Math.floor(gy * NAV_SUBDIV)))
     };
-    if (!segmentIntersectsBox(gx, gy, targetGx, targetGy, innerBox)) {
-      return { gx: targetGx, gy: targetGy };
+  }
+
+  function navCellToWorld(cx: number, cy: number): { gx: number; gy: number } {
+    return {
+      gx: Math.max(0.34, Math.min(GRID_SIZE - 0.34, (cx + 0.5) * NAV_CELL)),
+      gy: Math.max(0.34, Math.min(GRID_SIZE - 0.34, (cy + 0.5) * NAV_CELL))
+    };
+  }
+
+  function findNearestWalkableCell(gx: number, gy: number): { cx: number; cy: number } | null {
+    ensureNavCache();
+    const base = worldToNavCell(gx, gy);
+    if (cachedNavBlocked[base.cy * NAV_SIZE + base.cx] === 0) {
+      return base;
     }
 
-    const pad = 0.14;
-    const corners: Array<{ gx: number; gy: number }> = [];
-    const leftX = b.minGx - pad;
-    const rightX = b.maxGx + pad;
-    const topY = b.minGy - pad;
-    const botY = b.maxGy + pad;
+    let bestCx = -1;
+    let bestCy = -1;
+    let bestDistSq = Infinity;
+    for (let radius = 1; radius <= 5; radius++) {
+      for (let dy = -radius; dy <= radius; dy++) {
+        for (let dx = -radius; dx <= radius; dx++) {
+          if (Math.abs(dx) !== radius && Math.abs(dy) !== radius) continue;
+          const cx = base.cx + dx;
+          const cy = base.cy + dy;
+          if (cx < 0 || cx >= NAV_SIZE || cy < 0 || cy >= NAV_SIZE) continue;
+          if (cachedNavBlocked[cy * NAV_SIZE + cx] !== 0) continue;
+          const wp = navCellToWorld(cx, cy);
+          const distSq = (wp.gx - gx) * (wp.gx - gx) + (wp.gy - gy) * (wp.gy - gy);
+          if (distSq < bestDistSq) {
+            bestDistSq = distSq;
+            bestCx = cx;
+            bestCy = cy;
+          }
+        }
+      }
+      if (bestCx >= 0) return { cx: bestCx, cy: bestCy };
+    }
+    return null;
+  }
 
-    corners.push({ gx: rightX, gy: botY });
-    if (leftX >= 0.35) corners.push({ gx: leftX, gy: botY });
-    if (topY >= 0.35) corners.push({ gx: rightX, gy: topY });
-    if (leftX >= 0.35 && topY >= 0.35) corners.push({ gx: leftX, gy: topY });
+  function findNavPath(
+    startGx: number,
+    startGy: number,
+    goalGx: number,
+    goalGy: number
+  ): Array<{ gx: number; gy: number }> | null {
+    ensureNavCache();
+    // Fast path: direct line-of-sight unobstructed
+    if (!segmentBlockedByObstacles(startGx, startGy, goalGx, goalGy, 0.05)) {
+      return [{ gx: goalGx, gy: goalGy }];
+    }
 
-    const bothClear: Array<{ gx: number; gy: number; score: number }> = [];
-    const firstClear: Array<{ gx: number; gy: number; score: number }> = [];
+    const startCell = findNearestWalkableCell(startGx, startGy);
+    const goalCell = findNearestWalkableCell(goalGx, goalGy);
+    if (!startCell || !goalCell) return null;
 
-    for (const c of corners) {
-      if (Math.hypot(c.gx - gx, c.gy - gy) < 0.06) continue;
-      const leg1Blocked = segmentIntersectsBox(gx, gy, c.gx, c.gy, innerBox);
-      if (leg1Blocked) continue;
-      const leg2Blocked = segmentIntersectsBox(c.gx, c.gy, targetGx, targetGy, innerBox);
-      const score = Math.hypot(c.gx - gx, c.gy - gy) + Math.hypot(targetGx - c.gx, targetGy - c.gy);
-      if (!leg2Blocked) {
-        bothClear.push({ gx: c.gx, gy: c.gy, score });
-      } else {
-        firstClear.push({ gx: c.gx, gy: c.gy, score });
+    const total = NAV_SIZE * NAV_SIZE;
+    const startIdx = startCell.cy * NAV_SIZE + startCell.cx;
+    const goalIdx = goalCell.cy * NAV_SIZE + goalCell.cx;
+
+    if (startIdx === goalIdx) {
+      return [{ gx: goalGx, gy: goalGy }];
+    }
+
+    const gScore = new Float32Array(total);
+    const fScore = new Float32Array(total);
+    const cameFrom = new Int16Array(total);
+    const closed = new Uint8Array(total);
+    const inOpen = new Uint8Array(total);
+    gScore.fill(1e9);
+    fScore.fill(1e9);
+    cameFrom.fill(-1);
+
+    const openList: number[] = [startIdx];
+    gScore[startIdx] = 0;
+    fScore[startIdx] = Math.hypot(goalCell.cx - startCell.cx, goalCell.cy - startCell.cy);
+    inOpen[startIdx] = 1;
+
+    const dirs: ReadonlyArray<[number, number, number]> = [
+      [1, 0, 1],
+      [-1, 0, 1],
+      [0, 1, 1],
+      [0, -1, 1],
+      [1, 1, 1.41421356],
+      [1, -1, 1.41421356],
+      [-1, 1, 1.41421356],
+      [-1, -1, 1.41421356]
+    ];
+
+    let found = false;
+    while (openList.length > 0) {
+      let bestPos = 0;
+      let current = openList[0];
+      let bestF = fScore[current];
+      for (let i = 1; i < openList.length; i++) {
+        const idx = openList[i];
+        if (fScore[idx] < bestF) {
+          bestF = fScore[idx];
+          current = idx;
+          bestPos = i;
+        }
+      }
+
+      if (current === goalIdx) {
+        found = true;
+        break;
+      }
+
+      openList[bestPos] = openList[openList.length - 1];
+      openList.pop();
+      inOpen[current] = 0;
+      closed[current] = 1;
+
+      const cx = current % NAV_SIZE;
+      const cy = (current - cx) / NAV_SIZE;
+
+      for (let d = 0; d < dirs.length; d++) {
+        const nx = cx + dirs[d][0];
+        const ny = cy + dirs[d][1];
+        if (nx < 0 || nx >= NAV_SIZE || ny < 0 || ny >= NAV_SIZE) continue;
+        const nIdx = ny * NAV_SIZE + nx;
+        if (closed[nIdx] || cachedNavBlocked[nIdx]) continue;
+
+        // Prevent diagonal corner cutting across solid obstacles
+        if (dirs[d][0] !== 0 && dirs[d][1] !== 0) {
+          if (cachedNavBlocked[cy * NAV_SIZE + nx] || cachedNavBlocked[ny * NAV_SIZE + cx]) {
+            continue;
+          }
+        }
+
+        const tentativeG = gScore[current] + dirs[d][2];
+        if (tentativeG < gScore[nIdx]) {
+          cameFrom[nIdx] = current;
+          gScore[nIdx] = tentativeG;
+          fScore[nIdx] = tentativeG + Math.hypot(goalCell.cx - nx, goalCell.cy - ny);
+          if (!inOpen[nIdx]) {
+            openList.push(nIdx);
+            inOpen[nIdx] = 1;
+          }
+        }
       }
     }
 
-    if (bothClear.length > 0) {
-      bothClear.sort((a, c) => a.score - c.score);
-      return { gx: bothClear[0].gx, gy: bothClear[0].gy };
+    if (!found) return null;
+
+    const rawWaypoints: Array<{ gx: number; gy: number }> = [];
+    let cur = goalIdx;
+    while (cur !== -1 && cur !== startIdx) {
+      const cx = cur % NAV_SIZE;
+      const cy = (cur - cx) / NAV_SIZE;
+      rawWaypoints.push(navCellToWorld(cx, cy));
+      cur = cameFrom[cur];
     }
-    if (firstClear.length > 0) {
-      firstClear.sort((a, c) => a.score - c.score);
-      return { gx: firstClear[0].gx, gy: firstClear[0].gy };
+    rawWaypoints.reverse();
+
+    // Ensure final waypoint is the exact destination
+    if (rawWaypoints.length === 0) {
+      rawWaypoints.push({ gx: goalGx, gy: goalGy });
+    } else {
+      const last = rawWaypoints[rawWaypoints.length - 1];
+      if (Math.hypot(last.gx - goalGx, last.gy - goalGy) > 0.04) {
+        rawWaypoints.push({ gx: goalGx, gy: goalGy });
+      }
     }
-    return { gx: rightX, gy: botY };
+
+    // String-pulling / line-of-sight smoothing for natural diagonal curves
+    const smoothed: Array<{ gx: number; gy: number }> = [];
+    let anchorX = startGx;
+    let anchorY = startGy;
+    let i = 0;
+    while (i < rawWaypoints.length) {
+      let furthest = i;
+      for (let j = rawWaypoints.length - 1; j > i; j--) {
+        if (!segmentBlockedByObstacles(anchorX, anchorY, rawWaypoints[j].gx, rawWaypoints[j].gy, 0.05)) {
+          furthest = j;
+          break;
+        }
+      }
+      const nextWp = rawWaypoints[furthest];
+      smoothed.push(nextWp);
+      anchorX = nextWp.gx;
+      anchorY = nextWp.gy;
+      i = furthest + 1;
+    }
+
+    return smoothed;
+  }
+
+  function getReachableOpenPositions(startGx: number, startGy: number): Array<{ gx: number; gy: number }> {
+    ensureNavCache();
+    const startCell = findNearestWalkableCell(startGx, startGy);
+    if (!startCell) return [];
+
+    const visited = new Uint8Array(NAV_SIZE * NAV_SIZE);
+    const startIdx = startCell.cy * NAV_SIZE + startCell.cx;
+    const queue: number[] = [startIdx];
+    visited[startIdx] = 1;
+
+    const positions: Array<{ gx: number; gy: number }> = [];
+    let head = 0;
+    const orthDirs: ReadonlyArray<[number, number]> = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    while (head < queue.length) {
+      const cur = queue[head++];
+      const cx = cur % NAV_SIZE;
+      const cy = (cur - cx) / NAV_SIZE;
+      positions.push(navCellToWorld(cx, cy));
+      for (let d = 0; d < orthDirs.length; d++) {
+        const nx = cx + orthDirs[d][0];
+        const ny = cy + orthDirs[d][1];
+        if (nx < 0 || nx >= NAV_SIZE || ny < 0 || ny >= NAV_SIZE) continue;
+        const nIdx = ny * NAV_SIZE + nx;
+        if (visited[nIdx] || cachedNavBlocked[nIdx]) continue;
+        visited[nIdx] = 1;
+        queue.push(nIdx);
+      }
+    }
+    return positions;
+  }
+
+  function nudgeEntitiesOutsideObstacles(): void {
+    ensureNavCache();
+    dogs.forEach(d => {
+      if (d.state === 'SLIDE_CLIMB' || d.state === 'SLIDE_DOWN') return;
+      if (isPointBlockedByObstacle(d.gx, d.gy, 0.02)) {
+        const safe = pushOutsideAllObstacles(d.gx, d.gy, 0.08);
+        d.gx = safe.gx;
+        d.gy = safe.gy;
+        if (d.state === 'SLEEP' || d.state === 'DRINK') {
+          d.cancelDrink();
+          d.state = 'IDLE';
+          d.timer = 0.5;
+        }
+      }
+      if (isPointBlockedByObstacle(d.targetGx, d.targetGy, 0.02)) {
+        const safeT = pushOutsideAllObstacles(d.targetGx, d.targetGy, 0.08);
+        d.targetGx = safeT.gx;
+        d.targetGy = safeT.gy;
+      }
+      d.clearNavPath();
+    });
+
+    [tennisBall, frisbee, duck].forEach(toy => {
+      if (isPointBlockedByObstacle(toy.gx, toy.gy, 0.04)) {
+        const safe = pushOutsideAllObstacles(toy.gx, toy.gy, 0.1);
+        toy.gx = safe.gx;
+        toy.gy = safe.gy;
+      }
+      if (isPointBlockedByObstacle(toy.targetGx, toy.targetGy, 0.04)) {
+        const safeT = pushOutsideAllObstacles(toy.targetGx, toy.targetGy, 0.1);
+        toy.targetGx = safeT.gx;
+        toy.targetGy = safeT.gy;
+      }
+    });
   }
 
   function getSideDrinkSpot(
@@ -5165,21 +5660,23 @@ export function initPupperPark(options: InitPupperParkOptions = {}): void {
     const s = getScale();
     const rawOptions = [
       screenToGrid(waterScreen.x + sideOffsetPx * s, waterScreen.y + dyPx * s),
-      screenToGrid(waterScreen.x - sideOffsetPx * s, waterScreen.y + dyPx * s)
+      screenToGrid(waterScreen.x - sideOffsetPx * s, waterScreen.y + dyPx * s),
+      screenToGrid(waterScreen.x + sideOffsetPx * 0.8 * s, waterScreen.y + (dyPx + 14) * s),
+      screenToGrid(waterScreen.x - sideOffsetPx * 0.8 * s, waterScreen.y + (dyPx + 14) * s)
     ];
 
     const scored = rawOptions.map(raw => {
       const clampedGx = Math.max(0.35, Math.min(GRID_SIZE - 0.35, raw.gx));
       const clampedGy = Math.max(0.35, Math.min(GRID_SIZE - 0.35, raw.gy));
-      const blocked = isInsideDoghouseObstacle(clampedGx, clampedGy);
-      const safe = blocked ? pushOutsideDoghouseObstacle(clampedGx, clampedGy) : { gx: clampedGx, gy: clampedGy };
+      const blocked = isPointBlockedByObstacle(clampedGx, clampedGy, 0.02);
+      const safe = blocked ? pushOutsideAllObstacles(clampedGx, clampedGy, 0.05) : { gx: clampedGx, gy: clampedGy };
       const finalGx = Math.max(0.35, Math.min(GRID_SIZE - 0.35, safe.gx));
       const finalGy = Math.max(0.35, Math.min(GRID_SIZE - 0.35, safe.gy));
       const finalScreen = gridToScreen(finalGx, finalGy);
       const horizSep = Math.abs(finalScreen.x - waterScreen.x) / Math.max(0.01, s);
       const distFromDog = Math.hypot(finalGx - dogGx, finalGy - dogGy);
-      // Strongly prefer unobstructed side spots with clean horizontal separation so the body never covers the bowl
-      const penalty = (blocked ? 8 : 0) + Math.max(0, sideOffsetPx * 0.72 - horizSep) * 0.4;
+      // Strongly prefer unobstructed side spots with clean horizontal separation so the body never covers the water
+      const penalty = (blocked ? 10 : 0) + Math.max(0, sideOffsetPx * 0.72 - horizSep) * 0.4;
       return { gx: finalGx, gy: finalGy, score: penalty + distFromDog * 0.15 };
     });
 
@@ -5195,14 +5692,16 @@ export function initPupperPark(options: InitPupperParkOptions = {}): void {
     if (!bowlBusy) {
       // Stand cleanly beside the bowl (outside the doghouse tile(s)) so the torso never covers the bowl
       const sideSpot = getSideDrinkSpot(bowlPos.gx, bowlPos.gy, 23.5, 1.5, dog.gx, dog.gy);
-      candidates.push({
-        kind: 'bowl',
-        key: 'bowl',
-        waterGx: bowlPos.gx,
-        waterGy: bowlPos.gy,
-        standGx: sideSpot.gx,
-        standGy: sideSpot.gy
-      });
+      if (findNavPath(dog.gx, dog.gy, sideSpot.gx, sideSpot.gy) !== null) {
+        candidates.push({
+          kind: 'bowl',
+          key: 'bowl',
+          waterGx: bowlPos.gx,
+          waterGy: bowlPos.gy,
+          standGx: sideSpot.gx,
+          standGy: sideSpot.gy
+        });
+      }
     }
 
     const fountainCandidates: DrinkTarget[] = [];
@@ -5216,6 +5715,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): void {
         const centerGx = dec.gx + 0.5;
         const centerGy = dec.gy + 0.5;
         const safeStand = getSideDrinkSpot(centerGx, centerGy, 31.5, 3.2, dog.gx, dog.gy);
+        if (findNavPath(dog.gx, dog.gy, safeStand.gx, safeStand.gy) === null) continue;
 
         fountainCandidates.push({
           kind: 'fountain',
@@ -5268,9 +5768,16 @@ export function initPupperPark(options: InitPupperParkOptions = {}): void {
     waterBoostTimer: number;
     onReachWater: (() => void) | null;
     blinkTimer: number;
+    navWaypoints: Array<{ gx: number; gy: number }>;
+    navBuiltVersion: number;
+    navRecalcCooldown: number;
+    stuckTimer: number;
+    stuckCount: number;
+    lastProgressGx: number;
+    lastProgressGy: number;
 
     constructor(gx: number, gy: number, rosterId: string, breed = 'aussie', isShiny = false, shinyColor: string | null = null) {
-      const safeStart = pushOutsideDoghouseObstacle(gx, gy);
+      const safeStart = pushOutsideAllObstacles(gx, gy, 0.08);
       this.gx = safeStart.gx;
       this.gy = safeStart.gy;
       this.targetGx = safeStart.gx;
@@ -5301,6 +5808,48 @@ export function initPupperPark(options: InitPupperParkOptions = {}): void {
       this.waterBoostTimer = 0;
       this.onReachWater = null;
       this.blinkTimer = 1.4 + Math.random() * 4.2;
+      this.navWaypoints = [];
+      this.navBuiltVersion = -1;
+      this.navRecalcCooldown = 0;
+      this.stuckTimer = 0;
+      this.stuckCount = 0;
+      this.lastProgressGx = safeStart.gx;
+      this.lastProgressGy = safeStart.gy;
+    }
+
+    clearNavPath(): void {
+      this.navWaypoints = [];
+      this.navBuiltVersion = -1;
+      this.stuckTimer = 0;
+      this.stuckCount = 0;
+      this.lastProgressGx = this.gx;
+      this.lastProgressGy = this.gy;
+    }
+
+    setWalkTarget(gx: number, gy: number): void {
+      this.targetGx = gx;
+      this.targetGy = gy;
+      this.navWaypoints = [];
+      this.navBuiltVersion = -1;
+      this.stuckTimer = 0;
+      this.stuckCount = 0;
+      this.lastProgressGx = this.gx;
+      this.lastProgressGy = this.gy;
+    }
+
+    computeNavPath(force = false): boolean {
+      if (!force && this.navRecalcCooldown > 0 && this.navWaypoints.length > 0 && this.navBuiltVersion === navCacheVersion) {
+        return true;
+      }
+      const path = findNavPath(this.gx, this.gy, this.targetGx, this.targetGy);
+      this.navBuiltVersion = navCacheVersion;
+      this.navRecalcCooldown = 0.45;
+      if (!path || path.length === 0) {
+        this.navWaypoints = [];
+        return false;
+      }
+      this.navWaypoints = path;
+      return true;
     }
 
     cancelSlide(): void {
@@ -5401,8 +5950,10 @@ export function initPupperPark(options: InitPupperParkOptions = {}): void {
       const target = this.slideTarget;
       const landGx = target ? Math.min(GRID_SIZE - 0.25, target.gx + 1.66) : this.gx;
       const landGy = target ? target.gy + 0.5 : this.gy;
-      this.gx = landGx;
-      this.gy = landGy;
+      const safeLand = pushOutsideAllObstacles(landGx, landGy, 0.04);
+      this.gx = safeLand.gx;
+      this.gy = safeLand.gy;
+      this.clearNavPath();
       this.slideTarget = null;
       this.slideProgress = 0;
       this.slideElevation = 0;
@@ -5462,7 +6013,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): void {
     enterSleep(): void {
       this.cancelSlide();
       this.cancelDrink();
-      if (isNearSlideZone(this.gx, this.gy) || isInsideDoghouseObstacle(this.gx, this.gy)) {
+      if (isNearSlideZone(this.gx, this.gy) || isPointBlockedByObstacle(this.gx, this.gy, 0.04)) {
         this.pickNewTarget();
         return;
       }
@@ -5565,8 +6116,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): void {
           this.slideTarget = null;
           this.onReachSlide = null;
           this.drinkTarget = waterSource;
-          this.targetGx = waterSource.standGx;
-          this.targetGy = waterSource.standGy;
+          this.setWalkTarget(waterSource.standGx, waterSource.standGy);
           this.onReachWater = () => this.startDrinking();
           this.state = 'WALK';
           return;
@@ -5575,31 +6125,83 @@ export function initPupperPark(options: InitPupperParkOptions = {}): void {
       if (this.slideCooldown <= 0 && !this.onReachToy) {
         const openSlide = getAvailableSlide(this);
         if (openSlide && Math.random() < 0.32) {
-          this.drinkTarget = null;
-          this.onReachWater = null;
-          this.slideTarget = { gx: openSlide.gx, gy: openSlide.gy };
-          this.targetGx = Math.max(0.24, openSlide.gx + 0.26);
-          this.targetGy = openSlide.gy + 0.5;
-          this.onReachSlide = () => this.startSlideClimb();
-          this.state = 'WALK';
-          return;
+          const ladderGx = Math.max(0.24, openSlide.gx + 0.26);
+          const ladderGy = openSlide.gy + 0.5;
+          if (findNavPath(this.gx, this.gy, ladderGx, ladderGy) !== null) {
+            this.drinkTarget = null;
+            this.onReachWater = null;
+            this.slideTarget = { gx: openSlide.gx, gy: openSlide.gy };
+            this.setWalkTarget(ladderGx, ladderGy);
+            this.onReachSlide = () => this.startSlideClimb();
+            this.state = 'WALK';
+            return;
+          }
         }
       }
       this.slideTarget = null;
       this.onReachSlide = null;
       this.drinkTarget = null;
       this.onReachWater = null;
-      let rx = 0.7 + Math.random() * (GRID_SIZE - 1.4);
-      let ry = 0.7 + Math.random() * (GRID_SIZE - 1.4);
-      for (let attempt = 0; attempt < 12; attempt++) {
-        if (!isInsideDoghouseObstacle(rx, ry)) break;
-        rx = 0.7 + Math.random() * (GRID_SIZE - 1.4);
-        ry = 0.7 + Math.random() * (GRID_SIZE - 1.4);
+
+      let chosen: { gx: number; gy: number } | null = null;
+      let chosenPath: Array<{ gx: number; gy: number }> | null = null;
+
+      // Sample open, reachable digging spots spaced away from obstacles and other dogs
+      for (let attempt = 0; attempt < 18; attempt++) {
+        const rx = 0.62 + Math.random() * (GRID_SIZE - 1.24);
+        const ry = 0.62 + Math.random() * (GRID_SIZE - 1.24);
+        if (isPointBlockedByObstacle(rx, ry, 0.12)) continue;
+        if (Math.hypot(rx - this.gx, ry - this.gy) < 0.55) continue;
+
+        if (attempt < 12) {
+          const crowded = dogs.some(other =>
+            other !== this &&
+            (Math.hypot(other.gx - rx, other.gy - ry) < 0.62 ||
+              Math.hypot(other.targetGx - rx, other.targetGy - ry) < 0.58)
+          );
+          if (crowded) continue;
+        }
+
+        const path = findNavPath(this.gx, this.gy, rx, ry);
+        if (path) {
+          chosen = { gx: rx, gy: ry };
+          chosenPath = path;
+          break;
+        }
       }
-      const safeDest = pushOutsideDoghouseObstacle(rx, ry);
-      this.targetGx = safeDest.gx;
-      this.targetGy = safeDest.gy;
-      this.state = 'WALK';
+
+      // Guaranteed fallback in densely decorated parks: pick from reachable open sub-cells
+      if (!chosen) {
+        const reachable = getReachableOpenPositions(this.gx, this.gy).filter(
+          p => Math.hypot(p.gx - this.gx, p.gy - this.gy) > 0.35
+        );
+        if (reachable.length > 0) {
+          const spread = reachable.filter(p =>
+            dogs.every(other => other === this || Math.hypot(other.gx - p.gx, other.gy - p.gy) >= 0.45)
+          );
+          const pool = spread.length > 0 ? spread : reachable;
+          const pick = pool[Math.floor(Math.random() * pool.length)];
+          chosen = pick;
+          chosenPath = findNavPath(this.gx, this.gy, pick.gx, pick.gy);
+        }
+      }
+
+      if (chosen) {
+        this.setWalkTarget(chosen.gx, chosen.gy);
+        if (chosenPath && chosenPath.length > 0) {
+          this.navWaypoints = chosenPath;
+          this.navBuiltVersion = navCacheVersion;
+          this.navRecalcCooldown = 0.45;
+        }
+        this.state = 'WALK';
+      } else {
+        // Completely boxed in: dig or idle right where safe rather than stalling
+        const safeHere = pushOutsideAllObstacles(this.gx, this.gy, 0.04);
+        this.gx = safeHere.gx;
+        this.gy = safeHere.gy;
+        this.state = 'IDLE';
+        this.timer = 0.9 + Math.random() * 0.9;
+      }
     }
 
     update(dt: number): void {
@@ -5620,6 +6222,9 @@ export function initPupperPark(options: InitPupperParkOptions = {}): void {
       }
       if (this.waterBoostTimer > 0) {
         this.waterBoostTimer = Math.max(0, this.waterBoostTimer - dt);
+      }
+      if (this.navRecalcCooldown > 0) {
+        this.navRecalcCooldown = Math.max(0, this.navRecalcCooldown - dt);
       }
       this.blinkTimer -= dt;
       if (this.blinkTimer <= 0) {
@@ -5801,27 +6406,27 @@ export function initPupperPark(options: InitPupperParkOptions = {}): void {
       } else if (this.state === 'IDLE') {
         this.timer -= dt * visualPace;
         if (this.timer <= 0) {
-          if (Math.random() < 0.28 && !isNearSlideZone(this.gx, this.gy) && !isInsideDoghouseObstacle(this.gx, this.gy)) {
+          if (Math.random() < 0.28 && !isNearSlideZone(this.gx, this.gy) && !isPointBlockedByObstacle(this.gx, this.gy, 0.04)) {
             this.enterSleep();
           } else {
             this.pickNewTarget();
           }
         }
       } else if (this.state === 'WALK') {
-        // Ensure final destination never lies inside the doghouse tile(s)
-        if (isInsideDoghouseObstacle(this.targetGx, this.targetGy)) {
-          const safeT = pushOutsideDoghouseObstacle(this.targetGx, this.targetGy);
-          this.targetGx = safeT.gx;
-          this.targetGy = safeT.gy;
+        // Ensure final destination never lies inside a solid park obstacle
+        if (!this.slideTarget && isPointBlockedByObstacle(this.targetGx, this.targetGy, 0.02)) {
+          const safeT = pushOutsideAllObstacles(this.targetGx, this.targetGy, 0.06);
+          this.setWalkTarget(safeT.gx, safeT.gy);
         }
 
         const dx = this.targetGx - this.gx;
         const dy = this.targetGy - this.gy;
         const dist = Math.hypot(dx, dy);
 
-        if (dist < 0.08) {
+        if (dist < 0.09) {
           this.gx = this.targetGx;
           this.gy = this.targetGy;
+          this.clearNavPath();
 
           if (this.onReachSlide) {
             const cb = this.onReachSlide;
@@ -5856,34 +6461,195 @@ export function initPupperPark(options: InitPupperParkOptions = {}): void {
             triggerPerkDraft();
           }
         } else {
-          // Steer cleanly around the doghouse tile(s) so pups never walk through the doghouse
-          const steer = getDoghouseSteerTarget(this.gx, this.gy, this.targetGx, this.targetGy);
-          const sdx = steer.gx - this.gx;
-          const sdy = steer.gy - this.gy;
+          // Lazily compute or refresh cached A* waypoints only when needed
+          if (this.navWaypoints.length === 0 || this.navBuiltVersion !== navCacheVersion) {
+            const ok = this.computeNavPath(false);
+            if (!ok) {
+              this.cancelSlide();
+              this.cancelDrink();
+              this.onReachToy = null;
+              this.pickNewTarget();
+              return;
+            }
+          }
+
+          // Advance through reached intermediate waypoints
+          while (this.navWaypoints.length > 1) {
+            const wp = this.navWaypoints[0];
+            if (Math.hypot(wp.gx - this.gx, wp.gy - this.gy) < 0.18) {
+              this.navWaypoints.shift();
+            } else {
+              break;
+            }
+          }
+
+          const activeWp = this.navWaypoints[0] || { gx: this.targetGx, gy: this.targetGy };
+          const sdx = activeWp.gx - this.gx;
+          const sdy = activeWp.gy - this.gy;
           const sDist = Math.hypot(sdx, sdy);
 
-          const currentScreenPos = gridToScreen(this.gx, this.gy);
-          const steerScreenPos = gridToScreen(steer.gx, steer.gy);
-          const screenDeltaX = steerScreenPos.x - currentScreenPos.x;
-          if (Math.abs(screenDeltaX) > 0.5) {
+          let moveX = sDist > 1e-4 ? sdx / sDist : 0;
+          let moveY = sDist > 1e-4 ? sdy / sDist : 0;
+
+          // Smooth dog-to-dog avoidance steering with deterministic passing bias
+          let avoidX = 0;
+          let avoidY = 0;
+          const approachingReserved = Boolean((this.drinkTarget || this.slideTarget) && dist < 0.32);
+          const avoidScale = approachingReserved ? 0.35 : 1.0;
+
+          for (let i = 0; i < dogs.length; i++) {
+            const other = dogs[i];
+            if (other === this) continue;
+            if (other.state === 'SLIDE_CLIMB' || other.state === 'SLIDE_DOWN') continue;
+
+            const rx = this.gx - other.gx;
+            const ry = this.gy - other.gy;
+            const d = Math.hypot(rx, ry);
+            if (d >= DOG_AVOID_RADIUS) continue;
+
+            let nx = 0;
+            let ny = 0;
+            if (d < 1e-4) {
+              const seedAngle = (this.rosterId.charCodeAt(0) || 1) * 1.7;
+              nx = Math.cos(seedAngle);
+              ny = Math.sin(seedAngle);
+            } else {
+              nx = rx / d;
+              ny = ry / d;
+            }
+
+            const closeness = (DOG_AVOID_RADIUS - d) / DOG_AVOID_RADIUS;
+            const repel = closeness * 1.15 * avoidScale;
+            avoidX += nx * repel;
+            avoidY += ny * repel;
+
+            // Add subtle tangential sidestep when another dog is ahead so pups veer past cleanly
+            const aheadDot = moveX * (-nx) + moveY * (-ny);
+            if (aheadDot > -0.15) {
+              const sideSign = this.rosterId < other.rosterId ? 1 : -1;
+              const tangent = closeness * 0.68 * avoidScale;
+              avoidX += -ny * sideSign * tangent;
+              avoidY += nx * sideSign * tangent;
+            }
+          }
+
+          let steerX = moveX + avoidX;
+          let steerY = moveY + avoidY;
+          const steerLen = Math.hypot(steerX, steerY);
+          if (steerLen > 1e-4) {
+            steerX /= steerLen;
+            steerY /= steerLen;
+          } else {
+            steerX = moveX;
+            steerY = moveY;
+          }
+
+          const edgeMargin = this.slideTarget ? 0.2 : 0.32;
+          const step = Math.min(Math.max(sDist, 0.05), walkSpeed * dt);
+          const prevGx = this.gx;
+          const prevGy = this.gy;
+
+          const tryGx = Math.max(edgeMargin, Math.min(GRID_SIZE - edgeMargin, prevGx + steerX * step));
+          const tryGy = Math.max(edgeMargin, Math.min(GRID_SIZE - edgeMargin, prevGy + steerY * step));
+
+          if (!isPointBlockedByObstacle(tryGx, tryGy, 0.02)) {
+            this.gx = tryGx;
+            this.gy = tryGy;
+          } else {
+            // Smooth wall-sliding along whichever axis stays clear of obstacles
+            const slideX = Math.max(edgeMargin, Math.min(GRID_SIZE - edgeMargin, prevGx + steerX * step));
+            const slideY = Math.max(edgeMargin, Math.min(GRID_SIZE - edgeMargin, prevGy + steerY * step));
+            const xClear = !isPointBlockedByObstacle(slideX, prevGy, 0.02);
+            const yClear = !isPointBlockedByObstacle(prevGx, slideY, 0.02);
+            if (xClear && (!yClear || Math.abs(steerX) >= Math.abs(steerY))) {
+              this.gx = slideX;
+            } else if (yClear) {
+              this.gy = slideY;
+            } else {
+              // Gentle tangential nudge around circular obstacles (fountains/trees)
+              const tan1Gx = Math.max(edgeMargin, Math.min(GRID_SIZE - edgeMargin, prevGx - steerY * step));
+              const tan1Gy = Math.max(edgeMargin, Math.min(GRID_SIZE - edgeMargin, prevGy + steerX * step));
+              const tan2Gx = Math.max(edgeMargin, Math.min(GRID_SIZE - edgeMargin, prevGx + steerY * step));
+              const tan2Gy = Math.max(edgeMargin, Math.min(GRID_SIZE - edgeMargin, prevGy - steerX * step));
+              if (!isPointBlockedByObstacle(tan1Gx, tan1Gy, 0.02)) {
+                this.gx = tan1Gx;
+                this.gy = tan1Gy;
+              } else if (!isPointBlockedByObstacle(tan2Gx, tan2Gy, 0.02)) {
+                this.gx = tan2Gx;
+                this.gy = tan2Gy;
+              }
+            }
+          }
+
+          // Hard safety invariant: never allow a walking dog inside any solid park obstacle
+          if (isPointBlockedByObstacle(this.gx, this.gy, 0.015)) {
+            const pushed = pushOutsideAllObstacles(this.gx, this.gy, 0.03);
+            this.gx = pushed.gx;
+            this.gy = pushed.gy;
+          }
+
+          // Gentle personal-space separation if still overlapping another non-sliding dog
+          for (let i = 0; i < dogs.length; i++) {
+            const other = dogs[i];
+            if (other === this || other.state === 'SLIDE_CLIMB' || other.state === 'SLIDE_DOWN') continue;
+            const rx = this.gx - other.gx;
+            const ry = this.gy - other.gy;
+            const d = Math.hypot(rx, ry);
+            if (d < DOG_MIN_SEPARATION) {
+              let ux = 0;
+              let uy = 0;
+              if (d < 1e-4) {
+                const seedAngle = ((this.rosterId.charCodeAt(this.rosterId.length - 1) || 1) * 1.9);
+                ux = Math.cos(seedAngle);
+                uy = Math.sin(seedAngle);
+              } else {
+                ux = rx / d;
+                uy = ry / d;
+              }
+              const push = Math.min(0.08, (DOG_MIN_SEPARATION - d) * 0.55);
+              const candGx = Math.max(edgeMargin, Math.min(GRID_SIZE - edgeMargin, this.gx + ux * push));
+              const candGy = Math.max(edgeMargin, Math.min(GRID_SIZE - edgeMargin, this.gy + uy * push));
+              if (!isPointBlockedByObstacle(candGx, candGy, 0.02)) {
+                this.gx = candGx;
+                this.gy = candGy;
+              }
+            }
+          }
+
+          // Face the actual screen-space movement direction smoothly
+          const prevScreen = gridToScreen(prevGx, prevGy);
+          const nextScreen = gridToScreen(this.gx, this.gy);
+          const screenDeltaX = nextScreen.x - prevScreen.x;
+          if (Math.abs(screenDeltaX) > 0.35) {
             this.facingRight = screenDeltaX >= 0;
           }
 
-          if (sDist > 0.001) {
-            const step = Math.min(sDist, walkSpeed * dt);
-            this.gx += (sdx / sDist) * step;
-            this.gy += (sdy / sDist) * step;
-          }
+          // Anti-stuck recovery: replan once if blocked, then pick a fresh reachable spot
+          this.stuckTimer += dt;
+          if (this.stuckTimer >= 0.65) {
+            const progress = Math.hypot(this.gx - this.lastProgressGx, this.gy - this.lastProgressGy);
+            this.lastProgressGx = this.gx;
+            this.lastProgressGy = this.gy;
+            this.stuckTimer = 0;
 
-          const edgeMargin = this.slideTarget ? 0.2 : 0.3;
-          this.gx = Math.max(edgeMargin, Math.min(GRID_SIZE - edgeMargin, this.gx));
-          this.gy = Math.max(edgeMargin, Math.min(GRID_SIZE - edgeMargin, this.gy));
-
-          // Hard safety invariant: never allow a dog inside the doghouse tile(s)
-          if (isInsideDoghouseObstacle(this.gx, this.gy)) {
-            const pushed = pushOutsideDoghouseObstacle(this.gx, this.gy);
-            this.gx = pushed.gx;
-            this.gy = pushed.gy;
+            if (progress < 0.07) {
+              this.stuckCount += 1;
+              if (this.stuckCount === 1) {
+                if (!this.computeNavPath(true)) {
+                  this.cancelSlide();
+                  this.cancelDrink();
+                  this.onReachToy = null;
+                  this.pickNewTarget();
+                }
+              } else {
+                this.cancelSlide();
+                this.cancelDrink();
+                this.onReachToy = null;
+                this.pickNewTarget();
+              }
+            } else {
+              this.stuckCount = 0;
+            }
           }
         }
       } else if (this.state === 'DIG') {
@@ -10021,22 +10787,27 @@ export function initPupperPark(options: InitPupperParkOptions = {}): void {
             const eligible = dogs.filter(d => d.state !== 'SLIDE_CLIMB' && d.state !== 'SLIDE_DOWN' && d.state !== 'DRINK' && !d.slideTarget && !d.drinkTarget);
             if (eligible.length > 0) {
               const walker = eligible[Math.floor(Math.random() * eligible.length)];
-              walker.cancelSlide();
-              walker.cancelDrink();
-              walker.targetGx = tennisBall.gx;
-              walker.targetGy = tennisBall.gy;
-              walker.state = 'WALK';
-              walker.onReachToy = () => {
-                sfx.squeak();
-                addPackHappiness(1.5);
-                tennisBall.isRolling = true;
-                const safeBall = pushOutsideDoghouseObstacle(
-                  Math.max(0.7, Math.min(GRID_SIZE - 0.7, tennisBall.gx + (Math.random() - 0.5) * 3.5)),
-                  Math.max(0.7, Math.min(GRID_SIZE - 0.7, tennisBall.gy + (Math.random() - 0.5) * 3.5))
-                );
-                tennisBall.targetGx = safeBall.gx;
-                tennisBall.targetGy = safeBall.gy;
-              };
+              const safeBallSpot = pushOutsideAllObstacles(tennisBall.gx, tennisBall.gy, 0.08);
+              tennisBall.gx = safeBallSpot.gx;
+              tennisBall.gy = safeBallSpot.gy;
+              if (findNavPath(walker.gx, walker.gy, safeBallSpot.gx, safeBallSpot.gy) !== null) {
+                walker.cancelSlide();
+                walker.cancelDrink();
+                walker.setWalkTarget(safeBallSpot.gx, safeBallSpot.gy);
+                walker.state = 'WALK';
+                walker.onReachToy = () => {
+                  sfx.squeak();
+                  addPackHappiness(1.5);
+                  tennisBall.isRolling = true;
+                  const safeBall = pushOutsideAllObstacles(
+                    Math.max(0.7, Math.min(GRID_SIZE - 0.7, tennisBall.gx + (Math.random() - 0.5) * 3.5)),
+                    Math.max(0.7, Math.min(GRID_SIZE - 0.7, tennisBall.gy + (Math.random() - 0.5) * 3.5)),
+                    0.1
+                  );
+                  tennisBall.targetGx = safeBall.gx;
+                  tennisBall.targetGy = safeBall.gy;
+                };
+              }
             }
           }
         }
@@ -10056,22 +10827,27 @@ export function initPupperPark(options: InitPupperParkOptions = {}): void {
             const eligible = dogs.filter(d => d.state !== 'SLIDE_CLIMB' && d.state !== 'SLIDE_DOWN' && d.state !== 'DRINK' && !d.slideTarget && !d.drinkTarget);
             if (eligible.length > 0) {
               const walker = eligible[Math.floor(Math.random() * eligible.length)];
-              walker.cancelSlide();
-              walker.cancelDrink();
-              walker.targetGx = frisbee.gx;
-              walker.targetGy = frisbee.gy;
-              walker.state = 'WALK';
-              walker.onReachToy = () => {
-                sfx.shiny();
-                addPackHappiness(1.5);
-                frisbee.isMoving = true;
-                const safeFrisbee = pushOutsideDoghouseObstacle(
-                  Math.max(0.7, Math.min(GRID_SIZE - 0.7, frisbee.gx + (Math.random() - 0.5) * 3.5)),
-                  Math.max(0.7, Math.min(GRID_SIZE - 0.7, frisbee.gy + (Math.random() - 0.5) * 3.5))
-                );
-                frisbee.targetGx = safeFrisbee.gx;
-                frisbee.targetGy = safeFrisbee.gy;
-              };
+              const safeFrisbeeSpot = pushOutsideAllObstacles(frisbee.gx, frisbee.gy, 0.08);
+              frisbee.gx = safeFrisbeeSpot.gx;
+              frisbee.gy = safeFrisbeeSpot.gy;
+              if (findNavPath(walker.gx, walker.gy, safeFrisbeeSpot.gx, safeFrisbeeSpot.gy) !== null) {
+                walker.cancelSlide();
+                walker.cancelDrink();
+                walker.setWalkTarget(safeFrisbeeSpot.gx, safeFrisbeeSpot.gy);
+                walker.state = 'WALK';
+                walker.onReachToy = () => {
+                  sfx.shiny();
+                  addPackHappiness(1.5);
+                  frisbee.isMoving = true;
+                  const safeFrisbee = pushOutsideAllObstacles(
+                    Math.max(0.7, Math.min(GRID_SIZE - 0.7, frisbee.gx + (Math.random() - 0.5) * 3.5)),
+                    Math.max(0.7, Math.min(GRID_SIZE - 0.7, frisbee.gy + (Math.random() - 0.5) * 3.5)),
+                    0.1
+                  );
+                  frisbee.targetGx = safeFrisbee.gx;
+                  frisbee.targetGy = safeFrisbee.gy;
+                };
+              }
             }
           }
         }
@@ -10091,22 +10867,27 @@ export function initPupperPark(options: InitPupperParkOptions = {}): void {
             const eligible = dogs.filter(d => d.state !== 'SLIDE_CLIMB' && d.state !== 'SLIDE_DOWN' && d.state !== 'DRINK' && !d.slideTarget && !d.drinkTarget);
             if (eligible.length > 0) {
               const walker = eligible[Math.floor(Math.random() * eligible.length)];
-              walker.cancelSlide();
-              walker.cancelDrink();
-              walker.targetGx = duck.gx;
-              walker.targetGy = duck.gy;
-              walker.state = 'WALK';
-              walker.onReachToy = () => {
-                sfx.quack();
-                addPackHappiness(1.5);
-                duck.isMoved = true;
-                const safeDuck = pushOutsideDoghouseObstacle(
-                  Math.max(0.7, Math.min(GRID_SIZE - 0.7, duck.gx + (Math.random() - 0.5) * 2.5)),
-                  Math.max(0.7, Math.min(GRID_SIZE - 0.7, duck.gy + (Math.random() - 0.5) * 2.5))
-                );
-                duck.targetGx = safeDuck.gx;
-                duck.targetGy = safeDuck.gy;
-              };
+              const safeDuckSpot = pushOutsideAllObstacles(duck.gx, duck.gy, 0.08);
+              duck.gx = safeDuckSpot.gx;
+              duck.gy = safeDuckSpot.gy;
+              if (findNavPath(walker.gx, walker.gy, safeDuckSpot.gx, safeDuckSpot.gy) !== null) {
+                walker.cancelSlide();
+                walker.cancelDrink();
+                walker.setWalkTarget(safeDuckSpot.gx, safeDuckSpot.gy);
+                walker.state = 'WALK';
+                walker.onReachToy = () => {
+                  sfx.quack();
+                  addPackHappiness(1.5);
+                  duck.isMoved = true;
+                  const safeDuck = pushOutsideAllObstacles(
+                    Math.max(0.7, Math.min(GRID_SIZE - 0.7, duck.gx + (Math.random() - 0.5) * 2.5)),
+                    Math.max(0.7, Math.min(GRID_SIZE - 0.7, duck.gy + (Math.random() - 0.5) * 2.5)),
+                    0.1
+                  );
+                  duck.targetGx = safeDuck.gx;
+                  duck.targetGy = safeDuck.gy;
+                };
+              }
             }
           }
         }
