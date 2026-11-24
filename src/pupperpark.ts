@@ -94,7 +94,11 @@ interface CapacitorGlobal {
 
 let initialized = false;
 
-export function initPupperPark(): void {
+export interface InitPupperParkOptions {
+  onFirstFrameRendered?: () => void;
+}
+
+export function initPupperPark(options: InitPupperParkOptions = {}): void {
   if (initialized) return;
   initialized = true;
 
@@ -10905,6 +10909,22 @@ export function initPupperPark(): void {
     requestAnimationFrame(loop);
   }
 
+  let hasReportedFirstFrame = false;
+  const reportFirstFrame = () => {
+    if (hasReportedFirstFrame) return;
+    hasReportedFirstFrame = true;
+    try {
+      options.onFirstFrameRendered?.();
+    } catch {
+      // Ignore splash callback errors
+    }
+  };
+
+  function startFrameLoop(now: number): void {
+    loop(now);
+    reportFirstFrame();
+  }
+
   updateUI();
-  requestAnimationFrame(loop);
+  requestAnimationFrame(startFrameLoop);
 }

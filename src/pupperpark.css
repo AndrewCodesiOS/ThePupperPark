@@ -3006,6 +3006,264 @@ input:focus-visible {
   color: #ffffff;
 }
 
+/* ==========================================
+   Launch Splash Screen
+   ========================================== */
+.splash-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding:
+    max(24px, env(safe-area-inset-top))
+    max(24px, env(safe-area-inset-right))
+    max(28px, env(safe-area-inset-bottom))
+    max(24px, env(safe-area-inset-left));
+  background:
+    radial-gradient(circle at 50% 38%, rgba(46, 213, 115, 0.14) 0%, rgba(108, 92, 231, 0.12) 34%, rgba(13, 11, 26, 0) 68%),
+    linear-gradient(180deg, #0d0b1a 0%, #171236 54%, #101730 100%);
+  overflow: hidden;
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity 0.36s cubic-bezier(0.22, 1, 0.36, 1), transform 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+
+.splash-screen.is-hiding {
+  opacity: 0;
+  transform: scale(1.03);
+  pointer-events: none;
+}
+
+.splash-stars {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.7;
+  background-image:
+    radial-gradient(1.5px 1.5px at 14% 18%, rgba(255, 255, 255, 0.85) 50%, transparent 100%),
+    radial-gradient(2px 2px at 26% 12%, rgba(255, 234, 167, 0.75) 50%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 78% 16%, rgba(255, 255, 255, 0.8) 50%, transparent 100%),
+    radial-gradient(2px 2px at 88% 28%, rgba(162, 155, 254, 0.78) 50%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 19% 74%, rgba(85, 239, 196, 0.65) 50%, transparent 100%),
+    radial-gradient(1.8px 1.8px at 82% 76%, rgba(255, 234, 167, 0.72) 50%, transparent 100%),
+    radial-gradient(1.2px 1.2px at 64% 11%, rgba(255, 255, 255, 0.7) 50%, transparent 100%),
+    radial-gradient(1.4px 1.4px at 36% 84%, rgba(255, 255, 255, 0.6) 50%, transparent 100%),
+    radial-gradient(1.6px 1.6px at 71% 86%, rgba(162, 155, 254, 0.62) 50%, transparent 100%);
+  animation: splashStarsTwinkle 3.2s ease-in-out infinite alternate;
+}
+
+.splash-aura {
+  position: absolute;
+  width: min(76vw, 420px);
+  height: min(76vw, 420px);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(85, 239, 196, 0.14) 0%,
+    rgba(108, 92, 231, 0.14) 44%,
+    rgba(13, 11, 26, 0) 72%
+  );
+  pointer-events: none;
+  transform: translateY(-28px);
+}
+
+.splash-content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 20px;
+}
+
+.splash-emblem-stage {
+  position: relative;
+  width: clamp(164px, 44vw, 224px);
+  height: clamp(148px, 39vw, 198px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.splash-island-glow {
+  position: absolute;
+  width: 78%;
+  height: 52%;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(46, 213, 115, 0.34) 0%,
+    rgba(255, 234, 167, 0.16) 45%,
+    rgba(13, 11, 26, 0) 74%
+  );
+  filter: blur(12px);
+  pointer-events: none;
+}
+
+.splash-emblem-img {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 18px 24px rgba(7, 5, 18, 0.62));
+  animation: splashIslandFloat 2.8s ease-in-out infinite;
+  will-change: transform;
+}
+
+.splash-emblem-fallback {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 18px 24px rgba(7, 5, 18, 0.62));
+  animation: splashIslandFloat 2.8s ease-in-out infinite;
+  will-change: transform;
+}
+
+.splash-island-shadow {
+  position: absolute;
+  bottom: 8px;
+  width: 56%;
+  height: 16px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(5, 4, 14, 0.64) 0%, rgba(5, 4, 14, 0) 74%);
+  animation: splashShadowPulse 2.8s ease-in-out infinite;
+  will-change: transform, opacity;
+  pointer-events: none;
+}
+
+.splash-brand-lockup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.splash-title {
+  font-family: var(--font-display);
+  font-size: clamp(2.15rem, 7.6vw, 3.05rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+  background: linear-gradient(180deg, #ffffff 18%, #ffeaa7 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 4px 14px rgba(108, 92, 231, 0.38));
+}
+
+.splash-tagline {
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #cbd5e1;
+  letter-spacing: 0.015em;
+}
+
+.splash-loader-group {
+  width: 100%;
+  max-width: 236px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.splash-progress-track {
+  width: 100%;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.11);
+  border: 1px solid rgba(162, 155, 254, 0.24);
+  overflow: hidden;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+.splash-progress-fill {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ffeaa7 0%, #55efc4 100%);
+  transform-origin: left center;
+  transform: scaleX(0.18);
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.splash-status-text {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #a9b6d0;
+  letter-spacing: 0.01em;
+  min-height: 1.2em;
+}
+
+@keyframes splashIslandFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+
+@keyframes splashShadowPulse {
+  0%, 100% {
+    transform: scaleX(1);
+    opacity: 0.72;
+  }
+  50% {
+    transform: scaleX(0.88);
+    opacity: 0.48;
+  }
+}
+
+@keyframes splashStarsTwinkle {
+  0% {
+    opacity: 0.48;
+  }
+  100% {
+    opacity: 0.88;
+  }
+}
+
+/* Compact landscape phones */
+@media (max-height: 520px) {
+  .splash-content {
+    gap: 12px;
+  }
+
+  .splash-emblem-stage {
+    width: 124px;
+    height: 110px;
+  }
+
+  .splash-title {
+    font-size: clamp(1.75rem, 5.5vw, 2.3rem);
+  }
+
+  .splash-tagline {
+    font-size: 0.82rem;
+  }
+
+  .splash-loader-group {
+    margin-top: 0;
+    gap: 7px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

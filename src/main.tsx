@@ -7,5 +7,15 @@ import '@fontsource/plus-jakarta-sans/700.css';
 import './index.css';
 import './pupperpark.css';
 import { initPupperPark } from './pupperpark.ts';
+import { startSplashScreen } from './splash.ts';
 
-initPupperPark();
+const splash = startSplashScreen();
+try {
+  initPupperPark({
+    onFirstFrameRendered: () => splash.markFirstFrameRendered()
+  });
+  splash.markInitComplete();
+} catch (err) {
+  splash.dismissNow();
+  throw err;
+}
