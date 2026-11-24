@@ -3105,27 +3105,55 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
   }
 
   let safeInsetProbeEl: HTMLDivElement | null = null;
+  let viewportLvhProbeEl: HTMLDivElement | null = null;
+  let viewportFixedProbeEl: HTMLDivElement | null = null;
   let isAsymmetricPortraitSideInset = false;
 
-  function measureSideSafeInsets(): { left: number; right: number } {
-    if (!safeInsetProbeEl && document.body) {
+  function ensureViewportProbes(): void {
+    if (!document.body) return;
+    if (!safeInsetProbeEl) {
       safeInsetProbeEl = document.createElement('div');
       safeInsetProbeEl.className = 'safe-inset-probe';
       safeInsetProbeEl.setAttribute('aria-hidden', 'true');
       document.body.appendChild(safeInsetProbeEl);
     }
+    if (!viewportLvhProbeEl) {
+      viewportLvhProbeEl = document.createElement('div');
+      viewportLvhProbeEl.className = 'viewport-lvh-probe';
+      viewportLvhProbeEl.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(viewportLvhProbeEl);
+    }
+    if (!viewportFixedProbeEl) {
+      viewportFixedProbeEl = document.createElement('div');
+      viewportFixedProbeEl.className = 'viewport-fixed-probe';
+      viewportFixedProbeEl.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(viewportFixedProbeEl);
+    }
+  }
+
+  function measureSafeInsets(): { top: number; right: number; bottom: number; left: number } {
+    ensureViewportProbes();
     if (!safeInsetProbeEl || typeof window.getComputedStyle !== 'function') {
-      return { left: 0, right: 0 };
+      return { top: 0, right: 0, bottom: 0, left: 0 };
     }
     const cs = window.getComputedStyle(safeInsetProbeEl);
     return {
-      left: parseFloat(cs.paddingLeft) || 0,
-      right: parseFloat(cs.paddingRight) || 0
+      top: parseFloat(cs.paddingTop) || 0,
+      right: parseFloat(cs.paddingRight) || 0,
+      bottom: parseFloat(cs.paddingBottom) || 0,
+      left: parseFloat(cs.paddingLeft) || 0
     };
   }
 
+  function measureCssViewportHeights(): { lvhH: number; fixedH: number } {
+    ensureViewportProbes();
+    const lvhH = viewportLvhProbeEl ? Math.round(viewportLvhProbeEl.getBoundingClientRect().height || 0) : 0;
+    const fixedH = viewportFixedProbeEl ? Math.round(viewportFixedProbeEl.getBoundingClientRect().height || 0) : 0;
+    return { lvhH, fixedH };
+  }
+
   function syncAsymmetricSafeAreaMode(width: number, height: number): boolean {
-    const sideInsets = measureSideSafeInsets();
+    const sideInsets = measureSafeInsets();
     const next = height > width && Math.abs(sideInsets.right - sideInsets.left) >= 20;
     const changed = next !== isAsymmetricPortraitSideInset;
     isAsymmetricPortraitSideInset = next;
@@ -4488,6 +4516,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       window.matchMedia('(display-mode: standalone)').matches ||
       window.matchMedia('(display-mode: fullscreen)').matches
     ));
+  document.documentElement.classList.toggle('pwa-standalone', isStandalonePwa);
   let orientationRecoveryTimers: number[] = [];
   let resizeRafId: number | null = null;
   let lastAppliedAppHeight = '';
@@ -4505,15 +4534,17 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     const vvH = (!isInputFocused && window.visualViewport && window.visualViewport.height > 0)
       ? window.visualViewport.height
       : winH;
+    const { lvhH, fixedH } = measureCssViewportHeights();
 
-    let fullH = Math.max(winH, vvH);
+    // In regular mobile browsers, match the true visible viewport without overflowing behind browser chrome.
+    // In standalone/fullscreen PWA mode, include CSS 100lvh so the live canvas fills all the way
+    // through the bottom home-indicator safe area with zero solid bottom bar seam.
+    let fullH = isStandalonePwa
+      ? Math.max(winH, vvH, fixedH, lvhH)
+      : Math.max(winH, vvH, fixedH);
 
-    // On iOS/iPadOS standalone PWAs, rotating orientations can cause WebKit to
-    // report window.innerHeight smaller than the physical screen height by the
-    // status-bar/home-indicator safe area (~20-90px). Whenever the app spans the
-    // full screen width for this orientation, lock deterministically to the
-    // physical screen height (never toggling back to '100%') so it never shrinks
-    // or oscillates.
+    // Additional iOS/iPadOS standalone fallback when WebKit reports innerHeight and 100lvh
+    // shorter than the physical screen height by the status-bar/home-indicator safe area.
     if (isAppleTouchDevice && isStandalonePwa && window.screen) {
       const screenShort = Math.min(window.screen.width || 0, window.screen.height || 0);
       const screenLong = Math.max(window.screen.width || 0, window.screen.height || 0);
@@ -4521,7 +4552,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         const isLandscape = winW > winH;
         const expectedW = isLandscape ? screenLong : screenShort;
         const expectedH = isLandscape ? screenShort : screenLong;
-        const widthMatchesFullscreen = Math.abs(winW - expectedW) <= 6;
+        const widthMatchesFullscreen = Math.abs(winW - expectedW) <= 16;
         const gap = expectedH - fullH;
         if (widthMatchesFullscreen && gap >= -2 && gap <= 120) {
           fullH = expectedH;
@@ -4548,13 +4579,28 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
   }
 
   function resize(force = false): void {
-    const { width, height, visibleHeight } = getViewportSize();
+    let { width, height, visibleHeight } = getViewportSize();
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    const desiredAppHeight = `${height}px`;
+    let desiredAppHeight = `${height}px`;
 
     if (lastAppliedAppHeight !== desiredAppHeight) {
       lastAppliedAppHeight = desiredAppHeight;
       document.documentElement.style.setProperty('--app-height', desiredAppHeight);
+    }
+
+    // Ensure the 2D canvas drawing buffer always covers its actual rendered CSS box
+    // (e.g. if min-height: 100lvh extends taller than window.innerHeight on iOS standalone PWAs).
+    if (isStandalonePwa) {
+      const canvasBoxH = Math.ceil(canvas.getBoundingClientRect().height || 0);
+      if (canvasBoxH > height && canvasBoxH - height <= 120) {
+        height = canvasBoxH;
+        visibleHeight = Math.max(visibleHeight, canvasBoxH);
+        desiredAppHeight = `${height}px`;
+        if (lastAppliedAppHeight !== desiredAppHeight) {
+          lastAppliedAppHeight = desiredAppHeight;
+          document.documentElement.style.setProperty('--app-height', desiredAppHeight);
+        }
+      }
     }
 
     const asymmetricModeChanged = syncAsymmetricSafeAreaMode(width, height);
