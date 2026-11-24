@@ -86,7 +86,12 @@ export function startSplashScreen(options: SplashOptions = {}): SplashController
   const iconImgEl = document.getElementById('splashIconImg') as HTMLImageElement | null;
   const fallbackEl = document.getElementById('splashEmblemFallback');
 
+  const revealAppBehindSplash = () => {
+    document.documentElement.classList.remove('splash-booting');
+  };
+
   if (!splashEl) {
+    revealAppBehindSplash();
     return {
       markInitComplete() {},
       markFirstFrameRendered() {},
@@ -153,6 +158,7 @@ export function startSplashScreen(options: SplashOptions = {}): SplashController
     splashEl.setAttribute('aria-busy', 'false');
 
     if (immediate || prefersReducedMotion) {
+      revealAppBehindSplash();
       splashEl.classList.add('is-hiding');
       splashEl.style.display = 'none';
       splashEl.setAttribute('aria-hidden', 'true');
@@ -163,6 +169,7 @@ export function startSplashScreen(options: SplashOptions = {}): SplashController
 
     // Brief tick so the completed bar renders smoothly before the crossfade out
     fadeCleanupTimer = window.setTimeout(() => {
+      revealAppBehindSplash();
       splashEl.classList.add('is-hiding');
       options.onFadeStart?.();
       fadeCleanupTimer = window.setTimeout(() => {

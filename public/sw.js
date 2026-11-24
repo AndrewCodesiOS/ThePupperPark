@@ -1,5 +1,5 @@
 // Bump CACHE_NAME whenever you update production files
-const CACHE_NAME = 'pupperpark-v7.2';
+const CACHE_NAME = 'pupperpark-v7.3';
 
 const ASSETS_TO_CACHE = [
   './',
@@ -47,8 +47,15 @@ self.addEventListener('fetch', (event) => {
 
   if (isNavigation) {
     event.respondWith(
-      fetch(event.request)
-        .then((networkResponse) => {
+      (async () => {
+        const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        const timeoutId = controller ? setTimeout(() => controller.abort(), 2500) : null;
+        try {
+          const networkResponse = await fetch(
+            event.request,
+            controller ? { signal: controller.signal } : undefined
+          );
+          if (timeoutId !== null) clearTimeout(timeoutId);
           if (networkResponse && networkResponse.ok) {
             const responseClone = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => {
@@ -56,8 +63,13 @@ self.addEventListener('fetch', (event) => {
             });
           }
           return networkResponse;
-        })
-        .catch(() => caches.match('./index.html'))
+        } catch {
+          if (timeoutId !== null) clearTimeout(timeoutId);
+          const cached = await caches.match('./index.html');
+          if (cached) return cached;
+          return fetch(event.request);
+        }
+      })()
     );
     return;
   }

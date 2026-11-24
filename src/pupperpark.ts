@@ -2856,23 +2856,80 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
   let lastTime = performance.now();
 
+  const isStandalonePwa =
+    (window.navigator as Navigator & { standalone?: boolean }).standalone === true ||
+    (typeof window.matchMedia === 'function' && (
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.matchMedia('(display-mode: fullscreen)').matches
+    ));
+  document.documentElement.classList.toggle('pwa-standalone', isStandalonePwa);
+
+  const pwaSnapshotCoverEl = document.getElementById('pwaSnapshotCover');
+  let pwaResumeTimer: number | null = null;
+
+  function showPwaSnapshotCover(): void {
+    if (!isStandalonePwa || !pwaSnapshotCoverEl) return;
+    if (isSplashOverlayOpaque()) return;
+    if (pwaResumeTimer !== null) {
+      window.clearTimeout(pwaResumeTimer);
+      pwaResumeTimer = null;
+    }
+    const root = document.documentElement;
+    root.classList.remove('pwa-resuming');
+    root.classList.add('pwa-backgrounded');
+    syncRootBackgroundColor();
+    // Force a synchronous layout/style flush so iOS WebKit paints the dark branded
+    // cover before capturing its Home Screen app snapshot.
+    void pwaSnapshotCoverEl.offsetHeight;
+  }
+
+  function hidePwaSnapshotCover(): void {
+    const root = document.documentElement;
+    if (!root.classList.contains('pwa-backgrounded') && !root.classList.contains('pwa-resuming')) {
+      return;
+    }
+    if (pwaResumeTimer !== null) {
+      window.clearTimeout(pwaResumeTimer);
+      pwaResumeTimer = null;
+    }
+    root.classList.remove('pwa-backgrounded');
+    root.classList.add('pwa-resuming');
+    syncRootBackgroundColor();
+    pwaResumeTimer = window.setTimeout(() => {
+      pwaResumeTimer = null;
+      root.classList.remove('pwa-resuming');
+    }, 180);
+  }
+
   document.addEventListener('visibilitychange', () => {
     const now = Date.now();
     if (document.hidden) {
+      showPwaSnapshotCover();
       updateAmbientBed();
       handleLeaveGame(now);
     } else {
       handleReturnToGame(now);
+      hidePwaSnapshotCover();
     }
   });
 
   window.addEventListener('pageshow', (e: PageTransitionEvent) => {
-    if (e.persisted && !document.hidden) {
-      handleReturnToGame(Date.now());
+    if (!document.hidden) {
+      if (e.persisted) {
+        handleReturnToGame(Date.now());
+      }
+      hidePwaSnapshotCover();
+    }
+  });
+
+  window.addEventListener('focus', () => {
+    if (!document.hidden) {
+      hidePwaSnapshotCover();
     }
   });
 
   window.addEventListener('pagehide', () => {
+    showPwaSnapshotCover();
     handleLeaveGame(Date.now());
   });
 
@@ -3020,13 +3077,14 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
   function syncRootBackgroundColor(): void {
     const isSplashActive = isSplashOverlayOpaque();
+    const isPwaBackgrounded = document.documentElement.classList.contains('pwa-backgrounded');
     const isModalOpen = isAnyFullScreenModalOpen();
     const isMenuOpen = Boolean(gameModal && gameModal.style.display !== 'none');
 
     let desiredRootBg = lastSkyBotRgb;
     let desiredThemeColor = lastSkyTopRgb;
 
-    if (isSplashActive) {
+    if (isSplashActive || isPwaBackgrounded) {
       desiredRootBg = SPLASH_ROOT_BG;
       desiredThemeColor = SPLASH_ROOT_BG;
     } else if (isModalOpen) {
@@ -4510,13 +4568,6 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
   const isAppleTouchDevice =
     /iPad|iPhone|iPod/.test(navigator.userAgent) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  const isStandalonePwa =
-    (window.navigator as Navigator & { standalone?: boolean }).standalone === true ||
-    (typeof window.matchMedia === 'function' && (
-      window.matchMedia('(display-mode: standalone)').matches ||
-      window.matchMedia('(display-mode: fullscreen)').matches
-    ));
-  document.documentElement.classList.toggle('pwa-standalone', isStandalonePwa);
   let orientationRecoveryTimers: number[] = [];
   let resizeRafId: number | null = null;
   let lastAppliedAppHeight = '';
