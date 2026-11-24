@@ -1860,15 +1860,23 @@ export function initPupperPark(): void {
     duration: 0.55 + Math.random() * 0.25
   }));
 
-  let pendingRetireDogId: string | null = null;
-  let pendingRerollDogId: string | null = null;
-  let queuedAwayProgress: {
+  interface AwayProgressSummary {
     actualEarned: number;
     estimatedDigs: number;
-    foundTreasure: OfflineTreasureResult | null;
+    foundTreasures: OfflineTreasureResult[];
     moodBefore?: number;
     moodAfter?: number;
-  } | null = null;
+  }
+
+  let pendingRetireDogId: string | null = null;
+  let pendingRerollDogId: string | null = null;
+  let queuedAwayProgress: AwayProgressSummary | null = null;
+  let activeOfflineModalSummary: AwayProgressSummary | null = null;
+  let hasLoadedGame = false;
+  let loadedFromExistingSave = false;
+  let hasSettledInitialReturn = false;
+  let isSettlingAwayProgress = false;
+  let lastReturnHandledAt = 0;
 
   function addFloatingText(x: number, y: number, text: string, color = '#ffeaa7'): void {
     floatingTexts.push({ x, y, text, color, age: 0, duration: 0.85 });
@@ -2119,83 +2127,120 @@ export function initPupperPark(): void {
     return window.getComputedStyle(el).display !== 'none';
   }
 
+  function mergeAwayProgressSummary(
+    target: AwayProgressSummary,
+    incoming: AwayProgressSummary
+  ): AwayProgressSummary {
+    return {
+      actualEarned: target.actualEarned + incoming.actualEarned,
+      estimatedDigs: target.estimatedDigs + incoming.estimatedDigs,
+      foundTreasures: [...target.foundTreasures, ...incoming.foundTreasures],
+      moodBefore: typeof target.moodBefore === 'number' ? target.moodBefore : incoming.moodBefore,
+      moodAfter: typeof incoming.moodAfter === 'number' ? incoming.moodAfter : target.moodAfter
+    };
+  }
+
   function flushQueuedAwayProgressIfReady(): void {
     if (!queuedAwayProgress) return;
-    if (state.isDraftingPerk || isModalCurrentlyOpen('perkModal') || isModalCurrentlyOpen('offlineModal')) {
+    if (state.isDraftingPerk || isModalCurrentlyOpen('perkModal')) {
       return;
     }
-    const { actualEarned, estimatedDigs, foundTreasure, moodBefore, moodAfter } = queuedAwayProgress;
+    const pending = queuedAwayProgress;
     queuedAwayProgress = null;
     updateUI();
-    showOfflineModal(actualEarned, estimatedDigs, foundTreasure, moodBefore, moodAfter);
+    if (activeOfflineModalSummary || isModalCurrentlyOpen('offlineModal')) {
+      activeOfflineModalSummary = activeOfflineModalSummary
+        ? mergeAwayProgressSummary(activeOfflineModalSummary, pending)
+        : pending;
+      showOfflineModal(activeOfflineModalSummary);
+    } else {
+      showOfflineModal(pending);
+    }
   }
 
   function settleAwayProgressSinceLastSave(now = Date.now()): boolean {
+    if (isSettlingAwayProgress) {
+      return false;
+    }
+
     if (typeof state.lastSaveTime !== 'number' || Number.isNaN(state.lastSaveTime)) {
       state.lastSaveTime = now;
+      saveGameAt(now);
       return false;
     }
 
     const rawElapsedSeconds = (now - state.lastSaveTime) / 1000;
-    state.lastSaveTime = now;
-
     if (rawElapsedSeconds <= AWAY_MIN_SECONDS) {
+      if (now > state.lastSaveTime) {
+        state.lastSaveTime = now;
+      }
       return false;
     }
 
-    const effectiveSeconds = Math.min(rawElapsedSeconds, MAX_OFFLINE_SECONDS);
-    const cozyFloor = getCozyFloor();
-    const currentMood = typeof state.packHappiness === 'number' && !Number.isNaN(state.packHappiness)
-      ? Math.max(cozyFloor, Math.min(HAPPINESS_MAX, state.packHappiness))
-      : cozyFloor;
-    // Lose 1/3 of the decayable happiness span above Cozy Floor every 8 hours away (full cool over 24h)
-    const decayableSpan = Math.max(0, HAPPINESS_MAX - cozyFloor);
-    const awayFraction = Math.min(1, rawElapsedSeconds / (HAPPINESS_AWAY_FULL_DECAY_HOURS * 3600));
-    const awayDrop = decayableSpan * awayFraction;
-    const nextMood = Math.max(cozyFloor, currentMood - awayDrop);
-    state.packHappiness = nextMood;
+    isSettlingAwayProgress = true;
+    try {
+      // Advance timestamp immediately so overlapping return events cannot settle the same span twice
+      state.lastSaveTime = now;
 
-    const estimatedDigs = estimateOfflineDigs(effectiveSeconds);
-    const avgPerDig = getAverageBonesPerDig();
-    const earned = Math.floor(estimatedDigs * avgPerDig * state.idleMultiplier);
+      const effectiveSeconds = Math.min(rawElapsedSeconds, MAX_OFFLINE_SECONDS);
+      const cozyFloor = getCozyFloor();
+      const currentMood = typeof state.packHappiness === 'number' && !Number.isNaN(state.packHappiness)
+        ? Math.max(cozyFloor, Math.min(HAPPINESS_MAX, state.packHappiness))
+        : cozyFloor;
+      // Lose 1/3 of the decayable happiness span above Cozy Floor every 8 hours away (full cool over 24h)
+      const decayableSpan = Math.max(0, HAPPINESS_MAX - cozyFloor);
+      const awayFraction = Math.min(1, rawElapsedSeconds / (HAPPINESS_AWAY_FULL_DECAY_HOURS * 3600));
+      const awayDrop = decayableSpan * awayFraction;
+      const nextMood = Math.max(cozyFloor, currentMood - awayDrop);
+      state.packHappiness = nextMood;
 
-    const offlineTreasureChance = Math.min(0.08, (0.002 + estimatedDigs * 0.0000015) * getPerkMultipliers().treasureOddsMult);
-    const foundTreasure = Math.random() < offlineTreasureChance ? rollOfflineTreasure() : null;
+      const estimatedDigs = estimateOfflineDigs(effectiveSeconds);
+      const avgPerDig = getAverageBonesPerDig();
+      const earned = Math.floor(estimatedDigs * avgPerDig * state.idleMultiplier);
 
-    const actualEarned = earned > 0 ? addRegularBones(earned) : 0;
-    const moodBeforeRounded = Math.round(currentMood);
-    const moodAfterRounded = Math.round(nextMood);
+      const offlineTreasureChance = Math.min(0.08, (0.002 + estimatedDigs * 0.0000015) * getPerkMultipliers().treasureOddsMult);
+      const foundTreasure = Math.random() < offlineTreasureChance ? rollOfflineTreasure() : null;
 
-    if (actualEarned > 0 || foundTreasure) {
-      updateUI();
-      if (state.isDraftingPerk || isModalCurrentlyOpen('perkModal') || isModalCurrentlyOpen('offlineModal')) {
-        if (queuedAwayProgress) {
-          queuedAwayProgress.actualEarned += actualEarned;
-          queuedAwayProgress.estimatedDigs += estimatedDigs;
-          queuedAwayProgress.moodAfter = moodAfterRounded;
-          if (foundTreasure) {
-            queuedAwayProgress.foundTreasure = foundTreasure;
-          }
+      const actualEarned = earned > 0 ? addRegularBones(earned) : 0;
+      const moodBeforeRounded = Math.round(currentMood);
+      const moodAfterRounded = Math.round(nextMood);
+
+      // Persist immediately so awarded rewards and the updated lastSaveTime commit atomically
+      saveGameAt(now);
+
+      if (actualEarned > 0 || foundTreasure) {
+        const incoming: AwayProgressSummary = {
+          actualEarned,
+          estimatedDigs,
+          foundTreasures: foundTreasure ? [foundTreasure] : [],
+          moodBefore: moodBeforeRounded,
+          moodAfter: moodAfterRounded
+        };
+
+        updateUI();
+        if (activeOfflineModalSummary || isModalCurrentlyOpen('offlineModal')) {
+          activeOfflineModalSummary = activeOfflineModalSummary
+            ? mergeAwayProgressSummary(activeOfflineModalSummary, incoming)
+            : incoming;
+          showOfflineModal(activeOfflineModalSummary);
+        } else if (state.isDraftingPerk || isModalCurrentlyOpen('perkModal')) {
+          queuedAwayProgress = queuedAwayProgress
+            ? mergeAwayProgressSummary(queuedAwayProgress, incoming)
+            : incoming;
         } else {
-          queuedAwayProgress = {
-            actualEarned,
-            estimatedDigs,
-            foundTreasure,
-            moodBefore: moodBeforeRounded,
-            moodAfter: moodAfterRounded
-          };
+          showOfflineModal(incoming);
         }
-      } else {
-        showOfflineModal(actualEarned, estimatedDigs, foundTreasure, moodBeforeRounded, moodAfterRounded);
+        return true;
       }
-      return true;
-    }
 
-    if (moodAfterRounded !== moodBeforeRounded) {
-      updateUI();
-    }
+      if (moodAfterRounded !== moodBeforeRounded) {
+        updateUI();
+      }
 
-    return false;
+      return false;
+    } finally {
+      isSettlingAwayProgress = false;
+    }
   }
 
   let viewportW = 360;
@@ -2243,6 +2288,11 @@ export function initPupperPark(): void {
 
   function getEffectiveRerollShinyOdds(): number {
     return hasGrandDoghousePlaced() ? MANOR_REROLL_SHINY_ODDS : REROLL_SHINY_ODDS;
+  }
+
+  function formatRerollShinyOddsLabel(odds = getEffectiveRerollShinyOdds()): string {
+    const denom = Math.max(1, Math.round(1 / odds));
+    return `1-in-${denom.toLocaleString()}`;
   }
 
   function getEffectiveSpawnShinyOdds(): number {
@@ -2658,11 +2708,13 @@ export function initPupperPark(): void {
     }
 
     syncBreedCountsFromRoster();
-
-    const loadNow = Date.now();
-    settleAwayProgressSinceLastSave(loadNow);
-    saveGameAt(loadNow);
     rebuildCanvasDogsFromRoster();
+
+    hasLoadedGame = true;
+    loadedFromExistingSave = Boolean(saved);
+    if (!document.hidden) {
+      handleReturnToGame(Date.now());
+    }
   }
 
   const SAVE_COOLDOWN_MS = 1200;
@@ -2690,7 +2742,18 @@ export function initPupperPark(): void {
   }
 
   function requestSave(): void {
+    if (!hasLoadedGame || !hasSettledInitialReturn || document.hidden || isSettlingAwayProgress) {
+      return;
+    }
     const now = Date.now();
+    if (
+      typeof state.lastSaveTime === 'number' &&
+      !Number.isNaN(state.lastSaveTime) &&
+      (now - state.lastSaveTime) / 1000 > AWAY_MIN_SECONDS
+    ) {
+      handleReturnToGame(now);
+      return;
+    }
     state.cameraAngle = cameraAngle;
     state.zoomLevel = userZoom;
     state.lastSaveTime = now;
@@ -2700,15 +2763,72 @@ export function initPupperPark(): void {
     } else if (!pendingSaveTimeout) {
       pendingSaveTimeout = setTimeout(() => {
         pendingSaveTimeout = null;
+        if (!hasLoadedGame || !hasSettledInitialReturn || document.hidden || isSettlingAwayProgress) {
+          return;
+        }
         saveGame();
       }, SAVE_COOLDOWN_MS - elapsed);
     }
   }
 
-  setInterval(() => {
-    if (!document.hidden) {
-      saveGame();
+  function handleLeaveGame(now = Date.now()): void {
+    if (!hasLoadedGame || !hasSettledInitialReturn || isSettlingAwayProgress) {
+      return;
     }
+    saveGameAt(now);
+  }
+
+  function handleReturnToGame(now = Date.now()): void {
+    if (!hasLoadedGame || document.hidden || isSettlingAwayProgress) {
+      return;
+    }
+
+    // Deduplicate overlapping lifecycle events (load, visibilitychange, pageshow)
+    // firing within the same return session.
+    if (hasSettledInitialReturn && now - lastReturnHandledAt < 500) {
+      return;
+    }
+    lastReturnHandledAt = now;
+
+    lastTime = performance.now();
+    if (!masterMuted && (state.soundEnabled || state.ambientEnabled) && audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume().then(() => updateAmbientBed()).catch(() => {});
+    } else {
+      updateAmbientBed();
+    }
+
+    if (!hasSettledInitialReturn && !loadedFromExistingSave) {
+      state.lastSaveTime = now;
+      hasSettledInitialReturn = true;
+      saveGameAt(now);
+      return;
+    }
+
+    const settled = settleAwayProgressSinceLastSave(now);
+    hasSettledInitialReturn = true;
+    if (!settled) {
+      saveGameAt(now);
+    }
+  }
+
+  setInterval(() => {
+    if (!hasLoadedGame || document.hidden || isSettlingAwayProgress) {
+      return;
+    }
+    const now = Date.now();
+    if (!hasSettledInitialReturn) {
+      handleReturnToGame(now);
+      return;
+    }
+    if (
+      typeof state.lastSaveTime === 'number' &&
+      !Number.isNaN(state.lastSaveTime) &&
+      (now - state.lastSaveTime) / 1000 > AWAY_MIN_SECONDS
+    ) {
+      handleReturnToGame(now);
+      return;
+    }
+    saveGameAt(now);
   }, 10000);
 
   let lastTime = performance.now();
@@ -2717,51 +2837,64 @@ export function initPupperPark(): void {
     const now = Date.now();
     if (document.hidden) {
       updateAmbientBed();
-      saveGameAt(now);
+      handleLeaveGame(now);
     } else {
-      lastTime = performance.now();
-      if (!masterMuted && (state.soundEnabled || state.ambientEnabled) && audioCtx && audioCtx.state === 'suspended') {
-        audioCtx.resume().then(() => updateAmbientBed()).catch(() => {});
-      } else {
-        updateAmbientBed();
-      }
-      settleAwayProgressSinceLastSave(now);
-      saveGameAt(Date.now());
+      handleReturnToGame(now);
+    }
+  });
+
+  window.addEventListener('pageshow', (e: PageTransitionEvent) => {
+    if (e.persisted && !document.hidden) {
+      handleReturnToGame(Date.now());
     }
   });
 
   window.addEventListener('pagehide', () => {
-    saveGameAt(Date.now());
+    handleLeaveGame(Date.now());
   });
 
   window.addEventListener('beforeunload', () => {
-    saveGameAt(Date.now());
+    handleLeaveGame(Date.now());
   });
 
-  function showOfflineModal(
-    earned: number,
-    _estimatedDigs = 0,
-    foundTreasure: OfflineTreasureResult | null = null,
-    moodBefore?: number,
-    moodAfter?: number
-  ): void {
+  function formatAwardedBones(amount: number): string {
+    const safe = Math.max(0, Number(amount) || 0);
+    const roundedTenth = Math.round(safe * 10) / 10;
+    return Number.isInteger(roundedTenth)
+      ? roundedTenth.toLocaleString()
+      : roundedTenth.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  }
+
+  function showOfflineModal(summary: AwayProgressSummary): void {
+    activeOfflineModalSummary = {
+      actualEarned: summary.actualEarned,
+      estimatedDigs: summary.estimatedDigs,
+      foundTreasures: [...summary.foundTreasures],
+      moodBefore: summary.moodBefore,
+      moodAfter: summary.moodAfter
+    };
+
     const modal = document.getElementById('offlineModal');
     const text = document.getElementById('offlineEarnings');
     if (text) {
       text.innerHTML = '';
 
       const bonesLine = document.createElement('div');
-      bonesLine.textContent = `They dug ${Math.round(earned).toLocaleString()} Bones while you were away!`;
+      bonesLine.textContent = `They dug ${formatAwardedBones(summary.actualEarned)} Bones while you were away!`;
       text.appendChild(bonesLine);
 
-      if (typeof moodBefore === 'number' && typeof moodAfter === 'number' && moodBefore - moodAfter >= 2) {
+      if (
+        typeof summary.moodBefore === 'number' &&
+        typeof summary.moodAfter === 'number' &&
+        summary.moodBefore - summary.moodAfter >= 2
+      ) {
         const moodLine = document.createElement('div');
         moodLine.className = 'offline-mood-note';
-        moodLine.textContent = `Your pups missed you — Pack Happiness cooled from ${moodBefore}% to ${moodAfter}%. Pet or treat them to perk them right back up!`;
+        moodLine.textContent = `Your pups missed you — Pack Happiness cooled from ${summary.moodBefore}% to ${summary.moodAfter}%. Pet or treat them to perk them right back up!`;
         text.appendChild(moodLine);
       }
 
-      if (foundTreasure) {
+      summary.foundTreasures.forEach(foundTreasure => {
         const card = document.createElement('div');
         card.className = 'offline-treasure-card';
         if (foundTreasure.kind === 'jackpot') {
@@ -2799,17 +2932,22 @@ export function initPupperPark(): void {
           card.appendChild(info);
         }
         text.appendChild(card);
-      }
+      });
     }
     if (modal) {
       modal.style.display = 'flex';
     }
   }
 
-  document.getElementById('btnCloseOffline')?.addEventListener('click', () => {
+  function closeOfflineModal(): void {
     const modal = document.getElementById('offlineModal');
     if (modal) modal.style.display = 'none';
+    activeOfflineModalSummary = null;
     flushQueuedAwayProgressIfReady();
+  }
+
+  document.getElementById('btnCloseOffline')?.addEventListener('click', () => {
+    closeOfflineModal();
   });
 
   const gameModal = document.getElementById('gameModal');
@@ -3124,10 +3262,19 @@ export function initPupperPark(): void {
   interface RerollResultInfo {
     keptPrevious: boolean;
     becameShiny: boolean;
+    rolledShinyOdds: number;
     rolledGrade: string;
     rolledPayout: number;
     rolledScaling: number;
     rolledXp: number;
+  }
+
+  function formatRerollRulesText(entry: RosterEntry): string {
+    const dogRerolls = getDogRerollCount(entry);
+    const manorActive = hasGrandDoghousePlaced();
+    const shinyOddsLabel = formatRerollShinyOddsLabel(getEffectiveRerollShinyOdds());
+    const manorNote = manorActive ? ' (Manor bonus)' : '';
+    return `Rerolls for ${entry.name} cost 25 → 50 → 75 → 100 (+25 per reroll on this dog; currently reroll #${dogRerolls + 1}). Higher-rated previous stats are kept if not beaten, and non-shiny pups have a ${shinyOddsLabel} chance${manorNote} to become ✨ Shiny (+${SHINY_MAGIC_BONE_BONUS} bonus Magic Bone per ✨ drop).`;
   }
 
   function renderRerollModalContent(dogId: string, resultInfo: RerollResultInfo | null = null): void {
@@ -3136,7 +3283,6 @@ export function initPupperPark(): void {
 
     const stats = getEffectiveBreedStats(entry);
     const breedName = BREED_LABELS[entry.breed] || entry.breed;
-    const dogRerolls = getDogRerollCount(entry);
     const cost = getRerollCost(entry);
     const canAfford = (state.magicBones || 0) >= cost;
 
@@ -3178,8 +3324,7 @@ export function initPupperPark(): void {
     }
 
     if (rerollRulesText) {
-      rerollRulesText.textContent =
-        `Rerolls for ${entry.name} cost 25 → 50 → 75 → 100 (+25 per reroll on this dog; currently reroll #${dogRerolls + 1}). Higher-rated previous stats are kept if not beaten, and non-shiny pups have a 1-in-1,300 chance to become ✨ Shiny (+${SHINY_MAGIC_BONE_BONUS} bonus Magic Bone per ✨ drop).`;
+      rerollRulesText.textContent = formatRerollRulesText(entry);
     }
 
     if (rerollResultBanner) {
@@ -3202,7 +3347,8 @@ export function initPupperPark(): void {
         if (resultInfo.becameShiny) {
           const shinyCallout = document.createElement('div');
           shinyCallout.className = 'reroll-shiny-callout';
-          shinyCallout.textContent = `✨ JACKPOT! 1-in-1,300 Shiny roll hit — ${entry.name} is now Shiny!`;
+          const rollOddsLabel = formatRerollShinyOddsLabel(resultInfo.rolledShinyOdds);
+          shinyCallout.textContent = `✨ JACKPOT! ${rollOddsLabel} Shiny roll hit — ${entry.name} is now Shiny!`;
           bannerNodes.push(shinyCallout);
         }
 
@@ -3281,7 +3427,8 @@ export function initPupperPark(): void {
     }
 
     let becameShiny = false;
-    if (!entry.isShiny && Math.random() < getEffectiveRerollShinyOdds()) {
+    const effectiveShinyOdds = getEffectiveRerollShinyOdds();
+    if (!entry.isShiny && Math.random() < effectiveShinyOdds) {
       entry.isShiny = true;
       if (!entry.shinyColor) {
         entry.shinyColor = SHINY_PALETTES[Math.floor(Math.random() * SHINY_PALETTES.length)];
@@ -3308,6 +3455,7 @@ export function initPupperPark(): void {
     renderRerollModalContent(dogId, {
       keptPrevious,
       becameShiny,
+      rolledShinyOdds: effectiveShinyOdds,
       rolledGrade: candidate.rollGrade,
       rolledPayout: candidate.bonusPayout,
       rolledScaling: candidate.bonusScaling,
@@ -4040,11 +4188,15 @@ export function initPupperPark(): void {
     pendingRetireDogId = null;
     pendingRerollDogId = null;
     queuedAwayProgress = null;
+    activeOfflineModalSummary = null;
     cameraAngle = 0;
     cameraVelocity = 0;
     userZoom = 1;
     const starterShinyRoll = rollStarterShiny();
     const resetNow = Date.now();
+    hasSettledInitialReturn = true;
+    loadedFromExistingSave = true;
+    lastReturnHandledAt = resetNow;
     const clampedBones = Math.max(0, Math.min(MAX_BONES, Math.floor(startingBones)));
     const clampedMagic = Math.max(0, Math.floor(startingMagicBones));
 
@@ -4126,6 +4278,8 @@ export function initPupperPark(): void {
     if (rerollModal) rerollModal.style.display = 'none';
     const perkModalEl = document.getElementById('perkModal');
     if (perkModalEl) perkModalEl.style.display = 'none';
+    const offlineModalEl = document.getElementById('offlineModal');
+    if (offlineModalEl) offlineModalEl.style.display = 'none';
     stopDraftTreasureAnimations();
     closeTreasureInspector();
     cancelDecorPlacement();
@@ -9336,6 +9490,9 @@ export function initPupperPark(): void {
     if (pendingRerollDogId && rerollModal && rerollModal.style.display === 'flex') {
       const activeRerollDog = state.roster.find(d => d.id === pendingRerollDogId);
       const nextCost = getRerollCost(activeRerollDog);
+      if (activeRerollDog && rerollRulesText) {
+        rerollRulesText.textContent = formatRerollRulesText(activeRerollDog);
+      }
       if (rerollCostLabel) {
         rerollCostLabel.textContent = `${nextCost.toLocaleString()} ✨`;
       }
@@ -9591,10 +9748,8 @@ export function initPupperPark(): void {
       boneCapModal.style.display = 'none';
       return true;
     }
-    const offlineModal = document.getElementById('offlineModal');
-    if (isModalCurrentlyOpen('offlineModal') && offlineModal) {
-      offlineModal.style.display = 'none';
-      flushQueuedAwayProgressIfReady();
+    if (isModalCurrentlyOpen('offlineModal')) {
+      closeOfflineModal();
       return true;
     }
     if (state.isPlacingDecor) {
