@@ -1136,20 +1136,66 @@
               </div>
             </div>
 
-            <div class="shop-card shop-card-manor">
-              <div class="shop-info">
-                <h3>Grand Doghouse Manor</h3>
-                <p>4-tile (2×2) storybook estate upgrading your doghouse &amp; the 3 tiles behind it (returns any placed decor there to inventory). +15% bone payout | +10% pup XP | +8% pack pace | +6% ✨ Magic chance | +15 Cozy Floor. (Max 1)</p>
-                <div class="shop-owned">Owned: <span id="ownedDecorDoghouseManor">0</span> | Placed: <span id="countDecorDoghouseManor">0</span> / 1</div>
+            <div class="shop-card shop-card-gold shop-card-manor">
+              <div class="manor-card-main">
+                <div class="shop-info">
+                  <h3>Grand Doghouse Manor</h3>
+                  <p>4-tile (2×2) storybook estate upgrading your doghouse &amp; the 3 tiles behind it (returns any placed decor there to inventory). +15% bone payout | +10% pup XP | +8% pack pace | +6% ✨ Magic chance | +15 Cozy Floor. (Max 1)</p>
+                  <div class="shop-owned">Owned: <span id="ownedDecorDoghouseManor">0</span> | Placed: <span id="countDecorDoghouseManor">0</span> / 1</div>
+                </div>
+                <div class="decor-btn-group">
+                  <button type="button" class="action-btn decor-action-btn" id="btnBuyDecorDoghouseManor">
+                    <span class="btn-name">Buy Manor</span>
+                    <span class="btn-cost">10,000 ✨</span>
+                  </button>
+                  <button type="button" class="action-btn decor-action-btn" id="btnPlaceDecorDoghouseManor">
+                    <span class="btn-name">Place</span>
+                  </button>
+                </div>
               </div>
-              <div class="decor-btn-group">
-                <button type="button" class="action-btn decor-action-btn" id="btnBuyDecorDoghouseManor">
-                  <span class="btn-name">Buy Manor</span>
-                  <span class="btn-cost">10,000 ✨</span>
-                </button>
-                <button type="button" class="action-btn decor-action-btn" id="btnPlaceDecorDoghouseManor">
-                  <span class="btn-name">Place</span>
-                </button>
+
+              <div id="manorColorSection" class="manor-color-section" style="display: none;">
+                <div class="manor-color-head">
+                  <span class="manor-color-title">Manor Colors</span>
+                  <span class="manor-color-sub">200 ✨ to unlock | Switch freely anytime</span>
+                </div>
+                <div class="manor-color-grid">
+                  <button type="button" class="manor-color-btn is-active" id="btnManorColorClassic" data-manor-color="classic">
+                    <span class="manor-swatch manor-swatch-classic" aria-hidden="true"></span>
+                    <span class="manor-color-meta">
+                      <span class="manor-color-name">Classic</span>
+                      <span class="manor-color-tag">Active</span>
+                    </span>
+                  </button>
+                  <button type="button" class="manor-color-btn" id="btnManorColorIvory" data-manor-color="ivory">
+                    <span class="manor-swatch manor-swatch-ivory" aria-hidden="true"></span>
+                    <span class="manor-color-meta">
+                      <span class="manor-color-name">Royal Ivory</span>
+                      <span class="manor-color-tag">200 ✨</span>
+                    </span>
+                  </button>
+                  <button type="button" class="manor-color-btn" id="btnManorColorSage" data-manor-color="sage">
+                    <span class="manor-swatch manor-swatch-sage" aria-hidden="true"></span>
+                    <span class="manor-color-meta">
+                      <span class="manor-color-name">Forest Sage</span>
+                      <span class="manor-color-tag">200 ✨</span>
+                    </span>
+                  </button>
+                  <button type="button" class="manor-color-btn" id="btnManorColorRose" data-manor-color="rose">
+                    <span class="manor-swatch manor-swatch-rose" aria-hidden="true"></span>
+                    <span class="manor-color-meta">
+                      <span class="manor-color-name">Rose Cottage</span>
+                      <span class="manor-color-tag">200 ✨</span>
+                    </span>
+                  </button>
+                  <button type="button" class="manor-color-btn" id="btnManorColorMidnight" data-manor-color="midnight">
+                    <span class="manor-swatch manor-swatch-midnight" aria-hidden="true"></span>
+                    <span class="manor-color-meta">
+                      <span class="manor-color-name">Midnight Gold</span>
+                      <span class="manor-color-tag">200 ✨</span>
+                    </span>
+                  </button>
+                </div>
               </div>
             </div>
 

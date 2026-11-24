@@ -1790,7 +1790,8 @@ input:focus-visible {
     gap: 10px;
   }
 
-  #tab-decor .shop-card {
+  #tab-decor .shop-card,
+  #tab-decor .manor-card-main {
     flex-direction: column;
     align-items: stretch;
     gap: 10px;
@@ -2503,9 +2504,148 @@ html.asymmetric-side-safe-area .drawer-window.clears-side-cutout #btnCloseMenu {
 }
 
 .shop-card-manor {
-  border-color: rgba(116, 185, 255, 0.56);
-  background: linear-gradient(135deg, rgba(44, 62, 98, 0.56) 0%, rgba(62, 43, 24, 0.44) 48%, rgba(26, 20, 50, 0.94) 100%);
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  border-color: rgba(255, 215, 0, 0.45);
+  background: linear-gradient(135deg, rgba(58, 45, 16, 0.48) 0%, rgba(28, 22, 54, 0.92) 65%);
   box-shadow: inset 0 1px 0 rgba(255, 234, 167, 0.16);
+}
+
+.manor-card-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.manor-color-section {
+  width: 100%;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 215, 0, 0.22);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.manor-color-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.manor-color-title {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #ffeaa7;
+  letter-spacing: 0.01em;
+}
+
+.manor-color-sub {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #cbd5e1;
+}
+
+.manor-color-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  gap: 7px;
+  width: 100%;
+}
+
+.manor-color-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  min-height: 42px;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(13, 11, 26, 0.54);
+  color: #f8f9fc;
+  cursor: pointer;
+  text-align: left;
+  touch-action: manipulation;
+  transition: border-color 0.15s, background-color 0.15s, transform 0.12s, opacity 0.15s;
+}
+
+.manor-color-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.manor-color-btn:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+
+.manor-color-btn.is-active {
+  border-color: rgba(255, 215, 0, 0.78);
+  background: rgba(255, 215, 0, 0.14);
+  box-shadow: 0 0 0 1px rgba(255, 215, 0, 0.22);
+}
+
+.manor-color-btn.is-unlocked:not(.is-active) {
+  border-color: rgba(85, 239, 196, 0.34);
+  background: rgba(85, 239, 196, 0.08);
+}
+
+.manor-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1.5px solid rgba(255, 255, 255, 0.42);
+  flex-shrink: 0;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.25);
+}
+
+.manor-swatch-classic {
+  background: linear-gradient(180deg, #4276a4 0%, #4276a4 48%, #a86730 52%, #a86730 100%);
+}
+
+.manor-swatch-ivory {
+  background: linear-gradient(180deg, #6d46ab 0%, #6d46ab 48%, #f3ece0 52%, #f3ece0 100%);
+}
+
+.manor-swatch-sage {
+  background: linear-gradient(180deg, #c9643d 0%, #c9643d 48%, #6d9973 52%, #6d9973 100%);
+}
+
+.manor-swatch-rose {
+  background: linear-gradient(180deg, #525f73 0%, #525f73 48%, #cf7e92 52%, #cf7e92 100%);
+}
+
+.manor-swatch-midnight {
+  background: linear-gradient(180deg, #e6b134 0%, #e6b134 48%, #31436e 52%, #31436e 100%);
+}
+
+.manor-color-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.15;
+}
+
+.manor-color-name {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #f8f9fc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.manor-color-tag {
+  font-size: 0.67rem;
+  font-weight: 700;
+  color: #ffeaa7;
+}
+
+.manor-color-btn.is-unlocked:not(.is-active) .manor-color-tag {
+  color: #55efc4;
 }
 
 .landmark-toggle-grid {

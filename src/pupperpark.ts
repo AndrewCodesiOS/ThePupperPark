@@ -63,6 +63,8 @@ export type DecorType =
 
 export type CustomTileStyle = 'cobble' | 'sand' | 'clover';
 export type TileStyle = 'grass' | CustomTileStyle;
+export type ManorColorUpgradeId = 'ivory' | 'sage' | 'rose' | 'midnight';
+export type ManorColorId = 'classic' | ManorColorUpgradeId;
 
 export interface StarterPropsState {
   showTree: boolean;
@@ -357,6 +359,213 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       cobble: false,
       sand: false,
       clover: false
+    };
+  }
+
+  const MANOR_COLOR_COST = 200;
+  const MANOR_COLOR_UPGRADES: ManorColorUpgradeId[] = ['ivory', 'sage', 'rose', 'midnight'];
+  interface ManorColorPalette {
+    name: string;
+    foundationFill: string;
+    foundationStroke: string;
+    porchFill: string;
+    porchStroke: string;
+    stepTopFill: string;
+    stepBottomFill: string;
+    chimneyFill: string;
+    chimneyStroke: string;
+    chimneyCapFill: string;
+    wingFront: [string, string, string];
+    wingBack: [string, string, string];
+    wallStroke: string;
+    clapboardStroke: string;
+    trimFill: string;
+    trimWainscot: string;
+    trimStroke: string;
+    muntinStroke: string;
+    wideRoof: [string, string, string];
+    mainRoof: [string, string, string];
+    roofStroke: string;
+    roofShingleHighlight: string;
+    pavFront: [string, string, string];
+    pavBack: [string, string, string];
+    gableFront: string;
+    gableBack: string;
+    doorFrameFill: string;
+    doorFrameStroke: string;
+    cushionFill: string;
+    sparkleColor: string;
+  }
+
+  const MANOR_COLOR_PALETTES: Record<ManorColorId, ManorColorPalette> = {
+    classic: {
+      name: 'Classic',
+      foundationFill: '#5c4b42',
+      foundationStroke: '#3a2b22',
+      porchFill: '#7c4820',
+      porchStroke: '#4a280e',
+      stepTopFill: '#9c602d',
+      stepBottomFill: '#b4743b',
+      chimneyFill: '#a44a3f',
+      chimneyStroke: '#5c251f',
+      chimneyCapFill: '#e7d7bf',
+      wingFront: ['#a86730', '#8f5222', '#733f18'],
+      wingBack: ['#7c471e', '#6b3c18', '#573012'],
+      wallStroke: '#4a260c',
+      clapboardStroke: 'rgba(54, 28, 10, 0.42)',
+      trimFill: '#f2e5d0',
+      trimWainscot: 'rgba(242, 229, 208, 0.85)',
+      trimStroke: '#532c10',
+      muntinStroke: '#734018',
+      wideRoof: ['#5a90be', '#3b6d98', '#264a6a'],
+      mainRoof: ['#6ba4d4', '#4276a4', '#2a5276'],
+      roofStroke: '#1b354c',
+      roofShingleHighlight: 'rgba(255, 255, 255, 0.14)',
+      pavFront: ['#b77237', '#9b5a26', '#7b4319'],
+      pavBack: ['#864e22', '#73411a', '#5c3313'],
+      gableFront: '#945624',
+      gableBack: '#77431b',
+      doorFrameFill: '#f8efe0',
+      doorFrameStroke: '#5c3314',
+      cushionFill: '#c0392b',
+      sparkleColor: '#74b9ff'
+    },
+    ivory: {
+      name: 'Royal Ivory',
+      foundationFill: '#645c6b',
+      foundationStroke: '#3d3544',
+      porchFill: '#7b6251',
+      porchStroke: '#4c3a2e',
+      stepTopFill: '#987c67',
+      stepBottomFill: '#b0947d',
+      chimneyFill: '#9a7a8f',
+      chimneyStroke: '#543c4d',
+      chimneyCapFill: '#f7f2fa',
+      wingFront: ['#f6efe4', '#e8dfd0', '#d4c7b4'],
+      wingBack: ['#d5cbbd', '#c3b8a8', '#ada08f'],
+      wallStroke: '#7f7264',
+      clapboardStroke: 'rgba(116, 102, 86, 0.3)',
+      trimFill: '#ffffff',
+      trimWainscot: 'rgba(255, 255, 255, 0.9)',
+      trimStroke: '#6d5e72',
+      muntinStroke: '#6c5a75',
+      wideRoof: ['#8d66c8', '#6844a4', '#452874'],
+      mainRoof: ['#a27cdc', '#754eb5', '#4e2e84'],
+      roofStroke: '#2e1952',
+      roofShingleHighlight: 'rgba(255, 240, 255, 0.2)',
+      pavFront: ['#fbf6ee', '#efe7da', '#ddd2c1'],
+      pavBack: ['#ddd3c6', '#cbc0b0', '#b5a897'],
+      gableFront: '#ece3d4',
+      gableBack: '#cfc4b4',
+      doorFrameFill: '#ffffff',
+      doorFrameStroke: '#5d4a6e',
+      cushionFill: '#7c5ce7',
+      sparkleColor: '#c3a6ff'
+    },
+    sage: {
+      name: 'Forest Sage',
+      foundationFill: '#565c52',
+      foundationStroke: '#323830',
+      porchFill: '#8b5e34',
+      porchStroke: '#533519',
+      stepTopFill: '#a37141',
+      stepBottomFill: '#bc8854',
+      chimneyFill: '#b85c3a',
+      chimneyStroke: '#662d19',
+      chimneyCapFill: '#f2e6cf',
+      wingFront: ['#89b38d', '#6d9973', '#527a58'],
+      wingBack: ['#6a8e6e', '#56785a', '#426046'],
+      wallStroke: '#345039',
+      clapboardStroke: 'rgba(38, 66, 44, 0.34)',
+      trimFill: '#f7edd6',
+      trimWainscot: 'rgba(247, 237, 214, 0.88)',
+      trimStroke: '#465d44',
+      muntinStroke: '#4d6649',
+      wideRoof: ['#dc7d56', '#bc5c38', '#8d3e22'],
+      mainRoof: ['#e98f68', '#c96741', '#9a4526'],
+      roofStroke: '#632814',
+      roofShingleHighlight: 'rgba(255, 235, 215, 0.18)',
+      pavFront: ['#98c29c', '#7aa680', '#5d8863'],
+      pavBack: ['#749978', '#608364', '#4b6b4f'],
+      gableFront: '#739f79',
+      gableBack: '#5a7e5f',
+      doorFrameFill: '#faf2df',
+      doorFrameStroke: '#475c43',
+      cushionFill: '#218c54',
+      sparkleColor: '#7bed9f'
+    },
+    rose: {
+      name: 'Rose Cottage',
+      foundationFill: '#5b5663',
+      foundationStroke: '#37333d',
+      porchFill: '#856560',
+      porchStroke: '#4e3835',
+      stepTopFill: '#9e7c76',
+      stepBottomFill: '#b6938d',
+      chimneyFill: '#875765',
+      chimneyStroke: '#4c2c36',
+      chimneyCapFill: '#f7ecf0',
+      wingFront: ['#dd93a6', '#c5758a', '#a3566b'],
+      wingBack: ['#b26f81', '#9a5b6c', '#7e4656'],
+      wallStroke: '#6b3242',
+      clapboardStroke: 'rgba(104, 42, 60, 0.3)',
+      trimFill: '#fdf5f8',
+      trimWainscot: 'rgba(253, 245, 248, 0.9)',
+      trimStroke: '#643846',
+      muntinStroke: '#734252',
+      wideRoof: ['#6e7c90', '#505c6f', '#363f4e'],
+      mainRoof: ['#808fa4', '#5c697d', '#3e4859'],
+      roofStroke: '#232934',
+      roofShingleHighlight: 'rgba(240, 246, 255, 0.18)',
+      pavFront: ['#e8a2b4', '#d18297', '#b06378'],
+      pavBack: ['#bd798b', '#a46476', '#884e5e'],
+      gableFront: '#cc7c91',
+      gableBack: '#a26173',
+      doorFrameFill: '#fff8fa',
+      doorFrameStroke: '#6b3a49',
+      cushionFill: '#b83b5e',
+      sparkleColor: '#ffb8cc'
+    },
+    midnight: {
+      name: 'Midnight Gold',
+      foundationFill: '#3b425c',
+      foundationStroke: '#1e2336',
+      porchFill: '#55413d',
+      porchStroke: '#2e201e',
+      stepTopFill: '#6f554f',
+      stepBottomFill: '#886961',
+      chimneyFill: '#4d5b82',
+      chimneyStroke: '#242c44',
+      chimneyCapFill: '#ffeaa7',
+      wingFront: ['#445a8b', '#334672', '#233256'],
+      wingBack: ['#33446c', '#263455', '#1b2640'],
+      wallStroke: '#161e36',
+      clapboardStroke: 'rgba(18, 25, 48, 0.45)',
+      trimFill: '#fff0bf',
+      trimWainscot: 'rgba(255, 240, 191, 0.88)',
+      trimStroke: '#2a3554',
+      muntinStroke: '#8d6516',
+      wideRoof: ['#f5c957', '#d49a24', '#9a690d'],
+      mainRoof: ['#ffe07d', '#e5ab2c', '#aa7410'],
+      roofStroke: '#6c4706',
+      roofShingleHighlight: 'rgba(255, 252, 224, 0.28)',
+      pavFront: ['#4f679c', '#3b5080', '#293a62'],
+      pavBack: ['#3b4f7b', '#2d3d63', '#202d4c'],
+      gableFront: '#384c7a',
+      gableBack: '#2a3a60',
+      doorFrameFill: '#fff3cc',
+      doorFrameStroke: '#734f0c',
+      cushionFill: '#2980b9',
+      sparkleColor: '#ffeaa7'
+    }
+  };
+
+  function createDefaultUnlockedManorColors(): Record<ManorColorUpgradeId, boolean> {
+    return {
+      ivory: false,
+      sage: false,
+      rose: false,
+      midnight: false
     };
   }
 
@@ -895,6 +1104,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     isClearingDecor: boolean;
     unlockedTiles: Record<CustomTileStyle, boolean>;
     tileMap: Record<string, CustomTileStyle>;
+    unlockedManorColors: Record<ManorColorUpgradeId, boolean>;
+    manorColor: ManorColorId;
     isPaintingTiles: boolean;
     activeTileBrush: TileStyle;
     showNameTags: boolean;
@@ -954,6 +1165,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     isClearingDecor: false,
     unlockedTiles: createDefaultUnlockedTiles(),
     tileMap: {},
+    unlockedManorColors: createDefaultUnlockedManorColors(),
+    manorColor: 'classic',
     isPaintingTiles: false,
     activeTileBrush: 'grass',
     showNameTags: true,
@@ -2605,6 +2818,27 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
           });
         }
         state.tileMap = cleanTileMap;
+        const rawManorColors = (state.unlockedManorColors && typeof state.unlockedManorColors === 'object')
+          ? state.unlockedManorColors as Partial<Record<ManorColorUpgradeId, unknown>>
+          : {};
+        state.unlockedManorColors = {
+          ivory: Boolean(rawManorColors.ivory),
+          sage: Boolean(rawManorColors.sage),
+          rose: Boolean(rawManorColors.rose),
+          midnight: Boolean(rawManorColors.midnight)
+        };
+        const rawActiveManorColor = state.manorColor;
+        if (
+          rawActiveManorColor === 'classic' ||
+          (
+            (rawActiveManorColor === 'ivory' || rawActiveManorColor === 'sage' || rawActiveManorColor === 'rose' || rawActiveManorColor === 'midnight') &&
+            state.unlockedManorColors[rawActiveManorColor]
+          )
+        ) {
+          state.manorColor = rawActiveManorColor;
+        } else {
+          state.manorColor = 'classic';
+        }
         if (typeof state.digPower !== 'number' || Number.isNaN(state.digPower)) {
           state.digPower = BASE_DIG_POWER;
         }
@@ -4368,6 +4602,60 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     });
   });
 
+  document.querySelectorAll<HTMLButtonElement>('[data-manor-color]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      initAudio();
+      const colorId = btn.dataset.manorColor as ManorColorId | undefined;
+      if (!colorId || !(colorId in MANOR_COLOR_PALETTES)) return;
+      const hasManor = hasGrandDoghousePlaced() || (state.decorInventory.doghouseManor || 0) > 0;
+      if (!hasManor) return;
+
+      const unlocked = state.unlockedManorColors || createDefaultUnlockedManorColors();
+      state.unlockedManorColors = unlocked;
+      const isUnlocked = colorId === 'classic' || Boolean(unlocked[colorId]);
+
+      if (!isUnlocked) {
+        if (state.magicBones < MANOR_COLOR_COST) return;
+        state.magicBones -= MANOR_COLOR_COST;
+        unlocked[colorId] = true;
+        state.manorColor = colorId;
+        sfx.shiny();
+        triggerHaptic(18);
+
+        if (hasGrandDoghousePlaced()) {
+          const palette = MANOR_COLOR_PALETTES[colorId];
+          const manorCenter = gridToScreen(1.0, 1.0);
+          const s = getScale();
+          for (let i = 0; i < 14; i++) {
+            const ang = (Math.PI * 2 * i) / 14 + Math.random() * 0.2;
+            const spd = 24 + Math.random() * 38;
+            particles.push({
+              x: manorCenter.x,
+              y: manorCenter.y - 24 * s,
+              vx: Math.cos(ang) * spd,
+              vy: Math.sin(ang) * spd - 20,
+              life: 0.65 + Math.random() * 0.35,
+              maxLife: 1.0,
+              color: i % 2 === 0 ? palette.sparkleColor : '#ffeaa7',
+              size: 2.3 + Math.random() * 1.8
+            });
+          }
+          addFloatingText(manorCenter.x, manorCenter.y - 64 * s, `${palette.name} Manor!`, '#ffeaa7');
+        }
+        updateUI();
+        saveGame();
+        return;
+      }
+
+      if (state.manorColor === colorId) return;
+      state.manorColor = colorId;
+      sfx.collect();
+      triggerHaptic(8);
+      updateUI();
+      saveGame();
+    });
+  });
+
   CUSTOM_TILE_STYLES.forEach(style => {
     const cfg = CUSTOM_TILE_CONFIG[style];
     document.getElementById(cfg.btnId)?.addEventListener('click', () => {
@@ -4676,6 +4964,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       isClearingDecor: false,
       unlockedTiles: createDefaultUnlockedTiles(),
       tileMap: {},
+      unlockedManorColors: createDefaultUnlockedManorColors(),
+      manorColor: 'classic',
       isPaintingTiles: false,
       activeTileBrush: 'grass',
       showNameTags: true,
@@ -8012,6 +8302,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     const cosA = Math.cos(cameraAngle);
     const sinA = Math.sin(cameraAngle);
     const viewingBack = (cosA + sinA) < 0;
+    const palette = MANOR_COLOR_PALETTES[state.manorColor || 'classic'] || MANOR_COLOR_PALETTES.classic;
 
     ctx.save();
     ctx.translate(pos.x, pos.y);
@@ -8023,18 +8314,18 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     ctx.ellipse(0, 14, 62, 26, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Flagstone & cedar wrap-around veranda foundation
-    ctx.fillStyle = '#5c4b42';
-    ctx.strokeStyle = '#3a2b22';
+    // Flagstone & wrap-around veranda foundation
+    ctx.fillStyle = palette.foundationFill;
+    ctx.strokeStyle = palette.foundationStroke;
     ctx.lineWidth = 1.25;
     ctx.beginPath();
     ctx.roundRect(-52, 4, 104, 12, 4);
     ctx.fill();
     ctx.stroke();
 
-    // Upper cedar porch deck planking
-    ctx.fillStyle = '#7c4820';
-    ctx.strokeStyle = '#4a280e';
+    // Upper porch deck planking
+    ctx.fillStyle = palette.porchFill;
+    ctx.strokeStyle = palette.porchStroke;
     ctx.lineWidth = 1.1;
     ctx.beginPath();
     ctx.roundRect(-49, 1, 98, 7, 2.5);
@@ -8056,14 +8347,14 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     // Cozy brick chimney rising from the left roof slope + animated smoke puffs
     const chimX = -30;
     const chimTopY = -66;
-    ctx.fillStyle = '#a44a3f';
-    ctx.strokeStyle = '#5c251f';
+    ctx.fillStyle = palette.chimneyFill;
+    ctx.strokeStyle = palette.chimneyStroke;
     ctx.lineWidth = 1.1;
     ctx.beginPath();
     ctx.roundRect(chimX - 5.5, chimTopY, 11, 24, 1.5);
     ctx.fill();
     ctx.stroke();
-    // Brick mortar stripes & cream cap
+    // Brick mortar stripes & cap
     ctx.strokeStyle = 'rgba(245, 224, 205, 0.35)';
     ctx.lineWidth = 0.8;
     ctx.beginPath();
@@ -8072,8 +8363,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     ctx.moveTo(chimX - 5, chimTopY + 12);
     ctx.lineTo(chimX + 5, chimTopY + 12);
     ctx.stroke();
-    ctx.fillStyle = '#e7d7bf';
-    ctx.strokeStyle = '#5c251f';
+    ctx.fillStyle = palette.chimneyCapFill;
+    ctx.strokeStyle = palette.chimneyStroke;
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.roundRect(chimX - 7, chimTopY - 3, 14, 3.8, 1.2);
@@ -8093,13 +8384,14 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       ctx.fill();
     }
 
-    // Left & Right side wing cedar walls
+    // Left & Right side wing walls
+    const wingColors = viewingBack ? palette.wingBack : palette.wingFront;
     const wingGrad = ctx.createLinearGradient(-44, -36, 44, 2);
-    wingGrad.addColorStop(0, viewingBack ? '#7c471e' : '#a86730');
-    wingGrad.addColorStop(0.55, viewingBack ? '#6b3c18' : '#8f5222');
-    wingGrad.addColorStop(1, viewingBack ? '#573012' : '#733f18');
+    wingGrad.addColorStop(0, wingColors[0]);
+    wingGrad.addColorStop(0.55, wingColors[1]);
+    wingGrad.addColorStop(1, wingColors[2]);
     ctx.fillStyle = wingGrad;
-    ctx.strokeStyle = '#4a260c';
+    ctx.strokeStyle = palette.wallStroke;
     ctx.lineWidth = 1.2;
     ctx.beginPath();
     ctx.roundRect(-45, -34, 90, 36.5, [2.5, 2.5, 0, 0]);
@@ -8107,7 +8399,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     ctx.stroke();
 
     // Clapboard siding lines across wings
-    ctx.strokeStyle = 'rgba(54, 28, 10, 0.42)';
+    ctx.strokeStyle = palette.clapboardStroke;
     ctx.lineWidth = 0.85;
     for (let py = -29; py <= -3; py += 5) {
       ctx.beginPath();
@@ -8116,11 +8408,11 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       ctx.stroke();
     }
 
-    // Cream corner pillars & decorative base wainscoting
-    ctx.fillStyle = '#f2e5d0';
+    // Corner pillars & decorative base wainscoting
+    ctx.fillStyle = palette.trimFill;
     ctx.fillRect(-45.5, -34, 3.4, 36.5);
     ctx.fillRect(42.1, -34, 3.4, 36.5);
-    ctx.fillStyle = 'rgba(242, 229, 208, 0.85)';
+    ctx.fillStyle = palette.trimWainscot;
     ctx.fillRect(-44.5, -3.2, 89, 2.6);
 
     // Side wing multi-pane glowing windows (visible on both front & back!)
@@ -8133,8 +8425,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       ctx.arc(wx, wy, 16, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.fillStyle = '#f5ead6';
-      ctx.strokeStyle = '#532c10';
+      ctx.fillStyle = palette.doorFrameFill;
+      ctx.strokeStyle = palette.trimStroke;
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.roundRect(wx - w / 2 - 1.8, wy - h / 2 - 1.8, w + 3.6, h + 3.6, 2);
@@ -8148,7 +8440,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       ctx.fillRect(wx - w / 2, wy - h / 2, w, h);
 
       // Window muntin crossbars
-      ctx.strokeStyle = '#734018';
+      ctx.strokeStyle = palette.muntinStroke;
       ctx.lineWidth = 1.05;
       ctx.beginPath();
       ctx.moveTo(wx, wy - h / 2);
@@ -8159,8 +8451,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
       if (withFlowerBox) {
         // Tiny wooden flower box with colorful blossoms
-        ctx.fillStyle = '#6c3e1b';
-        ctx.strokeStyle = '#3d200a';
+        ctx.fillStyle = palette.porchFill;
+        ctx.strokeStyle = palette.porchStroke;
         ctx.lineWidth = 0.85;
         ctx.beginPath();
         ctx.roundRect(wx - w / 2 - 2.4, wy + h / 2 + 1.2, w + 4.8, 4.2, 1.2);
@@ -8184,13 +8476,13 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     drawManorWindow(-32.5, -17.5, 11.5, 11.5, !viewingBack);
     drawManorWindow(32.5, -17.5, 11.5, 11.5, !viewingBack);
 
-    // Wide lower slate-blue wing roof spanning the entire 2x2 manor
+    // Wide lower wing roof spanning the entire 2x2 manor
     const wideRoofGrad = ctx.createLinearGradient(-56, -54, 56, -30);
-    wideRoofGrad.addColorStop(0, '#5a90be');
-    wideRoofGrad.addColorStop(0.5, '#3b6d98');
-    wideRoofGrad.addColorStop(1, '#264a6a');
+    wideRoofGrad.addColorStop(0, palette.wideRoof[0]);
+    wideRoofGrad.addColorStop(0.5, palette.wideRoof[1]);
+    wideRoofGrad.addColorStop(1, palette.wideRoof[2]);
     ctx.fillStyle = wideRoofGrad;
-    ctx.strokeStyle = '#1b354c';
+    ctx.strokeStyle = palette.roofStroke;
     ctx.lineWidth = 1.25;
     ctx.beginPath();
     ctx.moveTo(-55, -31.5);
@@ -8202,7 +8494,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     ctx.stroke();
 
     // Subtle shingle rows along side roof slopes
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+    ctx.strokeStyle = palette.roofShingleHighlight;
     ctx.lineWidth = 0.85;
     for (let row = 0; row < 3; row++) {
       const y = -36 - row * 5;
@@ -8214,20 +8506,21 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     }
 
     // Center projecting 2-story Grand Pavilion
+    const pavColors = viewingBack ? palette.pavBack : palette.pavFront;
     const pavGrad = ctx.createLinearGradient(-22, -48, 22, 4);
-    pavGrad.addColorStop(0, viewingBack ? '#864e22' : '#b77237');
-    pavGrad.addColorStop(0.55, viewingBack ? '#73411a' : '#9b5a26');
-    pavGrad.addColorStop(1, viewingBack ? '#5c3313' : '#7b4319');
+    pavGrad.addColorStop(0, pavColors[0]);
+    pavGrad.addColorStop(0.55, pavColors[1]);
+    pavGrad.addColorStop(1, pavColors[2]);
     ctx.fillStyle = pavGrad;
-    ctx.strokeStyle = '#4a260c';
+    ctx.strokeStyle = palette.wallStroke;
     ctx.lineWidth = 1.2;
     ctx.beginPath();
     ctx.roundRect(-22, -45, 44, 48.5, [2, 2, 0, 0]);
     ctx.fill();
     ctx.stroke();
 
-    // Center pavilion clapboard lines & cream columns
-    ctx.strokeStyle = 'rgba(54, 28, 10, 0.38)';
+    // Center pavilion clapboard lines & columns
+    ctx.strokeStyle = palette.clapboardStroke;
     ctx.lineWidth = 0.85;
     for (let py = -40; py <= -2; py += 5) {
       ctx.beginPath();
@@ -8235,7 +8528,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       ctx.lineTo(21, py);
       ctx.stroke();
     }
-    ctx.fillStyle = '#f5ead6';
+    ctx.fillStyle = palette.doorFrameFill;
     ctx.fillRect(-22.8, -44.5, 3.6, 48);
     ctx.fillRect(19.2, -44.5, 3.6, 48);
 
@@ -8243,9 +8536,9 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       // Grand rear stained-glass dormer window
       drawManorWindow(0, -24, 16, 15, false);
     } else {
-      // Grand arched cream doorway frame
-      ctx.fillStyle = '#f8efe0';
-      ctx.strokeStyle = '#5c3314';
+      // Grand arched doorway frame
+      ctx.fillStyle = palette.doorFrameFill;
+      ctx.strokeStyle = palette.doorFrameStroke;
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.arc(0, -14.5, 14.2, Math.PI, 0);
@@ -8270,8 +8563,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       ctx.fillStyle = innerWarm;
       ctx.fillRect(-11.5, -24, 23, 27);
 
-      // Plush royal crimson pillow bed inside doorway with golden piping
-      ctx.fillStyle = '#c0392b';
+      // Plush pillow bed inside doorway with golden piping
+      ctx.fillStyle = palette.cushionFill;
       ctx.beginPath();
       ctx.ellipse(0, 2.2, 10.2, 3.4, 0, Math.PI, 0);
       ctx.closePath();
@@ -8283,15 +8576,15 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       ctx.lineTo(6.5, 1.4);
       ctx.stroke();
 
-      // Wooden front porch steps leading onto the grass
-      ctx.fillStyle = '#9c602d';
-      ctx.strokeStyle = '#4a280e';
+      // Front porch steps leading onto the grass
+      ctx.fillStyle = palette.stepTopFill;
+      ctx.strokeStyle = palette.porchStroke;
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.roundRect(-16.5, 4.5, 33, 4.4, 1.5);
       ctx.fill();
       ctx.stroke();
-      ctx.fillStyle = '#b4743b';
+      ctx.fillStyle = palette.stepBottomFill;
       ctx.beginPath();
       ctx.roundRect(-19, 8.6, 38, 4.2, 1.5);
       ctx.fill();
@@ -8319,11 +8612,11 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
     // Tall central pitched grand manor gable roof
     const mainRoofGrad = ctx.createLinearGradient(-32, -74, 32, -40);
-    mainRoofGrad.addColorStop(0, '#6ba4d4');
-    mainRoofGrad.addColorStop(0.5, '#4276a4');
-    mainRoofGrad.addColorStop(1, '#2a5276');
+    mainRoofGrad.addColorStop(0, palette.mainRoof[0]);
+    mainRoofGrad.addColorStop(0.5, palette.mainRoof[1]);
+    mainRoofGrad.addColorStop(1, palette.mainRoof[2]);
     ctx.fillStyle = mainRoofGrad;
-    ctx.strokeStyle = '#1b354c';
+    ctx.strokeStyle = palette.roofStroke;
     ctx.lineWidth = 1.3;
     ctx.beginPath();
     ctx.moveTo(-33, -42);
@@ -8336,8 +8629,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     ctx.fill();
     ctx.stroke();
 
-    // Inner timber gable pediment triangle
-    ctx.fillStyle = viewingBack ? '#77431b' : '#945624';
+    // Inner gable pediment triangle
+    ctx.fillStyle = viewingBack ? palette.gableBack : palette.gableFront;
     ctx.beginPath();
     ctx.moveTo(-25, -42);
     ctx.lineTo(0, -66.8);
@@ -8345,8 +8638,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     ctx.closePath();
     ctx.fill();
 
-    // Cream decorative bargeboard trim along the main peak
-    ctx.strokeStyle = '#f8efe0';
+    // Decorative bargeboard trim along the main peak
+    ctx.strokeStyle = palette.doorFrameFill;
     ctx.lineWidth = 2.4;
     ctx.lineCap = 'round';
     ctx.beginPath();
@@ -8356,8 +8649,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     ctx.stroke();
 
     // Second-story glowing round oculus dormer window in upper gable
-    ctx.fillStyle = '#f8efe0';
-    ctx.strokeStyle = '#532c10';
+    ctx.fillStyle = palette.doorFrameFill;
+    ctx.strokeStyle = palette.trimStroke;
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.arc(0, -53.5, 6.4, 0, Math.PI * 2);
@@ -8367,7 +8660,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     ctx.beginPath();
     ctx.arc(0, -53.5, 4.6, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = '#734018';
+    ctx.strokeStyle = palette.muntinStroke;
     ctx.lineWidth = 0.85;
     ctx.beginPath();
     ctx.moveTo(0, -58);
@@ -10764,6 +11057,33 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         }
       }
     });
+
+    // Grand Doghouse Manor color upgrade selector (shown once upgraded to Manor)
+    const manorColorSection = document.getElementById('manorColorSection');
+    const manorUpgraded = hasGrandDoghousePlaced() || (state.decorInventory.doghouseManor || 0) > 0;
+    if (manorColorSection) {
+      manorColorSection.style.display = manorUpgraded ? 'flex' : 'none';
+    }
+    if (manorUpgraded) {
+      const unlockedColors = state.unlockedManorColors || createDefaultUnlockedManorColors();
+      const activeColor: ManorColorId = state.manorColor || 'classic';
+      const allColors: ManorColorId[] = ['classic', ...MANOR_COLOR_UPGRADES];
+      allColors.forEach(cid => {
+        const btn = document.querySelector<HTMLButtonElement>(`[data-manor-color="${cid}"]`);
+        if (!btn) return;
+        const isUnlocked = cid === 'classic' || Boolean(unlockedColors[cid]);
+        const isActive = activeColor === cid;
+        btn.classList.toggle('is-active', isActive);
+        btn.classList.toggle('is-unlocked', isUnlocked);
+        btn.disabled = !isUnlocked && state.magicBones < MANOR_COLOR_COST;
+        const tag = btn.querySelector('.manor-color-tag');
+        if (tag) {
+          tag.textContent = isActive
+            ? 'Active'
+            : (isUnlocked ? 'Use' : `${MANOR_COLOR_COST} ✨`);
+        }
+      });
+    }
 
     // Custom Ground Tiles UI sync
     const tileEntries = Object.values(state.tileMap || {});
