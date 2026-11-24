@@ -1,11 +1,18 @@
-// Fail-safe, low-latency splash screen controller for Pupper Park.
+// Fail-safe, polished launch splash screen controller for Pupper Park.
 // Coordinates real startup readiness (game init, first rendered canvas frame,
-// fonts, and emblem image) without ever blocking or getting stuck.
+// fonts, and emblem image) with a brief, comfortable display window so players
+// can appreciate the splash without ever blocking or getting stuck.
 
-const MIN_SPLASH_VISIBLE_MS = 650;
+const MIN_SPLASH_VISIBLE_MS = 1350;
+const FINAL_BEAT_MS = 260;
 const ASSET_READY_TIMEOUT_MS = 1000;
-const MAX_SPLASH_LIFETIME_MS = 2800;
+const MAX_SPLASH_LIFETIME_MS = 3500;
 const SPLASH_FADE_DURATION_MS = 380;
+
+export interface SplashOptions {
+  onFadeStart?: () => void;
+  onHidden?: () => void;
+}
 
 export interface SplashController {
   markInitComplete: () => void;
@@ -72,7 +79,7 @@ function waitForFonts(): Promise<void> {
   return fontSet.ready.then(() => undefined, () => undefined);
 }
 
-export function startSplashScreen(): SplashController {
+export function startSplashScreen(options: SplashOptions = {}): SplashController {
   const splashEl = document.getElementById('splashScreen');
   const progressBarEl = document.getElementById('splashProgressFill');
   const statusEl = document.getElementById('splashStatusText');
@@ -87,9 +94,12 @@ export function startSplashScreen(): SplashController {
     };
   }
 
-  const startedAt = typeof performance !== 'undefined' && typeof performance.now === 'function'
-    ? performance.now()
-    : Date.now();
+  const getNow = () =>
+    typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now()
+      : Date.now();
+
+  const startedAt = getNow();
 
   const prefersReducedMotion = Boolean(
     typeof window.matchMedia === 'function' &&
@@ -97,10 +107,11 @@ export function startSplashScreen(): SplashController {
   );
 
   let dismissed = false;
-  let currentProgress = 0.24;
+  let currentProgress = 0.22;
   let assetsReady = false;
   let initDone = false;
   let firstFrameDone = false;
+  let finalBeatTimer: number | null = null;
   let dismissDelayTimer: number | null = null;
   let fadeCleanupTimer: number | null = null;
 
@@ -115,9 +126,13 @@ export function startSplashScreen(): SplashController {
     }
   };
 
-  setProgress(0.24, 'Waking up the pack…');
+  setProgress(0.22, 'Waking up the pack…');
 
   const clearTimers = () => {
+    if (finalBeatTimer !== null) {
+      window.clearTimeout(finalBeatTimer);
+      finalBeatTimer = null;
+    }
     if (dismissDelayTimer !== null) {
       window.clearTimeout(dismissDelayTimer);
       dismissDelayTimer = null;
@@ -141,36 +156,54 @@ export function startSplashScreen(): SplashController {
       splashEl.classList.add('is-hiding');
       splashEl.style.display = 'none';
       splashEl.setAttribute('aria-hidden', 'true');
+      options.onFadeStart?.();
+      options.onHidden?.();
       return;
     }
 
     // Brief tick so the completed bar renders smoothly before the crossfade out
     fadeCleanupTimer = window.setTimeout(() => {
       splashEl.classList.add('is-hiding');
+      options.onFadeStart?.();
       fadeCleanupTimer = window.setTimeout(() => {
         fadeCleanupTimer = null;
         splashEl.style.display = 'none';
         splashEl.setAttribute('aria-hidden', 'true');
+        options.onHidden?.();
       }, SPLASH_FADE_DURATION_MS);
-    }, 90);
+    }, 80);
   };
 
   const tryFinish = () => {
     if (dismissed) return;
     if (!initDone || !firstFrameDone || !assetsReady) return;
 
-    const now = typeof performance !== 'undefined' && typeof performance.now === 'function'
-      ? performance.now()
-      : Date.now();
-    const elapsed = Math.max(0, now - startedAt);
+    const elapsed = Math.max(0, getNow() - startedAt);
     const minDuration = prefersReducedMotion || document.hidden ? 0 : MIN_SPLASH_VISIBLE_MS;
     const remaining = Math.max(0, minDuration - elapsed);
 
-    setProgress(1, 'Welcome to Pupper Park!');
-
     if (remaining <= 16) {
+      setProgress(1, 'Welcome to Pupper Park!');
       beginDismiss(false);
-    } else if (dismissDelayTimer === null) {
+      return;
+    }
+
+    // Glide cleanly through the final stage so the splash feels alive for ~1s
+    if (remaining > FINAL_BEAT_MS + 60) {
+      setProgress(Math.max(currentProgress, 0.84), 'Opening the park gates…');
+      if (finalBeatTimer === null) {
+        finalBeatTimer = window.setTimeout(() => {
+          finalBeatTimer = null;
+          if (!dismissed) {
+            setProgress(1, 'Welcome to Pupper Park!');
+          }
+        }, Math.max(0, remaining - FINAL_BEAT_MS));
+      }
+    } else {
+      setProgress(1, 'Welcome to Pupper Park!');
+    }
+
+    if (dismissDelayTimer === null) {
       dismissDelayTimer = window.setTimeout(() => {
         dismissDelayTimer = null;
         beginDismiss(false);
@@ -190,7 +223,7 @@ export function startSplashScreen(): SplashController {
   ]).then(() => {
     assetsReady = true;
     if (!dismissed && !firstFrameDone) {
-      setProgress(Math.max(currentProgress, 0.78));
+      setProgress(Math.max(currentProgress, 0.72));
     }
     tryFinish();
   });
@@ -199,13 +232,13 @@ export function startSplashScreen(): SplashController {
     markInitComplete() {
       if (initDone || dismissed) return;
       initDone = true;
-      setProgress(0.62, 'Preparing the park…');
+      setProgress(0.56, 'Preparing the park…');
       tryFinish();
     },
     markFirstFrameRendered() {
       if (firstFrameDone || dismissed) return;
       firstFrameDone = true;
-      setProgress(0.92, 'Opening the gates…');
+      setProgress(0.84, 'Opening the park gates…');
       tryFinish();
     },
     dismissNow() {

@@ -45,6 +45,7 @@ html {
   overflow: hidden;
   overscroll-behavior: none;
   -webkit-text-size-adjust: none;
+  transition: background-color 0.34s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 body {
@@ -62,6 +63,7 @@ body {
   user-select: none;
   -webkit-touch-callout: none;
   -webkit-text-size-adjust: none;
+  transition: background-color 0.34s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 button:focus-visible,
@@ -3011,7 +3013,13 @@ input:focus-visible {
    ========================================== */
 .splash-screen {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: var(--app-height);
+  min-height: 100%;
   z-index: 9000;
   display: flex;
   align-items: center;
@@ -3022,12 +3030,12 @@ input:focus-visible {
     max(28px, env(safe-area-inset-bottom))
     max(24px, env(safe-area-inset-left));
   background:
-    radial-gradient(circle at 50% 38%, rgba(46, 213, 115, 0.14) 0%, rgba(108, 92, 231, 0.12) 34%, rgba(13, 11, 26, 0) 68%),
-    linear-gradient(180deg, #0d0b1a 0%, #171236 54%, #101730 100%);
+    radial-gradient(circle at 50% 38%, rgba(46, 213, 115, 0.14) 0%, rgba(108, 92, 231, 0.13) 34%, rgba(13, 11, 26, 0) 68%),
+    linear-gradient(180deg, #0d0b1a 0%, #18133a 52%, #0d0b1a 100%);
   overflow: hidden;
   opacity: 1;
   transform: scale(1);
-  transition: opacity 0.36s cubic-bezier(0.22, 1, 0.36, 1), transform 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: opacity 0.38s cubic-bezier(0.22, 1, 0.36, 1), transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
   will-change: opacity, transform;
 }
 
@@ -3080,6 +3088,7 @@ input:focus-visible {
   align-items: center;
   text-align: center;
   gap: 20px;
+  animation: splashContentEnter 0.44s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .splash-emblem-stage {
@@ -3191,14 +3200,30 @@ input:focus-visible {
 }
 
 .splash-progress-fill {
+  position: relative;
   width: 100%;
   height: 100%;
   border-radius: inherit;
   background: linear-gradient(90deg, #ffeaa7 0%, #55efc4 100%);
   transform-origin: left center;
   transform: scaleX(0.18);
-  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform;
+  overflow: hidden;
+}
+
+.splash-progress-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.42) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: translateX(-100%);
+  animation: splashBarShimmer 1.35s ease-in-out infinite;
 }
 
 .splash-status-text {
@@ -3236,6 +3261,26 @@ input:focus-visible {
   }
   100% {
     opacity: 0.88;
+  }
+}
+
+@keyframes splashContentEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.975);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes splashBarShimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(120%);
   }
 }
 

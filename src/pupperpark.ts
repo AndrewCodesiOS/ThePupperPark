@@ -98,15 +98,20 @@ export interface InitPupperParkOptions {
   onFirstFrameRendered?: () => void;
 }
 
-export function initPupperPark(options: InitPupperParkOptions = {}): void {
-  if (initialized) return;
+export interface PupperParkHandle {
+  syncRootBackground: () => void;
+}
+
+export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkHandle {
+  const noopHandle: PupperParkHandle = { syncRootBackground() {} };
+  if (initialized) return noopHandle;
   initialized = true;
 
   const canvasEl = document.getElementById('gameCanvas') as HTMLCanvasElement | null;
-  if (!canvasEl) return;
+  if (!canvasEl) return noopHandle;
   const canvas: HTMLCanvasElement = canvasEl;
   const ctxMaybe = canvas.getContext('2d');
-  if (!ctxMaybe) return;
+  if (!ctxMaybe) return noopHandle;
   const ctx: CanvasRenderingContext2D = ctxMaybe;
 
   const GRID_SIZE = 7;
@@ -2955,12 +2960,14 @@ export function initPupperPark(options: InitPupperParkOptions = {}): void {
     if (modal) {
       modal.style.display = 'flex';
     }
+    syncRootBackgroundColor();
   }
 
   function closeOfflineModal(): void {
     const modal = document.getElementById('offlineModal');
     if (modal) modal.style.display = 'none';
     activeOfflineModalSummary = null;
+    syncRootBackgroundColor();
     flushQueuedAwayProgressIfReady();
   }
 
@@ -2971,25 +2978,73 @@ export function initPupperPark(options: InitPupperParkOptions = {}): void {
   const gameModal = document.getElementById('gameModal');
   const drawerWindow = document.getElementById('drawerWindow');
   const drawerHandle = document.getElementById('drawerHandle');
+  const splashScreenEl = document.getElementById('splashScreen');
+  const fullScreenModalEls = Array.from(document.querySelectorAll<HTMLElement>('.modal'));
 
+  const SPLASH_ROOT_BG = '#0d0b1a';
   const DRAWER_BOTTOM_BG = '#15112e';
+  let lastSkyBotTuple: [number, number, number] = [13, 11, 26];
+  let lastSkyTopTuple: [number, number, number] = [13, 11, 26];
   let lastSkyBotRgb = '#0d0b1a';
   let lastSkyTopRgb = '#0d0b1a';
   let lastAppliedRootBg = '';
   let lastAppliedThemeColor = '';
 
+  function blendModalOverlayRgb(baseRgb: [number, number, number]): string {
+    // Matches .modal backdrop: rgba(13, 11, 26, 0.78) composited over the sky canvas
+    const alpha = 0.78;
+    const inv = 1 - alpha;
+    const r = Math.round(13 * alpha + baseRgb[0] * inv);
+    const g = Math.round(11 * alpha + baseRgb[1] * inv);
+    const b = Math.round(26 * alpha + baseRgb[2] * inv);
+    return `rgb(${r}, ${g}, ${b})`;
+  }
+
+  function isSplashOverlayOpaque(): boolean {
+    if (!splashScreenEl) return false;
+    return (
+      splashScreenEl.style.display !== 'none' &&
+      !splashScreenEl.classList.contains('is-hiding')
+    );
+  }
+
+  function isAnyFullScreenModalOpen(): boolean {
+    for (let i = 0; i < fullScreenModalEls.length; i++) {
+      const el = fullScreenModalEls[i];
+      if (el.style.display && el.style.display !== 'none') {
+        return true;
+      }
+    }
+    return false;
+  }
+
   function syncRootBackgroundColor(): void {
+    const isSplashActive = isSplashOverlayOpaque();
+    const isModalOpen = isAnyFullScreenModalOpen();
     const isMenuOpen = Boolean(gameModal && gameModal.style.display !== 'none');
-    const desiredRootBg = isMenuOpen ? DRAWER_BOTTOM_BG : lastSkyBotRgb;
+
+    let desiredRootBg = lastSkyBotRgb;
+    let desiredThemeColor = lastSkyTopRgb;
+
+    if (isSplashActive) {
+      desiredRootBg = SPLASH_ROOT_BG;
+      desiredThemeColor = SPLASH_ROOT_BG;
+    } else if (isModalOpen) {
+      desiredRootBg = blendModalOverlayRgb(lastSkyBotTuple);
+      desiredThemeColor = blendModalOverlayRgb(lastSkyTopTuple);
+    } else if (isMenuOpen) {
+      desiredRootBg = DRAWER_BOTTOM_BG;
+    }
+
     if (lastAppliedRootBg !== desiredRootBg) {
       lastAppliedRootBg = desiredRootBg;
       document.documentElement.style.backgroundColor = desiredRootBg;
       document.body.style.backgroundColor = desiredRootBg;
     }
-    if (lastAppliedThemeColor !== lastSkyTopRgb) {
-      lastAppliedThemeColor = lastSkyTopRgb;
+    if (lastAppliedThemeColor !== desiredThemeColor) {
+      lastAppliedThemeColor = desiredThemeColor;
       const themeMeta = document.querySelector('meta[name="theme-color"]');
-      if (themeMeta) themeMeta.setAttribute('content', lastSkyTopRgb);
+      if (themeMeta) themeMeta.setAttribute('content', desiredThemeColor);
     }
   }
 
@@ -10983,14 +11038,26 @@ export function initPupperPark(options: InitPupperParkOptions = {}): void {
       const botOverlayPreviewRgb = lerpRgb(skyBot, skyGlow, 0.25);
       let finalBotRgb = lerpRgb(skyBot, [9, 132, 227], 0.07 * rainWeight);
       finalBotRgb = lerpRgb(finalBotRgb, botOverlayPreviewRgb, overlayBotAlphaPreview);
-      const skyBotRgb = `rgb(${Math.round(finalBotRgb[0])}, ${Math.round(finalBotRgb[1])}, ${Math.round(finalBotRgb[2])})`;
-      const skyTopRgb = `rgb(${Math.round(skyTop[0])}, ${Math.round(skyTop[1])}, ${Math.round(skyTop[2])})`;
+      const skyBotTuple: [number, number, number] = [
+        Math.round(finalBotRgb[0]),
+        Math.round(finalBotRgb[1]),
+        Math.round(finalBotRgb[2])
+      ];
+      const skyTopTuple: [number, number, number] = [
+        Math.round(skyTop[0]),
+        Math.round(skyTop[1]),
+        Math.round(skyTop[2])
+      ];
+      const skyBotRgb = `rgb(${skyBotTuple[0]}, ${skyBotTuple[1]}, ${skyBotTuple[2]})`;
+      const skyTopRgb = `rgb(${skyTopTuple[0]}, ${skyTopTuple[1]}, ${skyTopTuple[2]})`;
       if (lastSkyBotRgb !== skyBotRgb || lastSkyTopRgb !== skyTopRgb) {
+        lastSkyBotTuple = skyBotTuple;
+        lastSkyTopTuple = skyTopTuple;
         lastSkyBotRgb = skyBotRgb;
         lastSkyTopRgb = skyTopRgb;
         document.documentElement.dataset.skyBot = skyBotRgb;
-        syncRootBackgroundColor();
       }
+      syncRootBackgroundColor();
 
       const skyGrad = ctx.createLinearGradient(0, 0, 0, viewportH);
       skyGrad.addColorStop(0, skyTopStr);
@@ -11706,6 +11773,11 @@ export function initPupperPark(options: InitPupperParkOptions = {}): void {
     reportFirstFrame();
   }
 
+  syncRootBackgroundColor();
   updateUI();
   requestAnimationFrame(startFrameLoop);
+
+  return {
+    syncRootBackground: syncRootBackgroundColor
+  };
 }
