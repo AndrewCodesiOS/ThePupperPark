@@ -8572,43 +8572,249 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
   function drawFlowerPatch(gx: number, gy: number): void {
     const pos = getCenteredTilePos(gx, gy);
     const scale = getScale();
+    const breezeAmp = 0.55 + weatherWeights.windy * 1.15;
+    const tileSeed = gx * 2.13 + gy * 3.41;
+
     ctx.save();
     ctx.translate(pos.x, pos.y);
     ctx.scale(scale, scale);
 
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    // Soft grounded shadow under garden bed
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
     ctx.beginPath();
-    ctx.ellipse(0, 3, 15, 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(0.5, 4.2, 18.5, 9.2, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = '#8b5a2b';
-    ctx.beginPath();
-    ctx.ellipse(0, 1, 13, 6.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#5c3a21';
-    ctx.lineWidth = 1;
-    ctx.stroke();
+    // Cozy back-rim garden border stones
+    const borderStones = [
+      { x: -14.2, y: -0.2, rx: 3.1, ry: 1.8, rot: -0.25, c: '#8d99a6', hi: '#c5d0db', front: false },
+      { x: -9.5, y: -3.2, rx: 3.3, ry: 1.8, rot: -0.15, c: '#9ba7b4', hi: '#d1dbe5', front: false },
+      { x: -3.4, y: -4.4, rx: 3.5, ry: 1.8, rot: 0, c: '#85929e', hi: '#bcc7d1', front: false },
+      { x: 3.6, y: -4.3, rx: 3.4, ry: 1.8, rot: 0.08, c: '#9aa6b2', hi: '#d0dae3', front: false },
+      { x: 9.8, y: -3.0, rx: 3.2, ry: 1.8, rot: 0.2, c: '#8693a0', hi: '#bec9d4', front: false },
+      { x: 14.3, y: -0.1, rx: 3.1, ry: 1.8, rot: 0.28, c: '#7f8c99', hi: '#b6c2cd', front: false },
+      { x: -13.6, y: 3.0, rx: 3.2, ry: 1.9, rot: 0.25, c: '#8a96a3', hi: '#c7d2dc', front: true },
+      { x: -8.4, y: 5.5, rx: 3.5, ry: 2.0, rot: 0.16, c: '#9aa6b3', hi: '#d6e0e9', front: true },
+      { x: -2.6, y: 6.7, rx: 3.6, ry: 2.0, rot: 0.04, c: '#85929f', hi: '#c2cdd8', front: true },
+      { x: 3.4, y: 6.6, rx: 3.5, ry: 2.0, rot: -0.05, c: '#96a2af', hi: '#d3dde6', front: true },
+      { x: 9.1, y: 5.2, rx: 3.4, ry: 1.9, rot: -0.18, c: '#818e9b', hi: '#bcc7d2', front: true },
+      { x: 13.8, y: 2.7, rx: 3.1, ry: 1.8, rot: -0.26, c: '#7a8794', hi: '#b5c1cc', front: true }
+    ];
 
+    const drawGardenStone = (st: typeof borderStones[number]): void => {
+      ctx.save();
+      ctx.translate(st.x, st.y);
+      ctx.rotate(st.rot);
+      ctx.fillStyle = '#56606b';
+      ctx.beginPath();
+      ctx.ellipse(0, 0.7, st.rx, st.ry, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = st.c;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, st.rx, st.ry * 0.92, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = st.hi;
+      ctx.beginPath();
+      ctx.ellipse(-st.rx * 0.22, -st.ry * 0.26, st.rx * 0.48, st.ry * 0.34, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    };
+
+    borderStones.filter(st => !st.front).forEach(drawGardenStone);
+
+    // Rich shaded dark-loam flowerbed soil
+    const soilGrad = ctx.createRadialGradient(-2, -1, 1.5, 0, 1.2, 15.5);
+    soilGrad.addColorStop(0, '#7c502e');
+    soilGrad.addColorStop(0.65, '#5f3a1f');
+    soilGrad.addColorStop(1, '#432713');
+    ctx.fillStyle = soilGrad;
+    ctx.beginPath();
+    ctx.ellipse(0, 1.2, 14.2, 6.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Lush deep-emerald back foliage cushion
+    const backLeaves = [
+      { x: -10.2, y: -0.6, rx: 5.2, ry: 3.1, rot: -0.45 },
+      { x: -4.8, y: -2.4, rx: 5.8, ry: 3.5, rot: -0.18 },
+      { x: 1.8, y: -2.8, rx: 6.0, ry: 3.6, rot: 0.1 },
+      { x: 8.6, y: -1.4, rx: 5.4, ry: 3.2, rot: 0.38 },
+      { x: 11.4, y: 0.6, rx: 4.4, ry: 2.6, rot: 0.52 }
+    ];
+    ctx.fillStyle = '#1b7a43';
+    backLeaves.forEach(lf => {
+      ctx.save();
+      ctx.translate(lf.x, lf.y);
+      ctx.rotate(lf.rot);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, lf.rx, lf.ry, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    });
+
+    // Mid-tone scalloped leaves & leafy shoots
+    const drawPointedLeaf = (
+      x: number,
+      y: number,
+      angle: number,
+      length: number,
+      width: number,
+      fill: string,
+      vein: string
+    ): void => {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(angle);
+      ctx.fillStyle = fill;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.quadraticCurveTo(length * 0.48, -width, length, 0);
+      ctx.quadraticCurveTo(length * 0.48, width, 0, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = vein;
+      ctx.lineWidth = 0.55;
+      ctx.beginPath();
+      ctx.moveTo(length * 0.15, 0);
+      ctx.lineTo(length * 0.78, 0);
+      ctx.stroke();
+      ctx.restore();
+    };
+
+    drawPointedLeaf(-5.5, 0.5, -2.55, 8.8, 3.0, '#27ae60', 'rgba(123,237,159,0.55)');
+    drawPointedLeaf(-1.5, -1.2, -1.95, 8.2, 2.8, '#2ecc71', 'rgba(190,255,205,0.55)');
+    drawPointedLeaf(3.2, -1.0, -0.95, 8.4, 2.9, '#27ae60', 'rgba(123,237,159,0.55)');
+    drawPointedLeaf(6.2, 0.6, -0.45, 8.6, 2.9, '#2ecc71', 'rgba(190,255,205,0.55)');
+    drawPointedLeaf(-8.2, 2.2, -2.9, 6.8, 2.4, '#2ecc71', 'rgba(190,255,205,0.5)');
+    drawPointedLeaf(8.0, 2.5, 0.12, 6.8, 2.4, '#27ae60', 'rgba(123,237,159,0.5)');
+
+    // Front cozy garden stones (hugging the front soil rim)
+    borderStones.filter(st => st.front).forEach(drawGardenStone);
+
+    // Subtle sunlit moss/leaf puffs nestled just inside front rim
+    ctx.fillStyle = '#27ae60';
+    ctx.beginPath();
+    ctx.ellipse(-6.0, 2.6, 4.4, 2.2, -0.15, 0, Math.PI * 2);
+    ctx.ellipse(0.5, 3.4, 5.0, 2.3, 0.05, 0, Math.PI * 2);
+    ctx.ellipse(6.8, 2.5, 4.3, 2.1, 0.18, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Multi-petal storybook blossoms arranged back-to-front with gentle breeze sway
     const flowerData = [
-      { x: -5, y: -2, c: '#fd79a8', center: '#ffeaa7' },
-      { x: 4, y: -4, c: '#ff7675', center: '#fab1a0' },
-      { x: -2, y: -6, c: '#a29bfe', center: '#dfe6e9' },
-      { x: 6, y: -1, c: '#ffeaa7', center: '#fdcb6e' },
-      { x: 1, y: -2, c: '#74b9ff', center: '#81ecec' }
+      { bx: -3.2, by: -2.2, h: 11.2, lean: -1.6, r: 4.5, petals: 5, c: '#a29bfe', shade: '#6c5ce7', hi: '#e3e0ff', center: '#fff3b0', phase: 0.4 },
+      { bx: 4.6, by: -2.0, h: 10.8, lean: 1.8, r: 4.4, petals: 5, c: '#ff7675', shade: '#d63031', hi: '#ffc2c2', center: '#ffeaa7', phase: 1.5 },
+      { bx: -8.2, by: 0.4, h: 8.8, lean: -2.2, r: 4.1, petals: 5, c: '#fd79a8', shade: '#d63384', hi: '#ffd0e3', center: '#ffeaa7', phase: 2.3 },
+      { bx: 9.0, by: 0.6, h: 8.6, lean: 2.3, r: 4.0, petals: 5, c: '#ffeaa7', shade: '#f39c12', hi: '#fffbe6', center: '#e17055', phase: 3.1 },
+      { bx: 0.4, by: 0.8, h: 9.8, lean: -0.4, r: 4.7, petals: 6, c: '#ffffff', shade: '#ced6e0', hi: '#ffffff', center: '#f9ca24', phase: 0.9 },
+      { bx: -4.4, by: 2.6, h: 7.4, lean: -1.1, r: 3.9, petals: 5, c: '#74b9ff', shade: '#0984e3', hi: '#d0e8ff', center: '#ffeaa7', phase: 4.0 },
+      { bx: 5.0, by: 2.8, h: 7.2, lean: 1.2, r: 3.9, petals: 5, c: '#fab1a0', shade: '#e17055', hi: '#ffe3dc', center: '#fff3b0', phase: 5.1 }
     ];
 
     flowerData.forEach(f => {
-      ctx.fillStyle = '#00b894';
-      ctx.fillRect(f.x - 1, f.y, 2, 4);
+      const sway = Math.sin(fountainAnimPhase * 0.65 + tileSeed + f.phase) * breezeAmp;
+      const hx = f.bx + f.lean + sway;
+      const hy = f.by - f.h;
+      const ctrlX = f.bx + (f.lean + sway) * 0.35;
+      const ctrlY = f.by - f.h * 0.52;
 
-      ctx.fillStyle = f.c;
+      // Curved organic stem
+      ctx.strokeStyle = '#1b8a4e';
+      ctx.lineWidth = 1.65;
+      ctx.lineCap = 'round';
       ctx.beginPath();
-      ctx.arc(f.x, f.y - 1, 4, 0, Math.PI * 2);
+      ctx.moveTo(f.bx, f.by);
+      ctx.quadraticCurveTo(ctrlX, ctrlY, hx, hy);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#55efc4';
+      ctx.lineWidth = 0.55;
+      ctx.beginPath();
+      ctx.moveTo(f.bx - 0.3, f.by - 0.6);
+      ctx.quadraticCurveTo(ctrlX - 0.3, ctrlY, hx - 0.25, hy + 1.0);
+      ctx.stroke();
+
+      // Tiny stem side leaf
+      const leafSide = f.lean >= 0 ? -1 : 1;
+      drawPointedLeaf(
+        (f.bx + hx) * 0.5,
+        (f.by + hy) * 0.5 + 0.8,
+        leafSide > 0 ? -0.45 : -2.65,
+        4.2,
+        1.5,
+        '#2ecc71',
+        'rgba(220,255,220,0.45)'
+      );
+
+      // Blossom rosette
+      ctx.save();
+      ctx.translate(hx, hy);
+      ctx.rotate(sway * 0.06);
+
+      // Subtle petal underside shadow for depth
+      ctx.fillStyle = f.shade;
+      for (let p = 0; p < f.petals; p++) {
+        const a = (p / f.petals) * Math.PI * 2 - Math.PI * 0.5;
+        const px = Math.cos(a) * f.r * 0.56;
+        const py = Math.sin(a) * f.r * 0.48 + 0.65;
+        ctx.beginPath();
+        ctx.ellipse(px, py, f.r * 0.46, f.r * 0.36, a, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Main vivid petals
+      ctx.fillStyle = f.c;
+      for (let p = 0; p < f.petals; p++) {
+        const a = (p / f.petals) * Math.PI * 2 - Math.PI * 0.5;
+        const px = Math.cos(a) * f.r * 0.56;
+        const py = Math.sin(a) * f.r * 0.48;
+        ctx.beginPath();
+        ctx.ellipse(px, py, f.r * 0.45, f.r * 0.35, a, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Upper sunlit petal highlights
+      ctx.fillStyle = f.hi;
+      for (let p = 0; p < f.petals; p++) {
+        const a = (p / f.petals) * Math.PI * 2 - Math.PI * 0.5;
+        if (Math.sin(a) > 0.35) continue;
+        const px = Math.cos(a) * f.r * 0.62;
+        const py = Math.sin(a) * f.r * 0.52 - 0.35;
+        ctx.beginPath();
+        ctx.ellipse(px, py, f.r * 0.24, f.r * 0.15, a, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Warm shaded blossom center & bright pollen glint
+      ctx.fillStyle = 'rgba(90, 48, 12, 0.35)';
+      ctx.beginPath();
+      ctx.arc(0, 0.35, f.r * 0.34, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = f.center;
       ctx.beginPath();
-      ctx.arc(f.x, f.y - 1, 1.5, 0, Math.PI * 2);
+      ctx.arc(0, 0, f.r * 0.32, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.78)';
+      ctx.beginPath();
+      ctx.arc(-f.r * 0.09, -f.r * 0.09, f.r * 0.11, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    });
+
+    // Delicate baby's-breath micro-blossoms & buds for storybook fullness
+    const microBuds = [
+      { x: -10.8, y: -4.2, c: '#ffeaa7', r: 1.2 },
+      { x: -0.8, y: -13.6, c: '#ffd0e3', r: 1.15 },
+      { x: 7.4, y: -9.8, c: '#ffffff', r: 1.1 },
+      { x: 11.4, y: -3.2, c: '#dfe6e9', r: 1.15 },
+      { x: 0.6, y: -4.0, c: '#ffeaa7', r: 1.05 }
+    ];
+    microBuds.forEach((b, idx) => {
+      const sway = Math.sin(fountainAnimPhase * 0.72 + tileSeed + idx * 1.3) * breezeAmp * 0.55;
+      ctx.fillStyle = b.c;
+      ctx.beginPath();
+      ctx.arc(b.x + sway, b.y, b.r, 0, Math.PI * 2);
       ctx.fill();
     });
 
@@ -9307,12 +9513,6 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       '#5dade2'
     );
 
-    // Chute landing ground footpad
-    ctx.fillStyle = '#2980b9';
-    ctx.beginPath();
-    ctx.ellipse(chuteFoot.x, chuteFoot.y + 3 * scale, 5.5 * scale, 2.4 * scale, 0, 0, Math.PI * 2);
-    ctx.fill();
-
     ctx.restore();
   }
 
@@ -9587,12 +9787,6 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     ctx.beginPath();
     ctx.arc(0, -4, 6, 0, Math.PI * 2);
     ctx.fill();
-    ctx.stroke();
-
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.arc(-2, -6, 4, 0.2, Math.PI * 0.8);
     ctx.stroke();
 
     ctx.restore();
