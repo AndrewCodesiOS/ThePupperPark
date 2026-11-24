@@ -867,10 +867,11 @@ input:focus-visible {
 }
 
 .modal-header {
+  position: relative;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 6px max(16px, calc(50% - 364px), env(safe-area-inset-right, 0px)) 10px max(16px, calc(50% - 364px), env(safe-area-inset-left, 0px));
+  padding: 6px max(68px, calc(50% - 364px), calc(env(safe-area-inset-right, 0px) + 64px)) 10px max(16px, calc(50% - 364px), env(safe-area-inset-left, 0px));
   gap: 10px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -947,6 +948,22 @@ input:focus-visible {
 
 .close-btn:active {
   transform: scale(0.92);
+}
+
+/* Keep the menu drawer close button pinned to the far right edge and prevent its hit area from overlapping the scrollable body below */
+#btnCloseMenu {
+  position: absolute;
+  right: max(14px, env(safe-area-inset-right, 0px));
+  top: calc(50% - 2px);
+  transform: translateY(-50%);
+}
+
+#btnCloseMenu::before {
+  inset: -6px -6px 0 -2px;
+}
+
+#btnCloseMenu:active {
+  transform: translateY(-50%) scale(0.92);
 }
 
 .modal-body {
@@ -1604,8 +1621,12 @@ input:focus-visible {
 
 @media (max-width: 540px) {
   .modal-header {
-    padding: 6px max(12px, env(safe-area-inset-right, 0px)) 10px max(12px, env(safe-area-inset-left, 0px));
+    padding: 6px max(62px, calc(env(safe-area-inset-right, 0px) + 60px)) 10px max(12px, env(safe-area-inset-left, 0px));
     gap: 8px;
+  }
+
+  #btnCloseMenu {
+    right: max(10px, env(safe-area-inset-right, 0px));
   }
 
   .modal-body {
@@ -1797,11 +1818,11 @@ input:focus-visible {
 /* Reroll Modal Styles */
 .reroll-modal-window {
   width: 100%;
-  max-width: 420px;
+  max-width: 440px;
   max-height: 100%;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 20px;
+  padding: 16px 18px;
   border-radius: 22px;
   border: 1.5px solid rgba(162, 155, 254, 0.5);
   background: linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg-deep) 100%);
@@ -1810,7 +1831,7 @@ input:focus-visible {
   text-align: left;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 9px;
 }
 
 .reroll-modal-header {
@@ -1822,21 +1843,26 @@ input:focus-visible {
 
 .reroll-modal-header h2 {
   color: var(--gold);
-  font-size: 1.08rem;
+  font-size: 1.04rem;
   margin: 0;
+}
+
+.reroll-modal-window .close-btn {
+  width: 36px;
+  height: 36px;
 }
 
 .reroll-dog-summary {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  font-size: 0.94rem;
+  gap: 6px 10px;
+  font-size: 0.92rem;
   color: #fff;
 }
 
 .reroll-meta-text {
-  font-size: 0.8rem;
+  font-size: 0.79rem;
   font-weight: 600;
   color: #cbd5e1;
 }
@@ -1847,42 +1873,42 @@ input:focus-visible {
 
 .reroll-stats-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
 }
 
 .reroll-stat-line {
   background: rgba(13, 11, 26, 0.55);
   border: 1px solid rgba(162, 155, 254, 0.22);
   border-radius: 12px;
-  padding: 9px 11px;
+  padding: 7px 10px;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   color: #b8c2d4;
 }
 
 .reroll-stat-line strong {
   color: var(--gold);
-  font-size: 0.86rem;
+  font-size: 0.84rem;
   font-variant-numeric: tabular-nums;
 }
 
 .reroll-rules-text {
-  font-size: 0.78rem;
-  line-height: 1.45;
+  font-size: 0.75rem;
+  line-height: 1.38;
   color: #dcdde1;
   background: rgba(255, 255, 255, 0.04);
   border-radius: 12px;
-  padding: 10px 12px;
+  padding: 8px 11px;
 }
 
 .reroll-result-banner {
   border-radius: 12px;
-  padding: 10px 12px;
-  font-size: 0.8rem;
-  line-height: 1.4;
+  padding: 8px 11px;
+  font-size: 0.77rem;
+  line-height: 1.36;
   font-weight: 700;
 }
 
@@ -1904,20 +1930,85 @@ input:focus-visible {
 }
 
 .reroll-shiny-callout {
-  margin-top: 6px;
+  margin-top: 5px;
   color: var(--gold);
-  font-size: 0.86rem;
+  font-size: 0.82rem;
 }
 
 .reroll-actions {
   display: flex;
   justify-content: stretch;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 .reroll-purchase-btn {
   width: 100%;
-  padding: 11px 14px;
+  padding: 9px 14px;
+}
+
+@media (min-width: 600px) {
+  .reroll-modal-window {
+    max-width: 620px;
+    padding: 16px 20px;
+    gap: 10px;
+  }
+
+  .reroll-stats-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .reroll-stat-line {
+    padding: 8px 10px;
+  }
+}
+
+@media (max-height: 500px) {
+  .modal {
+    padding-top: max(8px, env(safe-area-inset-top));
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+
+  .reroll-modal-window {
+    padding: 12px 16px;
+    gap: 7px;
+  }
+
+  .reroll-modal-header h2 {
+    font-size: 0.98rem;
+  }
+
+  .reroll-modal-window .close-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .reroll-stat-line {
+    padding: 6px 9px;
+    font-size: 0.7rem;
+  }
+
+  .reroll-stat-line strong {
+    font-size: 0.8rem;
+  }
+
+  .reroll-rules-text,
+  .reroll-result-banner {
+    padding: 7px 10px;
+    font-size: 0.72rem;
+    line-height: 1.32;
+  }
+
+  .reroll-purchase-btn {
+    flex-direction: row;
+    gap: 10px;
+    min-height: 38px;
+    padding: 7px 14px;
+  }
+
+  .reroll-purchase-btn .btn-cost {
+    margin-top: 0;
+  }
 }
 
 /* Treasure Draft Modal */

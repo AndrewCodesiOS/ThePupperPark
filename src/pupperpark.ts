@@ -2873,7 +2873,7 @@ export function initPupperPark(): void {
         if (t.identifier === activeTouchId) {
           activeTouchId = null;
           const dist = Math.hypot(t.clientX - touchStartX, t.clientY - touchStartY);
-          if (dist <= 28) {
+          if (dist <= 12) {
             e.preventDefault();
             e.stopPropagation();
             triggerClose();
@@ -3141,20 +3141,40 @@ export function initPupperPark(): void {
     const canAfford = (state.magicBones || 0) >= cost;
 
     if (rerollDogSummary) {
-      rerollDogSummary.innerHTML = `
-        <strong>${entry.name}</strong>
-        <span class="reroll-meta-text">${breedName} | Lv. ${entry.level}</span>
-        <span class="reroll-meta-text ${entry.isShiny ? 'is-shiny' : ''}">${entry.isShiny ? `✨ Shiny (+${SHINY_MAGIC_BONE_BONUS} ✨/drop)` : 'Standard Coat'}</span>
-      `;
+      const nameEl = document.createElement('strong');
+      nameEl.textContent = entry.name;
+
+      const breedMetaEl = document.createElement('span');
+      breedMetaEl.className = 'reroll-meta-text';
+      breedMetaEl.textContent = `${breedName} | Lv. ${entry.level}`;
+
+      const coatMetaEl = document.createElement('span');
+      coatMetaEl.className = entry.isShiny ? 'reroll-meta-text is-shiny' : 'reroll-meta-text';
+      coatMetaEl.textContent = entry.isShiny
+        ? `✨ Shiny (+${SHINY_MAGIC_BONE_BONUS} ✨/drop)`
+        : 'Standard Coat';
+
+      rerollDogSummary.replaceChildren(nameEl, breedMetaEl, coatMetaEl);
     }
 
     if (rerollCurrentStats) {
-      rerollCurrentStats.innerHTML = `
-        <div class="reroll-stat-line"><span>Roll Grade</span><strong>${stats.rollGrade}</strong></div>
-        <div class="reroll-stat-line"><span>Bone Yield</span><strong>+${stats.bonusPayout.toFixed(2)} (${stats.boneYield.toFixed(2)}x)</strong></div>
-        <div class="reroll-stat-line"><span>Pack Growth</span><strong>+${stats.bonusScaling.toFixed(2)} (${stats.packGrowth.toFixed(2)}x)</strong></div>
-        <div class="reroll-stat-line"><span>Quick Learner</span><strong>+${stats.bonusXp.toFixed(2)} (${stats.quickLearner.toFixed(2)}x)</strong></div>
-      `;
+      const statRows: Array<[string, string]> = [
+        ['Roll Grade', String(stats.rollGrade)],
+        ['Bone Yield', `+${stats.bonusPayout.toFixed(2)} (${stats.boneYield.toFixed(2)}x)`],
+        ['Pack Growth', `+${stats.bonusScaling.toFixed(2)} (${stats.packGrowth.toFixed(2)}x)`],
+        ['Quick Learner', `+${stats.bonusXp.toFixed(2)} (${stats.quickLearner.toFixed(2)}x)`]
+      ];
+      const statNodes = statRows.map(([label, value]) => {
+        const line = document.createElement('div');
+        line.className = 'reroll-stat-line';
+        const labelEl = document.createElement('span');
+        labelEl.textContent = label;
+        const valueEl = document.createElement('strong');
+        valueEl.textContent = value;
+        line.append(labelEl, valueEl);
+        return line;
+      });
+      rerollCurrentStats.replaceChildren(...statNodes);
     }
 
     if (rerollRulesText) {
@@ -3166,7 +3186,7 @@ export function initPupperPark(): void {
       if (!resultInfo) {
         rerollResultBanner.style.display = 'none';
         rerollResultBanner.className = 'reroll-result-banner';
-        rerollResultBanner.innerHTML = '';
+        rerollResultBanner.replaceChildren();
       } else {
         rerollResultBanner.style.display = 'block';
         rerollResultBanner.className = `reroll-result-banner ${resultInfo.keptPrevious ? 'kept' : 'upgraded'}${resultInfo.becameShiny ? ' shiny-hit' : ''}`;
@@ -3175,11 +3195,18 @@ export function initPupperPark(): void {
           ? `Rolled ${resultInfo.rolledGrade} (+${resultInfo.rolledPayout.toFixed(2)} Yield / +${resultInfo.rolledScaling.toFixed(2)} Growth / +${resultInfo.rolledXp.toFixed(2)} XP) — previous higher-rated stats (${stats.rollGrade}) were kept!`
           : `New roll applied! Now ${stats.rollGrade} (+${stats.bonusPayout.toFixed(2)} Yield / +${stats.bonusScaling.toFixed(2)} Growth / +${stats.bonusXp.toFixed(2)} XP).`;
 
-        const shinyMsg = resultInfo.becameShiny
-          ? `<div class="reroll-shiny-callout">✨ JACKPOT! 1-in-1,300 Shiny roll hit — ${entry.name} is now Shiny!</div>`
-          : '';
+        const statLine = document.createElement('div');
+        statLine.textContent = statMsg;
 
-        rerollResultBanner.innerHTML = `<div>${statMsg}</div>${shinyMsg}`;
+        const bannerNodes: HTMLElement[] = [statLine];
+        if (resultInfo.becameShiny) {
+          const shinyCallout = document.createElement('div');
+          shinyCallout.className = 'reroll-shiny-callout';
+          shinyCallout.textContent = `✨ JACKPOT! 1-in-1,300 Shiny roll hit — ${entry.name} is now Shiny!`;
+          bannerNodes.push(shinyCallout);
+        }
+
+        rerollResultBanner.replaceChildren(...bannerNodes);
       }
     }
 
