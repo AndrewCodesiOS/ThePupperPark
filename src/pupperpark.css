@@ -3130,7 +3130,7 @@ html.asymmetric-side-safe-area .drawer-window.clears-side-cutout #btnCloseMenu {
   right: 0;
   bottom: 0;
   width: 100%;
-  height: var(--app-height);
+  height: 100%;
   min-height: 100%;
   z-index: 9000;
   display: flex;
@@ -3141,19 +3141,17 @@ html.asymmetric-side-safe-area .drawer-window.clears-side-cutout #btnCloseMenu {
     max(24px, env(safe-area-inset-right))
     max(28px, env(safe-area-inset-bottom))
     max(24px, env(safe-area-inset-left));
-  background:
-    radial-gradient(circle at 50% 38%, rgba(46, 213, 115, 0.14) 0%, rgba(108, 92, 231, 0.13) 34%, rgba(13, 11, 26, 0) 68%),
-    linear-gradient(180deg, #0d0b1a 0%, #18133a 52%, #0d0b1a 100%);
+  background: linear-gradient(180deg, #0d0b1a 0%, #18133a 52%, #0d0b1a 100%);
   overflow: hidden;
   opacity: 1;
-  transform: scale(1);
+  transform: translate3d(0, 0, 0) scale(1);
   transition: opacity 0.38s cubic-bezier(0.22, 1, 0.36, 1), transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
   will-change: opacity, transform;
 }
 
 .splash-screen.is-hiding {
   opacity: 0;
-  transform: scale(1.03);
+  transform: translate3d(0, 0, 0) scale(1.03);
   pointer-events: none;
 }
 
@@ -3161,7 +3159,7 @@ html.asymmetric-side-safe-area .drawer-window.clears-side-cutout #btnCloseMenu {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  opacity: 0.7;
+  opacity: 0;
   background-image:
     radial-gradient(1.5px 1.5px at 14% 18%, rgba(255, 255, 255, 0.85) 50%, transparent 100%),
     radial-gradient(2px 2px at 26% 12%, rgba(255, 234, 167, 0.75) 50%, transparent 100%),
@@ -3172,22 +3170,33 @@ html.asymmetric-side-safe-area .drawer-window.clears-side-cutout #btnCloseMenu {
     radial-gradient(1.2px 1.2px at 64% 11%, rgba(255, 255, 255, 0.7) 50%, transparent 100%),
     radial-gradient(1.4px 1.4px at 36% 84%, rgba(255, 255, 255, 0.6) 50%, transparent 100%),
     radial-gradient(1.6px 1.6px at 71% 86%, rgba(162, 155, 254, 0.62) 50%, transparent 100%);
-  animation: splashStarsTwinkle 3.2s ease-in-out infinite alternate;
+  transition: opacity 0.45s ease-out;
+}
+
+.splash-screen.is-ready .splash-stars {
+  opacity: 0.72;
+  animation: splashStarsTwinkle 3.2s ease-in-out 0.45s infinite alternate;
 }
 
 .splash-aura {
   position: absolute;
-  width: min(76vw, 420px);
-  height: min(76vw, 420px);
+  width: min(88vw, 520px);
+  height: min(88vw, 520px);
   border-radius: 50%;
   background: radial-gradient(
     circle,
-    rgba(85, 239, 196, 0.14) 0%,
-    rgba(108, 92, 231, 0.14) 44%,
-    rgba(13, 11, 26, 0) 72%
+    rgba(46, 213, 115, 0.16) 0%,
+    rgba(108, 92, 231, 0.16) 38%,
+    rgba(13, 11, 26, 0) 70%
   );
   pointer-events: none;
-  transform: translateY(-28px);
+  opacity: 0;
+  transform: translate3d(0, -28px, 0);
+  transition: opacity 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.splash-screen.is-ready .splash-aura {
+  opacity: 1;
 }
 
 .splash-content {
@@ -3200,7 +3209,17 @@ html.asymmetric-side-safe-area .drawer-window.clears-side-cutout #btnCloseMenu {
   align-items: center;
   text-align: center;
   gap: 20px;
-  animation: splashContentEnter 0.44s cubic-bezier(0.22, 1, 0.36, 1) both;
+  opacity: 0;
+  transform: translate3d(0, 8px, 0) scale(0.985);
+  transition:
+    opacity 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+
+.splash-screen.is-ready .splash-content {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
 }
 
 .splash-emblem-stage {
@@ -3234,8 +3253,11 @@ html.asymmetric-side-safe-area .drawer-window.clears-side-cutout #btnCloseMenu {
   height: 100%;
   object-fit: contain;
   filter: drop-shadow(0 18px 24px rgba(7, 5, 18, 0.62));
-  animation: splashIslandFloat 2.8s ease-in-out infinite;
   will-change: transform;
+}
+
+.splash-screen.is-ready .splash-emblem-img {
+  animation: splashIslandFloat 2.8s ease-in-out infinite;
 }
 
 .splash-emblem-fallback {
@@ -3246,8 +3268,11 @@ html.asymmetric-side-safe-area .drawer-window.clears-side-cutout #btnCloseMenu {
   align-items: center;
   justify-content: center;
   filter: drop-shadow(0 18px 24px rgba(7, 5, 18, 0.62));
-  animation: splashIslandFloat 2.8s ease-in-out infinite;
   will-change: transform;
+}
+
+.splash-screen.is-ready .splash-emblem-fallback {
+  animation: splashIslandFloat 2.8s ease-in-out infinite;
 }
 
 .splash-island-shadow {
@@ -3257,9 +3282,13 @@ html.asymmetric-side-safe-area .drawer-window.clears-side-cutout #btnCloseMenu {
   height: 16px;
   border-radius: 50%;
   background: radial-gradient(ellipse at center, rgba(5, 4, 14, 0.64) 0%, rgba(5, 4, 14, 0) 74%);
-  animation: splashShadowPulse 2.8s ease-in-out infinite;
+  opacity: 0.72;
   will-change: transform, opacity;
   pointer-events: none;
+}
+
+.splash-screen.is-ready .splash-island-shadow {
+  animation: splashShadowPulse 2.8s ease-in-out infinite;
 }
 
 .splash-brand-lockup {
@@ -3349,10 +3378,10 @@ html.asymmetric-side-safe-area .drawer-window.clears-side-cutout #btnCloseMenu {
 
 @keyframes splashIslandFloat {
   0%, 100% {
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
   }
   50% {
-    transform: translateY(-7px);
+    transform: translate3d(0, -7px, 0);
   }
 }
 
@@ -3376,15 +3405,6 @@ html.asymmetric-side-safe-area .drawer-window.clears-side-cutout #btnCloseMenu {
   }
 }
 
-@keyframes splashContentEnter {
-  0% {
-    transform: translateY(6px) scale(0.985);
-  }
-  100% {
-    transform: translateY(0) scale(1);
-  }
-}
-
 @keyframes splashBarShimmer {
   0% {
     transform: translateX(-100%);
@@ -3402,7 +3422,7 @@ html.asymmetric-side-safe-area .drawer-window.clears-side-cutout #btnCloseMenu {
   right: 0;
   bottom: 0;
   width: 100%;
-  height: var(--app-height);
+  height: 100%;
   min-height: 100%;
   z-index: 8900;
   display: none;

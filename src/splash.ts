@@ -5,7 +5,7 @@
 
 const MIN_SPLASH_VISIBLE_MS = 1350;
 const FINAL_BEAT_MS = 260;
-const ASSET_READY_TIMEOUT_MS = 1000;
+const ASSET_READY_TIMEOUT_MS = 350;
 const MAX_SPLASH_LIFETIME_MS = 3500;
 const SPLASH_FADE_DURATION_MS = 380;
 
@@ -44,11 +44,20 @@ function waitForSplashImage(img: HTMLImageElement | null, fallbackEl: HTMLElemen
     }
   };
 
+  const decodeAndFinish = (resolve: () => void) => {
+    if (typeof img.decode === 'function') {
+      img.decode().then(resolve, resolve);
+    } else {
+      resolve();
+    }
+  };
+
   if (img.complete) {
     if (img.naturalWidth === 0) {
       showFallback();
+      return Promise.resolve();
     }
-    return Promise.resolve();
+    return new Promise<void>((resolve) => decodeAndFinish(resolve));
   }
 
   return new Promise<void>((resolve) => {
@@ -60,8 +69,10 @@ function waitForSplashImage(img: HTMLImageElement | null, fallbackEl: HTMLElemen
       img.removeEventListener('error', onError);
       if (failed) {
         showFallback();
+        resolve();
+      } else {
+        decodeAndFinish(resolve);
       }
-      resolve();
     };
     const onLoad = () => finish(img.naturalWidth === 0);
     const onError = () => finish(true);
@@ -223,12 +234,29 @@ export function startSplashScreen(options: SplashOptions = {}): SplashController
     beginDismiss(document.hidden);
   }, MAX_SPLASH_LIFETIME_MS);
 
-  // Race font + emblem loading against a short cap so broken/slow assets never stall startup
+  const revealSplashContent = () => {
+    if (dismissed || splashEl.classList.contains('is-ready')) return;
+    if (prefersReducedMotion) {
+      splashEl.classList.add('is-ready');
+      return;
+    }
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        if (!dismissed) {
+          splashEl.classList.add('is-ready');
+        }
+      });
+    });
+  };
+
+  // Race font + emblem decode against a tight cap so the splash content fades in
+  // once cleanly (zero font-swap flicker, zero image pop-in, zero layout shake)
   Promise.all([
     withTimeout(waitForSplashImage(iconImgEl, fallbackEl), ASSET_READY_TIMEOUT_MS),
     withTimeout(waitForFonts(), ASSET_READY_TIMEOUT_MS)
   ]).then(() => {
     assetsReady = true;
+    revealSplashContent();
     if (!dismissed && !firstFrameDone) {
       setProgress(Math.max(currentProgress, 0.72));
     }
