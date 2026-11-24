@@ -805,13 +805,9 @@ input:focus-visible {
   left: 0;
   right: 0;
   bottom: 0;
-  margin: 0 auto;
   background: linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg-deep) 100%);
   border-top: 1.5px solid rgba(162, 155, 254, 0.5);
-  border-left: 1px solid rgba(162, 155, 254, 0.15);
-  border-right: 1px solid rgba(162, 155, 254, 0.15);
   width: 100%;
-  max-width: 760px;
   height: 52%;
   max-height: calc(100% - max(24px, env(safe-area-inset-top, 0px) + 8px));
   padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
@@ -828,13 +824,11 @@ input:focus-visible {
 .drawer-window::after {
   content: '';
   position: absolute;
-  left: -1px;
-  right: -1px;
+  left: 0;
+  right: 0;
   top: calc(100% - 2px);
   height: 160px;
   background: var(--bg-deep);
-  border-left: 1px solid rgba(162, 155, 254, 0.15);
-  border-right: 1px solid rgba(162, 155, 254, 0.15);
   pointer-events: none;
 }
 
@@ -876,7 +870,7 @@ input:focus-visible {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 6px 16px 10px;
+  padding: 6px max(16px, calc(50% - 364px), env(safe-area-inset-right, 0px)) 10px max(16px, calc(50% - 364px), env(safe-area-inset-left, 0px));
   gap: 10px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -956,7 +950,7 @@ input:focus-visible {
 }
 
 .modal-body {
-  padding: 14px 16px 18px;
+  padding: 14px max(16px, calc(50% - 364px), env(safe-area-inset-right, 0px)) 18px max(16px, calc(50% - 364px), env(safe-area-inset-left, 0px));
   overflow-y: auto;
   flex: 1;
   touch-action: pan-y;
@@ -1520,20 +1514,6 @@ input:focus-visible {
   font-size: 0.71rem;
 }
 
-@media (max-width: 760px) {
-  .drawer-window {
-    border-left: none;
-    border-right: none;
-  }
-
-  .drawer-window::after {
-    left: 0;
-    right: 0;
-    border-left: none;
-    border-right: none;
-  }
-}
-
 @media (max-width: 659px) {
 
   .dog-breed-card {
@@ -1624,12 +1604,12 @@ input:focus-visible {
 
 @media (max-width: 540px) {
   .modal-header {
-    padding: 6px 12px 10px;
+    padding: 6px max(12px, env(safe-area-inset-right, 0px)) 10px max(12px, env(safe-area-inset-left, 0px));
     gap: 8px;
   }
 
   .modal-body {
-    padding: 12px;
+    padding: 12px max(12px, env(safe-area-inset-right, 0px)) 14px max(12px, env(safe-area-inset-left, 0px));
   }
 
   .roster-card {

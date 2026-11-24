@@ -2816,6 +2816,27 @@ export function initPupperPark(): void {
   const drawerWindow = document.getElementById('drawerWindow');
   const drawerHandle = document.getElementById('drawerHandle');
 
+  const DRAWER_BOTTOM_BG = '#15112e';
+  let lastSkyBotRgb = '#0d0b1a';
+  let lastSkyTopRgb = '#0d0b1a';
+  let lastAppliedRootBg = '';
+  let lastAppliedThemeColor = '';
+
+  function syncRootBackgroundColor(): void {
+    const isMenuOpen = Boolean(gameModal && gameModal.style.display !== 'none');
+    const desiredRootBg = isMenuOpen ? DRAWER_BOTTOM_BG : lastSkyBotRgb;
+    if (lastAppliedRootBg !== desiredRootBg) {
+      lastAppliedRootBg = desiredRootBg;
+      document.documentElement.style.backgroundColor = desiredRootBg;
+      document.body.style.backgroundColor = desiredRootBg;
+    }
+    if (lastAppliedThemeColor !== lastSkyTopRgb) {
+      lastAppliedThemeColor = lastSkyTopRgb;
+      const themeMeta = document.querySelector('meta[name="theme-color"]');
+      if (themeMeta) themeMeta.setAttribute('content', lastSkyTopRgb);
+    }
+  }
+
   if (gameModal) {
     gameModal.style.display = 'none';
   }
@@ -2927,6 +2948,7 @@ export function initPupperPark(): void {
     if (gameModal) {
       gameModal.style.display = 'flex';
     }
+    syncRootBackgroundColor();
     if (drawerWindow) {
       void drawerWindow.offsetHeight;
       drawerWindow.classList.remove('is-dragging');
@@ -2951,6 +2973,7 @@ export function initPupperPark(): void {
     if (gameModal) {
       gameModal.style.display = 'none';
     }
+    syncRootBackgroundColor();
     if (drawerWindow) {
       drawerWindow.classList.remove('is-dragging', 'is-expanded');
       drawerWindow.style.height = '';
@@ -9948,12 +9971,11 @@ export function initPupperPark(): void {
       finalBotRgb = lerpRgb(finalBotRgb, botOverlayPreviewRgb, overlayBotAlphaPreview);
       const skyBotRgb = `rgb(${Math.round(finalBotRgb[0])}, ${Math.round(finalBotRgb[1])}, ${Math.round(finalBotRgb[2])})`;
       const skyTopRgb = `rgb(${Math.round(skyTop[0])}, ${Math.round(skyTop[1])}, ${Math.round(skyTop[2])})`;
-      if (document.documentElement.dataset.skyBot !== skyBotRgb) {
+      if (lastSkyBotRgb !== skyBotRgb || lastSkyTopRgb !== skyTopRgb) {
+        lastSkyBotRgb = skyBotRgb;
+        lastSkyTopRgb = skyTopRgb;
         document.documentElement.dataset.skyBot = skyBotRgb;
-        document.documentElement.style.backgroundColor = skyBotRgb;
-        document.body.style.backgroundColor = skyBotRgb;
-        const themeMeta = document.querySelector('meta[name="theme-color"]');
-        if (themeMeta) themeMeta.setAttribute('content', skyTopRgb);
+        syncRootBackgroundColor();
       }
 
       const skyGrad = ctx.createLinearGradient(0, 0, 0, viewportH);
