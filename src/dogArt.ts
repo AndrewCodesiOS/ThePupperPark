@@ -431,6 +431,8 @@ interface DrinkHeadPoseOpts {
   dipAngle?: number;
   dipTx?: number;
   dipTy?: number;
+  neckRx?: number;
+  neckRy?: number;
   outlineColor?: string;
 }
 
@@ -464,8 +466,8 @@ function withDrinkingHeadPose(
     c,
     neckMidX,
     neckMidY,
-    5.6,
-    4.3,
+    opts.neckRx ?? 5.6,
+    opts.neckRy ?? 4.3,
     0.42,
     neckTopCol,
     neckBotCol,
@@ -840,123 +842,203 @@ export function drawIllustratedDog(c: CanvasRenderingContext2D, p: DogRenderPara
       drawDogEye(c, headX + 3.0, headY - 1.0, { isSleeping, isBlinking, isJoyful, irisColor: '#4e2c14' });
     });
   } else if (breed === 'husky') {
-    const coatTop = sc('#7c8992', 0.08);
-    const coatMid = sc('#5a656d', -0.12);
-    const darkTrim = sc('#2b3238', -0.32);
-    const snowWhite = isShiny ? shadeHex(shinyColor, 0.72) : '#f9fbfd';
+    const coatDark = sc('#262e38', -0.34);
+    const coatMantle = sc('#465261', -0.14);
+    const silverMist = sc('#7c8c9e', 0.14);
+    const snowWhite = isShiny ? shadeHex(shinyColor, 0.76) : '#fbfdff';
+    const frostShade = isShiny ? shadeHex(shinyColor, 0.46) : '#dce5f0';
+    const earInner = isShiny ? shadeHex(shinyColor, 0.54) : '#f3e3e6';
+    const huskyOutline = 'rgba(34, 44, 58, 0.34)';
 
     const legs: FourLegsConfig = {
-      backX: -9.4,
-      frontX: 8.0,
+      backX: -9.5,
+      frontX: 8.2,
       yTop: -3.2,
-      w: 4.3,
-      h: legH + 0.3,
+      w: 4.4,
+      h: legH + 0.4,
       swing: legSwing,
-      legCol: coatMid,
+      legCol: snowWhite,
       pawCol: snowWhite,
-      pawH: 3.4,
-      isSleeping
+      pawH: 3.3,
+      isSleeping,
+      farLegCol: frostShade,
+      farPawCol: frostShade,
+      opts: {
+        bandColor: coatMantle,
+        bandStartRatio: 0.0,
+        bandEndRatio: 0.34,
+        featherColor: snowWhite,
+        outlineColor: huskyOutline
+      }
     };
 
     drawFarPairLegs(c, legs);
 
-    // Big plush curled sickle Husky tail
-    const wag = isSleeping ? tailWag : Math.sin(wagPhase * 2.1) * 3.1 * moodWagAmp;
+    // Big plush two-tone Arctic brush sickle tail curling proudly over back
+    const wag = isSleeping ? tailWag : Math.sin(wagPhase * 2.1) * 3.0 * moodWagAmp;
     c.save();
     c.lineCap = 'round';
-    c.strokeStyle = coatMid;
-    c.lineWidth = 7.0;
+    c.strokeStyle = coatDark;
+    c.lineWidth = 8.0;
     c.beginPath();
-    c.moveTo(-13.8, isSleeping ? -6.4 : -9.4);
-    c.quadraticCurveTo(isSleeping ? -19.2 : -22.5, (isSleeping ? -9.5 : -16.8) + wag, isSleeping ? -16.5 : -19.2, (isSleeping ? -11.5 : -20.8) + wag * 0.7);
+    c.moveTo(-13.8, isSleeping ? -6.4 : -9.6);
+    c.quadraticCurveTo(
+      isSleeping ? -19.8 : -23.2,
+      (isSleeping ? -10.0 : -17.6) + wag,
+      isSleeping ? -16.2 : -18.4,
+      (isSleeping ? -12.2 : -22.0) + wag * 0.7
+    );
+    c.stroke();
+    c.strokeStyle = silverMist;
+    c.lineWidth = 6.0;
+    c.beginPath();
+    c.moveTo(-14.6, isSleeping ? -6.8 : -10.4);
+    c.quadraticCurveTo(
+      isSleeping ? -19.4 : -22.6,
+      (isSleeping ? -9.8 : -17.0) + wag,
+      isSleeping ? -16.4 : -18.8,
+      (isSleeping ? -11.8 : -21.2) + wag * 0.7
+    );
     c.stroke();
     c.strokeStyle = snowWhite;
     c.lineWidth = 3.8;
     c.beginPath();
-    c.moveTo(isSleeping ? -16.2 : -18.5, (isSleeping ? -7.8 : -13.0) + wag * 0.45);
-    c.quadraticCurveTo(isSleeping ? -19.2 : -22.5, (isSleeping ? -9.5 : -16.8) + wag, isSleeping ? -16.5 : -19.2, (isSleeping ? -11.5 : -20.8) + wag * 0.7);
+    c.moveTo(isSleeping ? -16.0 : -18.6, (isSleeping ? -7.8 : -12.6) + wag * 0.42);
+    c.quadraticCurveTo(
+      isSleeping ? -18.6 : -21.4,
+      (isSleeping ? -9.4 : -16.2) + wag * 0.9,
+      isSleeping ? -15.8 : -17.6,
+      (isSleeping ? -11.6 : -21.0) + wag * 0.7
+    );
     c.stroke();
     c.restore();
 
-    // Thick winter-coat Husky body
+    // Plush snow-white Arctic double-coat base torso
     fillShadedEllipse(
       c,
       -1.0,
       (isSleeping ? -6.6 : -9.8) + sleepBreath * 0.16,
-      isSleeping ? 14.0 : 14.8,
-      (isSleeping ? 7.4 : 8.6) + sleepBreath * 0.2,
-      0,
-      coatTop,
-      coatMid
+      isSleeping ? 14.3 : 15.2,
+      (isSleeping ? 7.6 : 8.9) + sleepBreath * 0.22,
+      -0.02,
+      snowWhite,
+      frostShade,
+      huskyOutline
     );
 
-    // Crisp snowy belly & plush chest ruff
+    // High-contrast wolf-like charcoal & silver dorsal mantle sweeping across back & haunches
+    c.fillStyle = coatMantle;
+    c.beginPath();
+    c.ellipse(-2.4, isSleeping ? -8.8 : -12.6, isSleeping ? 12.6 : 13.4, isSleeping ? 4.9 : 5.7, -0.05, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = coatDark;
+    c.beginPath();
+    c.ellipse(-3.6, isSleeping ? -9.8 : -13.9, isSleeping ? 10.4 : 11.2, isSleeping ? 3.2 : 3.7, -0.06, 0, Math.PI * 2);
+    c.fill();
+    // Soft silver-mist shoulder highlight & flank transition
+    c.fillStyle = silverMist;
+    c.beginPath();
+    c.ellipse(2.6, isSleeping ? -8.6 : -12.2, 5.2, 2.8, 0.22, 0, Math.PI * 2);
+    c.ellipse(-8.6, isSleeping ? -7.4 : -10.8, 4.4, 2.5, -0.18, 0, Math.PI * 2);
+    c.fill();
+
+    // Lush snowy Arctic chest ruff & scalloped neck fluff
+    fillShadedEllipse(c, 8.0, isSleeping ? -6.2 : -9.2, 5.8, 6.8, 0.16, snowWhite, frostShade, null);
     c.fillStyle = snowWhite;
     c.beginPath();
-    c.ellipse(2.6, isSleeping ? -4.0 : -6.2, 10.4, 4.2, -0.04, 0, Math.PI * 2);
-    c.ellipse(8.2, isSleeping ? -6.4 : -9.0, 5.2, 6.2, 0.14, 0, Math.PI * 2);
+    c.arc(10.2, isSleeping ? -5.6 : -8.2, 3.6, 0, Math.PI * 2);
+    c.arc(7.2, isSleeping ? -4.0 : -6.2, 3.8, 0, Math.PI * 2);
     c.fill();
 
     drawNearPairLegs(c, legs);
 
-    const headX = isSleeping ? 9.4 : 10.8;
-    const headY = isSleeping ? -10.8 : -17.0;
+    const headX = isSleeping ? 9.6 : 11.0;
+    const headY = isSleeping ? -10.8 : -17.4;
 
-    withDrinkingHeadPose(c, headX, headY, isDrinking, animPhase, coatTop, coatMid, () => {
-      // Far upright plush ear
-      c.fillStyle = darkTrim;
+    withDrinkingHeadPose(c, headX, headY, isDrinking, animPhase, snowWhite, frostShade, () => {
+      // Far plush upright Arctic ear
+      c.fillStyle = coatDark;
       c.beginPath();
-      c.moveTo(headX + 0.6, headY - 4.4 + earBounce * 0.4);
-      c.lineTo(headX + 3.2, headY - 11.4 + earBounce);
-      c.lineTo(headX + 5.2, headY - 3.8 + earBounce * 0.4);
+      c.moveTo(headX + 0.4, headY - 4.4 + earBounce * 0.4);
+      c.quadraticCurveTo(headX + 2.6, headY - 12.6 + earBounce, headX + 4.8, headY - 3.8 + earBounce * 0.4);
       c.closePath();
       c.fill();
 
-      // Sculpted Husky head with dark cap
-      fillShadedEllipse(c, headX, headY, 7.3, 6.9, 0, coatTop, coatMid);
+      // Sculpted wolf-like Husky head with crisp snowy under-base
+      fillShadedEllipse(c, headX, headY, 7.5, 7.0, 0, coatMantle, coatDark, huskyOutline);
 
-      // Iconic white Husky mask + cheek fluff + muzzle
+      // Iconic snowy cheek ruff & clean trefoil face mask
       c.fillStyle = snowWhite;
       c.beginPath();
-      c.ellipse(headX + 3.6, headY + 2.2, 6.0, 4.2, 0.04, 0, Math.PI * 2);
-      c.arc(headX + 0.8, headY + 1.0, 4.4, 0, Math.PI * 2);
-      c.fill();
-      // Classic forehead mask widow's peak
-      c.fillStyle = darkTrim;
-      c.beginPath();
-      c.ellipse(headX + 2.8, headY - 4.2, 3.6, 2.0, 0.2, 0, Math.PI * 2);
+      c.ellipse(headX + 0.6, headY + 2.0, 6.2, 4.4, 0.04, 0, Math.PI * 2);
+      c.arc(headX - 1.6, headY + 1.6, 3.8, 0, Math.PI * 2);
       c.fill();
 
-      // Near upright plush Husky ear with warm pink-white inner fur
-      c.fillStyle = darkTrim;
-      c.strokeStyle = SOFT_OUTLINE;
+      // Crisp dark cap & signature Husky widow's peak mask framing the brow
+      c.fillStyle = coatDark;
+      c.beginPath();
+      c.ellipse(headX - 0.8, headY - 4.2, 5.6, 2.7, -0.08, 0, Math.PI * 2);
+      c.fill();
+      c.beginPath();
+      c.moveTo(headX + 0.6, headY - 5.2);
+      c.lineTo(headX + 5.8, headY - 2.6);
+      c.quadraticCurveTo(headX + 4.4, headY - 1.1, headX + 1.4, headY - 2.0);
+      c.closePath();
+      c.fill();
+
+      // Classic white eyebrow pip ("Arctic spectacle" highlight above eye)
+      c.fillStyle = snowWhite;
+      c.beginPath();
+      c.ellipse(headX + 3.2, headY - 3.0, 1.35, 0.75, -0.18, 0, Math.PI * 2);
+      c.fill();
+
+      // Refined tapered snowy wolf-like muzzle with subtle bridge contour
+      c.fillStyle = snowWhite;
+      c.strokeStyle = huskyOutline;
       c.lineWidth = 0.8;
       c.beginPath();
-      c.moveTo(headX - 4.2, headY - 4.0 + earBounce * 0.4);
-      c.lineTo(headX - 1.4, headY - 11.8 + earBounce);
-      c.lineTo(headX + 2.2, headY - 3.6 + earBounce * 0.4);
+      c.moveTo(headX + 2.4, headY - 0.6);
+      c.quadraticCurveTo(headX + 7.4, headY - 0.5, headX + 10.6, headY + 1.8);
+      c.quadraticCurveTo(headX + 9.4, headY + 4.8, headX + 3.2, headY + 4.5);
       c.closePath();
       c.fill();
       c.stroke();
-      c.fillStyle = snowWhite;
+
+      // Subtle silver bridge shading on top of snout
+      c.fillStyle = silverMist;
       c.beginPath();
-      c.moveTo(headX - 2.8, headY - 4.4 + earBounce * 0.4);
-      c.lineTo(headX - 1.2, headY - 9.4 + earBounce * 0.9);
-      c.lineTo(headX + 0.8, headY - 4.2 + earBounce * 0.4);
+      c.ellipse(headX + 6.4, headY + 0.3, 2.4, 0.8, 0.14, 0, Math.PI * 2);
+      c.fill();
+
+      // Near thick triangular upright Husky ear with plush frosted inner fur
+      c.fillStyle = coatDark;
+      c.strokeStyle = huskyOutline;
+      c.lineWidth = 0.85;
+      c.beginPath();
+      c.moveTo(headX - 4.4, headY - 3.8 + earBounce * 0.4);
+      c.quadraticCurveTo(headX - 2.2, headY - 13.4 + earBounce, headX + 1.6, headY - 3.8 + earBounce * 0.4);
+      c.closePath();
+      c.fill();
+      c.stroke();
+      c.fillStyle = earInner;
+      c.beginPath();
+      c.moveTo(headX - 3.0, headY - 4.4 + earBounce * 0.4);
+      c.quadraticCurveTo(headX - 1.6, headY - 10.4 + earBounce * 0.9, headX + 0.4, headY - 4.2 + earBounce * 0.4);
       c.closePath();
       c.fill();
 
-      drawMouthAndTongue(c, headX + 5.8, headY + 3.6, isSleeping, isJoyful, showTongue, animPhase, '#2a2224', isDrinking);
-      drawGlossyNose(c, headX + 9.2, headY + 1.5, 1.8, 1.35);
-      // Signature icy blue Husky eye!
-      drawDogEye(c, headX + 3.9, headY - 0.5, {
+      drawMouthAndTongue(c, headX + 6.2, headY + 3.5, isSleeping, isJoyful, showTongue, animPhase, '#1e242c', isDrinking);
+      drawGlossyNose(c, headX + 10.2, headY + 1.6, 1.8, 1.35, '#11161e');
+      // Piercing icy-blue almond Husky eye!
+      drawDogEye(c, headX + 3.8, headY - 0.7, {
         isSleeping,
         isBlinking,
         isJoyful,
-        irisColor: '#29b6f6',
-        radius: 1.75
+        irisColor: '#38d9ff',
+        almond: true,
+        radius: 1.85
       });
-    });
+    }, { outlineColor: huskyOutline });
   } else if (breed === 'shiba') {
     const coatTop = sc('#e8751a', 0.14);
     const coatBase = sc('#cf5908', -0.04);
@@ -1964,6 +2046,971 @@ export function drawIllustratedDog(c: CanvasRenderingContext2D, p: DogRenderPara
       drawGlossyNose(c, headX + 10.4, headY + 1.8, 1.75, 1.35, '#0f1217');
       drawDogEye(c, headX + 3.0, headY - 0.4, { isSleeping, isBlinking, isJoyful, irisColor: '#3f2818' });
     }, { outlineColor: 'rgba(60, 72, 92, 0.30)' });
+  } else if (breed === 'chihuahua') {
+    const coatTop = sc('#ebb97e', 0.16);
+    const coatBase = sc('#d0924c', -0.04);
+    const coatShade = sc('#ad6e30', -0.24);
+    const cream = isShiny ? shadeHex(shinyColor, 0.68) : '#fff6e4';
+    const earPink = isShiny ? shadeHex(shinyColor, 0.46) : '#f8b9b7';
+
+    const legs: FourLegsConfig = {
+      backX: -6.4,
+      frontX: 5.4,
+      yTop: -1.6,
+      w: 2.8,
+      h: 6.4,
+      swing: legSwing * 0.72,
+      legCol: coatBase,
+      pawCol: cream,
+      pawH: 2.2,
+      isSleeping
+    };
+
+    drawFarPairLegs(c, legs);
+
+    // Perky thin curved Chihuahua sickle tail
+    const wag = isSleeping ? tailWag * 0.8 : Math.sin(wagPhase * 2.8) * 2.8 * moodWagAmp;
+    c.save();
+    c.lineCap = 'round';
+    c.strokeStyle = coatShade;
+    c.lineWidth = 2.8;
+    c.beginPath();
+    c.moveTo(-9.8, isSleeping ? -4.8 : -7.0);
+    c.quadraticCurveTo(
+      isSleeping ? -13.2 : -14.8,
+      (isSleeping ? -7.2 : -12.6) + wag,
+      isSleeping ? -11.4 : -11.8,
+      (isSleeping ? -8.6 : -15.4) + wag * 0.8
+    );
+    c.stroke();
+    c.restore();
+
+    // Petite compact Chihuahua torso
+    fillShadedEllipse(
+      c,
+      -0.6,
+      (isSleeping ? -4.4 : -6.2) + sleepBreath * 0.12,
+      isSleeping ? 9.4 : 9.9,
+      (isSleeping ? 4.5 : 5.1) + sleepBreath * 0.16,
+      -0.04,
+      coatTop,
+      coatBase
+    );
+
+    // Creamy chest & soft underbelly
+    c.fillStyle = cream;
+    c.beginPath();
+    c.ellipse(5.2, isSleeping ? -4.0 : -5.6, 3.8, 4.2, 0.14, 0, Math.PI * 2);
+    c.ellipse(0.6, isSleeping ? -2.2 : -3.5, 6.2, 2.0, 0.04, 0, Math.PI * 2);
+    c.fill();
+
+    drawNearPairLegs(c, legs);
+
+    const headX = isSleeping ? 6.4 : 7.6;
+    const headY = isSleeping ? -8.2 : -12.8;
+
+    withDrinkingHeadPose(c, headX, headY, isDrinking, animPhase, coatTop, coatBase, () => {
+      // Far giant flared Chihuahua bat ear
+      c.fillStyle = coatShade;
+      c.beginPath();
+      c.moveTo(headX + 0.6, headY - 3.6 + earBounce * 0.4);
+      c.quadraticCurveTo(headX + 6.2, headY - 13.4 + earBounce, headX + 7.2, headY - 4.2 + earBounce * 0.5);
+      c.closePath();
+      c.fill();
+      c.fillStyle = shadeHex(earPink, -0.14);
+      c.beginPath();
+      c.moveTo(headX + 1.8, headY - 4.0 + earBounce * 0.4);
+      c.quadraticCurveTo(headX + 5.2, headY - 10.6 + earBounce * 0.9, headX + 5.8, headY - 4.6 + earBounce * 0.5);
+      c.closePath();
+      c.fill();
+
+      // Signature rounded apple-dome Chihuahua skull
+      fillShadedEllipse(c, headX, headY, 6.1, 5.8, 0, coatTop, coatBase);
+
+      // Creamy cheek & dainty pointed snout
+      fillShadedEllipse(c, headX + 4.4, headY + 1.7, 3.5, 2.3, 0.06, cream, coatTop);
+      c.fillStyle = cream;
+      c.beginPath();
+      c.ellipse(headX + 2.2, headY + 2.2, 3.4, 2.2, 0.06, 0, Math.PI * 2);
+      c.fill();
+
+      // Near HUGE flared Chihuahua bat/radar ear with warm pink interior
+      c.fillStyle = coatBase;
+      c.strokeStyle = SOFT_OUTLINE;
+      c.lineWidth = 0.8;
+      c.beginPath();
+      c.moveTo(headX - 4.2, headY - 2.0 + earBounce * 0.4);
+      c.quadraticCurveTo(headX - 9.8, headY - 12.2 + earBounce, headX - 0.6, headY - 5.2 + earBounce * 0.4);
+      c.quadraticCurveTo(headX - 0.2, headY - 2.2 + earBounce * 0.4, headX - 4.2, headY - 2.0 + earBounce * 0.4);
+      c.closePath();
+      c.fill();
+      c.stroke();
+      c.fillStyle = earPink;
+      c.beginPath();
+      c.moveTo(headX - 3.6, headY - 2.8 + earBounce * 0.4);
+      c.quadraticCurveTo(headX - 7.8, headY - 9.8 + earBounce * 0.9, headX - 1.4, headY - 4.6 + earBounce * 0.4);
+      c.closePath();
+      c.fill();
+
+      drawMouthAndTongue(c, headX + 4.8, headY + 2.8, isSleeping, isJoyful, showTongue, animPhase, '#4a2b14', isDrinking);
+      drawGlossyNose(c, headX + 7.4, headY + 1.2, 1.35, 1.05, '#1b1719');
+      // Big expressive glossy round Chihuahua eye
+      drawDogEye(c, headX + 2.5, headY - 0.4, {
+        isSleeping,
+        isBlinking,
+        isJoyful,
+        irisColor: '#3a2212',
+        radius: 2.05
+      });
+    }, { dipAngle: 0.44, dipTx: 2.6, dipTy: 0.6, neckRx: 3.5, neckRy: 2.7 });
+  } else if (breed === 'yorkie') {
+    const steelTop = sc('#687b92', 0.1);
+    const steelBase = sc('#445468', -0.14);
+    const steelDeep = sc('#2b3645', -0.34);
+    const goldBright = isShiny ? shadeHex(shinyColor, 0.58) : '#f6bc62';
+    const goldBase = isShiny ? shadeHex(shinyColor, 0.26) : '#dc9134';
+    const goldDeep = isShiny ? shadeHex(shinyColor, 0.02) : '#b36818';
+
+    const legs: FourLegsConfig = {
+      backX: -6.8,
+      frontX: 5.8,
+      yTop: -1.6,
+      w: 3.1,
+      h: 6.4,
+      swing: legSwing * 0.72,
+      legCol: goldBase,
+      pawCol: goldBright,
+      pawH: 2.2,
+      isSleeping,
+      opts: { featherColor: goldBright }
+    };
+
+    drawFarPairLegs(c, legs);
+
+    // Perky upright feathered Yorkie terrier tail
+    const wag = isSleeping ? tailWag * 0.8 : Math.sin(wagPhase * 2.7) * 2.7 * moodWagAmp;
+    c.save();
+    c.lineCap = 'round';
+    c.strokeStyle = steelDeep;
+    c.lineWidth = 4.2;
+    c.beginPath();
+    c.moveTo(-10.2, isSleeping ? -5.0 : -7.4);
+    c.quadraticCurveTo(
+      isSleeping ? -13.0 : -14.2,
+      (isSleeping ? -7.6 : -12.6) + wag,
+      isSleeping ? -11.6 : -12.4,
+      (isSleeping ? -9.2 : -15.6) + wag
+    );
+    c.stroke();
+    c.strokeStyle = steelTop;
+    c.lineWidth = 2.0;
+    c.stroke();
+    c.restore();
+
+    // Petite golden underbody
+    fillShadedEllipse(
+      c,
+      -0.6,
+      (isSleeping ? -4.5 : -6.4) + sleepBreath * 0.12,
+      isSleeping ? 10.2 : 10.7,
+      (isSleeping ? 5.0 : 5.7) + sleepBreath * 0.16,
+      0,
+      goldBright,
+      goldBase
+    );
+
+    // Iconic silky steel-blue Yorkie mantle cascading over back with feathered skirt edge
+    fillShadedEllipse(
+      c,
+      -1.8,
+      (isSleeping ? -5.5 : -7.6) + sleepBreath * 0.12,
+      isSleeping ? 9.4 : 9.9,
+      (isSleeping ? 4.2 : 4.8) + sleepBreath * 0.14,
+      -0.03,
+      steelTop,
+      steelBase
+    );
+    c.fillStyle = steelDeep;
+    c.beginPath();
+    c.ellipse(-2.8, isSleeping ? -6.8 : -9.0, 7.6, 2.2, -0.04, 0, Math.PI * 2);
+    c.fill();
+    // Silky feathered coat scallops along flank
+    c.fillStyle = steelBase;
+    c.beginPath();
+    c.arc(-7.0, isSleeping ? -3.2 : -4.8, 2.2, 0, Math.PI * 2);
+    c.arc(-3.2, isSleeping ? -2.8 : -4.4, 2.4, 0, Math.PI * 2);
+    c.arc(0.8, isSleeping ? -3.0 : -4.6, 2.3, 0, Math.PI * 2);
+    c.fill();
+
+    // Warm golden chest plume
+    fillShadedEllipse(c, 5.4, isSleeping ? -4.4 : -6.4, 4.2, 4.6, 0.14, goldBright, goldBase, null);
+
+    drawNearPairLegs(c, legs);
+
+    const headX = isSleeping ? 6.8 : 8.0;
+    const headY = isSleeping ? -8.6 : -13.2;
+
+    withDrinkingHeadPose(c, headX, headY, isDrinking, animPhase, goldBright, goldBase, () => {
+      // Far neat upright V-shaped Yorkie ear
+      c.fillStyle = goldDeep;
+      c.beginPath();
+      c.moveTo(headX + 0.6, headY - 3.6 + earBounce * 0.4);
+      c.lineTo(headX + 2.8, headY - 10.6 + earBounce);
+      c.lineTo(headX + 4.4, headY - 3.2 + earBounce * 0.4);
+      c.closePath();
+      c.fill();
+
+      // Round silky golden-tan Yorkie head
+      fillShadedEllipse(c, headX, headY, 6.2, 5.8, 0, goldBright, goldBase);
+
+      // Swept silky forehead bangs & fluffy feathered golden terrier cheeks/beard
+      c.fillStyle = goldBright;
+      c.beginPath();
+      c.ellipse(headX + 0.2, headY - 4.2, 3.6, 2.0, -0.1, 0, Math.PI * 2);
+      c.ellipse(headX + 2.6, headY + 2.4, 5.2, 3.2, 0.08, 0, Math.PI * 2);
+      c.arc(headX - 1.8, headY + 2.0, 2.8, 0, Math.PI * 2);
+      c.fill();
+
+      // Near neat upright V-shaped pointed terrier ear
+      c.fillStyle = goldDeep;
+      c.strokeStyle = SOFT_OUTLINE;
+      c.lineWidth = 0.8;
+      c.beginPath();
+      c.moveTo(headX - 4.0, headY - 3.4 + earBounce * 0.4);
+      c.lineTo(headX - 1.8, headY - 11.2 + earBounce);
+      c.lineTo(headX + 1.0, headY - 3.4 + earBounce * 0.4);
+      c.closePath();
+      c.fill();
+      c.stroke();
+      c.fillStyle = goldBright;
+      c.beginPath();
+      c.moveTo(headX - 2.8, headY - 4.0 + earBounce * 0.4);
+      c.lineTo(headX - 1.6, headY - 8.6 + earBounce * 0.9);
+      c.lineTo(headX - 0.1, headY - 3.8 + earBounce * 0.4);
+      c.closePath();
+      c.fill();
+
+      drawMouthAndTongue(c, headX + 4.8, headY + 2.8, isSleeping, isJoyful, showTongue, animPhase, '#4a2910', isDrinking);
+      drawGlossyNose(c, headX + 7.2, headY + 1.2, 1.35, 1.05, '#14161c');
+      drawDogEye(c, headX + 2.5, headY - 0.6, {
+        isSleeping,
+        isBlinking,
+        isJoyful,
+        irisColor: '#2c1b10',
+        radius: 1.75
+      });
+    }, { dipAngle: 0.45, dipTx: 2.5, dipTy: 0.5, neckRx: 3.8, neckRy: 3.0 });
+  } else if (breed === 'shihTzu') {
+    const whiteTop = isShiny ? shadeHex(shinyColor, 0.72) : '#fffefb';
+    const whiteShade = isShiny ? shadeHex(shinyColor, 0.42) : '#e6dfd6';
+    const goldTop = sc('#d69755', 0.12);
+    const goldBase = sc('#b27135', -0.08);
+    const earTip = sc('#5e3b22', -0.34);
+    const shihOutline = 'rgba(84, 62, 48, 0.34)';
+
+    const legs: FourLegsConfig = {
+      backX: -7.4,
+      frontX: 6.2,
+      yTop: -1.4,
+      w: 3.9,
+      h: 6.0,
+      swing: legSwing * 0.62,
+      legCol: whiteShade,
+      pawCol: whiteTop,
+      pawH: 2.5,
+      isSleeping,
+      opts: { outlineColor: shihOutline }
+    };
+
+    drawFarPairLegs(c, legs);
+
+    // Iconic plush chrysanthemum plume tail curled high & forward over the back
+    const wag = isSleeping ? tailWag * 0.7 : Math.sin(wagPhase * 2.1) * 2.2 * moodWagAmp;
+    c.save();
+    c.lineCap = 'round';
+    c.strokeStyle = goldBase;
+    c.lineWidth = 6.2;
+    c.beginPath();
+    c.moveTo(-10.8, isSleeping ? -5.6 : -8.2);
+    c.quadraticCurveTo(
+      isSleeping ? -15.4 : -17.2,
+      (isSleeping ? -9.6 : -14.8) + wag,
+      isSleeping ? -10.2 : -10.8,
+      (isSleeping ? -11.4 : -17.4) + wag
+    );
+    c.stroke();
+    c.fillStyle = whiteTop;
+    c.strokeStyle = shihOutline;
+    c.lineWidth = 0.8;
+    c.beginPath();
+    c.arc(isSleeping ? -11.0 : -11.6, (isSleeping ? -11.2 : -16.8) + wag, 4.4, 0, Math.PI * 2);
+    c.arc(isSleeping ? -8.4 : -8.6, (isSleeping ? -10.4 : -15.6) + wag * 0.85, 3.4, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    c.restore();
+
+    // Compact low imperial torso draped in luxurious long flowing coat skirt
+    fillShadedEllipse(
+      c,
+      -0.8,
+      (isSleeping ? -5.0 : -7.0) + sleepBreath * 0.14,
+      isSleeping ? 11.4 : 12.0,
+      (isSleeping ? 6.0 : 6.9) + sleepBreath * 0.18,
+      0,
+      whiteTop,
+      whiteShade,
+      shihOutline
+    );
+
+    // Warm honey-gold back saddle
+    c.fillStyle = goldBase;
+    c.beginPath();
+    c.ellipse(-2.2, isSleeping ? -7.2 : -9.8, 8.2, 3.8, -0.05, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = goldTop;
+    c.beginPath();
+    c.ellipse(-1.4, isSleeping ? -8.0 : -10.6, 5.8, 2.2, -0.04, 0, Math.PI * 2);
+    c.fill();
+
+    // Long flowing scalloped snowy-white floor-draping skirt puffs
+    c.fillStyle = whiteTop;
+    c.strokeStyle = shihOutline;
+    c.lineWidth = 0.75;
+    c.beginPath();
+    c.arc(-7.6, isSleeping ? -2.2 : -3.4, 3.3, 0, Math.PI * 2);
+    c.arc(-3.0, isSleeping ? -1.8 : -3.0, 3.6, 0, Math.PI * 2);
+    c.arc(1.8, isSleeping ? -1.9 : -3.1, 3.5, 0, Math.PI * 2);
+    c.arc(6.0, isSleeping ? -3.0 : -4.4, 3.8, 0, Math.PI * 2);
+    c.fill();
+
+    drawNearPairLegs(c, legs);
+
+    const headX = isSleeping ? 7.4 : 8.6;
+    const headY = isSleeping ? -8.6 : -13.4;
+
+    withDrinkingHeadPose(c, headX, headY, isDrinking, animPhase, whiteTop, whiteShade, () => {
+      // Far heavy furry drop ear
+      c.fillStyle = earTip;
+      c.beginPath();
+      c.ellipse(headX + 3.6, headY + 2.4 + earBounce * 0.5, 2.8, 5.2, -0.18, 0, Math.PI * 2);
+      c.fill();
+
+      // Round plush chrysanthemum head
+      fillShadedEllipse(c, headX, headY, 6.9, 6.4, 0, whiteTop, whiteShade, shihOutline);
+
+      // Warm gold mask around eye & forehead sides
+      c.fillStyle = goldBase;
+      c.beginPath();
+      c.ellipse(headX + 1.8, headY - 1.2, 4.6, 3.0, 0.08, 0, Math.PI * 2);
+      c.fill();
+
+      // Crisp snowy white forehead blaze
+      c.fillStyle = whiteTop;
+      c.beginPath();
+      c.ellipse(headX + 3.8, headY - 2.4, 1.6, 2.6, -0.1, 0, Math.PI * 2);
+      c.fill();
+
+      // Fluffy snowy-white mustache cheek puffs & imperial beard
+      fillShadedEllipse(c, headX + 3.8, headY + 2.4, 5.4, 3.3, 0.04, whiteTop, whiteShade, shihOutline);
+      c.fillStyle = whiteTop;
+      c.beginPath();
+      c.arc(headX + 0.6, headY + 2.8, 3.0, 0, Math.PI * 2);
+      c.arc(headX + 6.4, headY + 2.2, 2.7, 0, Math.PI * 2);
+      c.fill();
+
+      // Long luxurious furry gold-and-sable near drop ear
+      fillShadedEllipse(
+        c,
+        headX - 3.6,
+        headY + 3.0 + earBounce * 0.65,
+        3.6,
+        6.5,
+        0.14,
+        goldTop,
+        earTip,
+        shihOutline
+      );
+
+      // Natural fluffy crown tuft
+      c.fillStyle = whiteTop;
+      c.strokeStyle = shihOutline;
+      c.lineWidth = 0.75;
+      c.beginPath();
+      c.ellipse(headX + 0.4, headY - 7.0, 2.7, 2.1, -0.06, 0, Math.PI * 2);
+      c.fill();
+      c.stroke();
+
+      drawMouthAndTongue(c, headX + 5.2, headY + 3.4, isSleeping, isJoyful, showTongue, animPhase, '#3e2723', isDrinking);
+      // Short button nose set close to the big sweet eyes
+      drawGlossyNose(c, headX + 6.9, headY + 1.1, 1.45, 1.1, '#14161c');
+      drawDogEye(c, headX + 3.0, headY - 0.6, {
+        isSleeping,
+        isBlinking,
+        isJoyful,
+        irisColor: '#2d1c12',
+        radius: 1.9
+      });
+    }, { dipAngle: 0.44, dipTx: 2.4, dipTy: 0.5, neckRx: 4.2, neckRy: 3.4, outlineColor: shihOutline });
+  } else if (breed === 'pitbull') {
+    const coatTop = sc('#8698ad', 0.14);
+    const coatBase = sc('#5f7288', -0.06);
+    const coatDeep = sc('#455569', -0.24);
+    const sheen = isShiny ? shadeHex(shinyColor, 0.38) : '#a8b9cc';
+    const whiteFur = isShiny ? shadeHex(shinyColor, 0.76) : '#fafcff';
+    const noseCol = isShiny ? shadeHex(shinyColor, -0.42) : '#323d4d';
+
+    const legs: FourLegsConfig = {
+      backX: -9.2,
+      frontX: 8.2,
+      yTop: -2.8,
+      w: 4.7,
+      h: 9.5,
+      swing: legSwing,
+      legCol: coatBase,
+      pawCol: whiteFur,
+      pawH: 3.1,
+      isSleeping
+    };
+
+    drawFarPairLegs(c, legs);
+
+    // Smooth sleek tapered whip tail wagging happily
+    const wag = isSleeping ? tailWag : Math.sin(wagPhase * 2.5) * 3.8 * moodWagAmp;
+    c.save();
+    c.lineCap = 'round';
+    c.strokeStyle = coatDeep;
+    c.lineWidth = 4.0;
+    c.beginPath();
+    c.moveTo(-13.8, isSleeping ? -6.2 : -9.2);
+    c.quadraticCurveTo(
+      isSleeping ? -18.5 : -21.8,
+      (isSleeping ? -7.4 : -12.6) + wag,
+      isSleeping ? -20.8 : -24.8,
+      (isSleeping ? -8.4 : -15.4) + wag * 0.75
+    );
+    c.stroke();
+    c.strokeStyle = coatTop;
+    c.lineWidth = 2.1;
+    c.stroke();
+    c.restore();
+
+    // Compact muscular broad-chested Pitbull torso
+    fillShadedEllipse(
+      c,
+      -0.8,
+      (isSleeping ? -6.4 : -9.0) + sleepBreath * 0.16,
+      isSleeping ? 14.2 : 15.0,
+      (isSleeping ? 7.6 : 8.7) + sleepBreath * 0.22,
+      -0.03,
+      coatTop,
+      coatBase
+    );
+
+    // Sleek athletic shoulder & back coat sheen
+    c.fillStyle = sheen;
+    c.beginPath();
+    c.ellipse(-2.0, isSleeping ? -9.8 : -12.6, 8.2, 2.3, -0.04, 0, Math.PI * 2);
+    c.fill();
+
+    // Crisp bright white chest blaze & underbelly strip
+    fillShadedEllipse(c, 7.6, isSleeping ? -5.8 : -8.4, 5.4, 6.2, 0.16, whiteFur, '#dde5ef', null);
+    c.fillStyle = whiteFur;
+    c.beginPath();
+    c.ellipse(1.4, isSleeping ? -2.9 : -4.8, 7.4, 2.4, 0.04, 0, Math.PI * 2);
+    c.fill();
+
+    drawNearPairLegs(c, legs);
+
+    const headX = isSleeping ? 9.6 : 11.2;
+    const headY = isSleeping ? -10.6 : -16.4;
+
+    withDrinkingHeadPose(c, headX, headY, isDrinking, animPhase, coatTop, coatBase, () => {
+      // Far half-folded "rose" ear
+      c.fillStyle = coatDeep;
+      c.beginPath();
+      c.moveTo(headX + 0.6, headY - 4.4 + earBounce * 0.4);
+      c.quadraticCurveTo(headX + 5.6, headY - 8.4 + earBounce, headX + 6.4, headY - 2.6 + earBounce * 0.5);
+      c.closePath();
+      c.fill();
+
+      // Broad sculpted blocky Pitbull head
+      fillShadedEllipse(c, headX, headY, 7.6, 6.9, 0, coatTop, coatBase);
+
+      // Subtle white forehead blaze stripe
+      c.fillStyle = whiteFur;
+      c.beginPath();
+      c.ellipse(headX + 3.6, headY - 2.2, 1.35, 3.0, -0.14, 0, Math.PI * 2);
+      c.fill();
+
+      // Broad squared-off Pitbull muzzle with crisp white lower muzzle/chin
+      fillShadedEllipse(c, headX + 5.6, headY + 2.0, 5.1, 3.7, 0.03, coatTop, coatBase);
+      c.fillStyle = whiteFur;
+      c.beginPath();
+      c.ellipse(headX + 5.8, headY + 3.5, 4.4, 2.0, 0.02, 0, Math.PI * 2);
+      c.fill();
+
+      // Near classic half-pricked / folded Pitbull rose ear
+      c.fillStyle = coatDeep;
+      c.strokeStyle = SOFT_OUTLINE;
+      c.lineWidth = 0.85;
+      c.beginPath();
+      c.moveTo(headX - 4.8, headY - 3.6 + earBounce * 0.4);
+      c.quadraticCurveTo(headX - 8.6, headY - 7.8 + earBounce, headX - 6.6, headY - 0.6 + earBounce * 0.6);
+      c.quadraticCurveTo(headX - 3.2, headY - 1.2 + earBounce * 0.5, headX - 0.8, headY - 4.4 + earBounce * 0.4);
+      c.closePath();
+      c.fill();
+      c.stroke();
+
+      // Signature warm wide Pibble smile!
+      drawMouthAndTongue(c, headX + 6.4, headY + 3.7, isSleeping, true, showTongue, animPhase, '#242c36', isDrinking);
+      drawGlossyNose(c, headX + 9.8, headY + 1.3, 2.0, 1.5, noseCol);
+      drawDogEye(c, headX + 3.2, headY - 0.8, {
+        isSleeping,
+        isBlinking,
+        isJoyful,
+        irisColor: '#b37b36',
+        radius: 1.7
+      });
+    });
+  } else if (breed === 'poodle') {
+    const curlBright = isShiny ? shadeHex(shinyColor, 0.58) : '#fffdf8';
+    const curlTop = isShiny ? shadeHex(shinyColor, 0.3) : '#f7efe3';
+    const curlBase = isShiny ? shadeHex(shinyColor, 0.04) : '#e3d2bc';
+    const curlShade = isShiny ? shadeHex(shinyColor, -0.2) : '#c8b296';
+    const poodleOutline = 'rgba(92, 74, 58, 0.34)';
+
+    const legs: FourLegsConfig = {
+      backX: -9.4,
+      frontX: 8.2,
+      yTop: -3.6,
+      w: 3.0,
+      h: 11.4,
+      swing: legSwing,
+      legCol: curlBase,
+      pawCol: curlBright,
+      pawH: 2.5,
+      isSleeping,
+      farLegCol: curlShade,
+      farPawCol: curlBase,
+      opts: { outlineColor: poodleOutline }
+    };
+
+    drawFarPairLegs(c, legs);
+
+    // Far curly ankle pom-pom cuffs
+    if (!isSleeping) {
+      c.fillStyle = curlTop;
+      c.strokeStyle = poodleOutline;
+      c.lineWidth = 0.75;
+      const farBackX = legs.backX + 2.2 + legSwing * 0.85;
+      const farFrontX = legs.frontX + 1.8 - legSwing * 0.85;
+      c.beginPath();
+      c.arc(farBackX, 4.4, 2.6, 0, Math.PI * 2);
+      c.arc(farFrontX, 4.4, 2.6, 0, Math.PI * 2);
+      c.fill();
+      c.stroke();
+    }
+
+    // Iconic shaved Poodle tail stem topped with a big fluffy round pom-pom ball!
+    const wag = isSleeping ? tailWag : Math.sin(wagPhase * 2.3) * 3.0 * moodWagAmp;
+    const pomX = isSleeping ? -18.4 : -21.2;
+    const pomY = (isSleeping ? -9.4 : -17.6) + wag;
+    c.save();
+    c.lineCap = 'round';
+    c.strokeStyle = curlShade;
+    c.lineWidth = 2.6;
+    c.beginPath();
+    c.moveTo(-13.6, isSleeping ? -6.8 : -10.6);
+    c.quadraticCurveTo(isSleeping ? -16.4 : -18.2, (isSleeping ? -8.2 : -14.2) + wag * 0.6, pomX, pomY);
+    c.stroke();
+    // Fluffy multi-lobe tail pom-pom
+    c.fillStyle = curlBright;
+    c.strokeStyle = poodleOutline;
+    c.lineWidth = 0.85;
+    c.beginPath();
+    c.arc(pomX, pomY, 4.3, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    c.fillStyle = curlTop;
+    c.beginPath();
+    c.arc(pomX - 1.5, pomY + 1.2, 2.3, 0, Math.PI * 2);
+    c.arc(pomX + 1.5, pomY - 1.1, 2.1, 0, Math.PI * 2);
+    c.fill();
+    c.restore();
+
+    // Sleek sculpted shaved hindquarters & tapered athletic waist
+    fillShadedEllipse(
+      c,
+      -2.8,
+      (isSleeping ? -6.6 : -10.2) + sleepBreath * 0.14,
+      isSleeping ? 11.8 : 12.8,
+      (isSleeping ? 5.6 : 6.4) + sleepBreath * 0.18,
+      -0.06,
+      curlTop,
+      curlBase,
+      poodleOutline
+    );
+
+    // Classic hip rosette puff
+    c.fillStyle = curlBright;
+    c.strokeStyle = poodleOutline;
+    c.lineWidth = 0.75;
+    c.beginPath();
+    c.arc(-9.2, isSleeping ? -7.2 : -11.4, 3.4, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+
+    // Iconic big sculpted Continental/Lion-clip curly cloud chest & shoulder mane!
+    fillShadedEllipse(
+      c,
+      5.4,
+      (isSleeping ? -7.0 : -10.8) + sleepBreath * 0.16,
+      7.4,
+      (isSleeping ? 7.0 : 8.4) + sleepBreath * 0.2,
+      0.08,
+      curlBright,
+      curlBase,
+      poodleOutline
+    );
+    // Scalloped curly cloud tufts along the mane
+    c.fillStyle = curlBright;
+    c.beginPath();
+    c.arc(1.2, isSleeping ? -9.6 : -14.2, 4.2, 0, Math.PI * 2);
+    c.arc(6.0, isSleeping ? -10.2 : -15.0, 4.4, 0, Math.PI * 2);
+    c.arc(9.8, isSleeping ? -7.2 : -11.0, 4.1, 0, Math.PI * 2);
+    c.arc(6.8, isSleeping ? -4.2 : -7.2, 4.0, 0, Math.PI * 2);
+    c.arc(1.8, isSleeping ? -5.0 : -8.0, 3.6, 0, Math.PI * 2);
+    c.fill();
+
+    drawNearPairLegs(c, legs);
+
+    // Near curly ankle pom-pom cuffs!
+    if (!isSleeping) {
+      c.fillStyle = curlBright;
+      c.strokeStyle = poodleOutline;
+      c.lineWidth = 0.8;
+      const nearBackX = legs.backX - legSwing;
+      const nearFrontX = legs.frontX + legSwing;
+      c.beginPath();
+      c.arc(nearBackX, 4.8, 2.9, 0, Math.PI * 2);
+      c.fill();
+      c.stroke();
+      c.beginPath();
+      c.arc(nearFrontX, 4.8, 2.9, 0, Math.PI * 2);
+      c.fill();
+      c.stroke();
+    }
+
+    const headX = isSleeping ? 9.6 : 11.0;
+    const headY = isSleeping ? -11.2 : -18.2;
+
+    withDrinkingHeadPose(c, headX, headY, isDrinking, animPhase, curlBright, curlBase, () => {
+      // Far curly pendulous ear
+      c.fillStyle = curlShade;
+      c.beginPath();
+      c.ellipse(headX + 3.4, headY + 2.4 + earBounce * 0.5, 2.7, 5.2, -0.16, 0, Math.PI * 2);
+      c.fill();
+
+      // Refined Poodle head & sleek clipped aristocratic muzzle
+      fillShadedEllipse(c, headX, headY, 6.4, 6.0, 0, curlTop, curlBase, poodleOutline);
+      fillShadedEllipse(c, headX + 6.2, headY + 1.6, 5.0, 2.6, 0.04, curlBright, curlBase, poodleOutline);
+
+      // Iconic tall puffy curly Poodle topknot crown!
+      c.fillStyle = curlBright;
+      c.strokeStyle = poodleOutline;
+      c.lineWidth = 0.85;
+      c.beginPath();
+      c.arc(headX - 1.6, headY - 6.4, 3.6, 0, Math.PI * 2);
+      c.arc(headX + 1.8, headY - 6.6, 3.4, 0, Math.PI * 2);
+      c.arc(headX + 0.1, headY - 8.2, 3.5, 0, Math.PI * 2);
+      c.fill();
+      c.stroke();
+      // Soft curl crown fill blend
+      c.fillStyle = curlBright;
+      c.beginPath();
+      c.ellipse(headX + 0.1, headY - 6.2, 4.6, 2.6, 0, 0, Math.PI * 2);
+      c.fill();
+
+      // Near long scalloped curly pendulous Poodle ear
+      c.fillStyle = curlTop;
+      c.strokeStyle = poodleOutline;
+      c.lineWidth = 0.85;
+      c.beginPath();
+      c.arc(headX - 3.6, headY - 0.6 + earBounce * 0.45, 3.2, 0, Math.PI * 2);
+      c.arc(headX - 4.2, headY + 2.6 + earBounce * 0.6, 3.4, 0, Math.PI * 2);
+      c.arc(headX - 3.4, headY + 5.6 + earBounce * 0.75, 3.0, 0, Math.PI * 2);
+      c.fill();
+      c.stroke();
+      c.fillStyle = curlBright;
+      c.beginPath();
+      c.ellipse(headX - 3.6, headY + 2.4 + earBounce * 0.6, 2.2, 4.6, 0.06, 0, Math.PI * 2);
+      c.fill();
+
+      drawMouthAndTongue(c, headX + 7.2, headY + 3.0, isSleeping, isJoyful, showTongue, animPhase, '#3d2c20', isDrinking);
+      drawGlossyNose(c, headX + 10.6, headY + 1.3, 1.65, 1.25, '#14161c');
+      drawDogEye(c, headX + 3.2, headY - 0.7, {
+        isSleeping,
+        isBlinking,
+        isJoyful,
+        irisColor: '#2d1f16',
+        almond: true,
+        radius: 1.65
+      });
+    }, { outlineColor: poodleOutline });
+  } else if (breed === 'rottweiler') {
+    const coatTop = sc('#2b313c', -0.16);
+    const coatBase = sc('#15181f', -0.44);
+    const sheen = isShiny ? shadeHex(shinyColor, 0.14) : '#3d4656';
+    const mahogany = isShiny ? shadeHex(shinyColor, 0.36) : '#d46b24';
+    const mahoganyDeep = isShiny ? shadeHex(shinyColor, 0.14) : '#ab4a12';
+
+    const legs: FourLegsConfig = {
+      backX: -9.6,
+      frontX: 8.4,
+      yTop: -3.0,
+      w: 5.2,
+      h: legH + 0.2,
+      swing: legSwing,
+      legCol: coatBase,
+      pawCol: mahogany,
+      pawH: 3.4,
+      isSleeping,
+      opts: { bandColor: mahogany, bandStartRatio: 0.46, bandEndRatio: 1.0 }
+    };
+
+    drawFarPairLegs(c, legs);
+
+    // Classic short sturdy bobbed Rottweiler tail
+    c.fillStyle = coatBase;
+    c.strokeStyle = SOFT_OUTLINE;
+    c.lineWidth = 0.85;
+    c.beginPath();
+    c.ellipse(
+      isSleeping ? -14.6 : -16.2,
+      (isSleeping ? -6.8 : -10.2) + tailWag * 0.75,
+      3.3,
+      2.3,
+      -0.35,
+      0,
+      Math.PI * 2
+    );
+    c.fill();
+    c.stroke();
+
+    // Heavy broad muscular Rottweiler torso
+    fillShadedEllipse(
+      c,
+      -0.8,
+      (isSleeping ? -6.8 : -9.8) + sleepBreath * 0.16,
+      isSleeping ? 14.8 : 15.8,
+      (isSleeping ? 8.2 : 9.6) + sleepBreath * 0.24,
+      0,
+      coatTop,
+      coatBase
+    );
+
+    // Glossy jet-black muscular back sheen
+    c.fillStyle = sheen;
+    c.beginPath();
+    c.ellipse(-2.0, isSleeping ? -10.8 : -14.2, 9.2, 2.5, -0.04, 0, Math.PI * 2);
+    c.fill();
+
+    // Iconic bold mahogany-rust twin chest patches (no white!)
+    c.fillStyle = mahogany;
+    c.beginPath();
+    c.ellipse(8.2, isSleeping ? -5.8 : -8.4, 4.4, 5.2, 0.18, 0, Math.PI * 2);
+    c.ellipse(5.8, isSleeping ? -4.0 : -6.2, 3.0, 2.6, 0.1, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = mahoganyDeep;
+    c.beginPath();
+    c.ellipse(-8.6, isSleeping ? -4.2 : -6.4, 3.2, 2.4, -0.12, 0, Math.PI * 2);
+    c.fill();
+
+    drawNearPairLegs(c, legs);
+
+    const headX = isSleeping ? 10.0 : 11.4;
+    const headY = isSleeping ? -11.0 : -17.2;
+
+    withDrinkingHeadPose(c, headX, headY, isDrinking, animPhase, coatTop, coatBase, () => {
+      // Far folded triangular Rottie ear
+      c.fillStyle = shadeHex(coatBase, -0.15);
+      c.beginPath();
+      c.ellipse(headX + 3.6, headY + 1.0 + earBounce * 0.5, 2.6, 4.4, -0.22, 0, Math.PI * 2);
+      c.fill();
+
+      // Broad, blocky powerful Rottweiler skull
+      fillShadedEllipse(c, headX, headY, 7.9, 7.5, 0, coatTop, coatBase);
+
+      // Strong squared-off black muzzle with vivid mahogany-rust cheek & underjaw markings
+      fillShadedEllipse(c, headX + 5.6, headY + 2.2, 5.0, 3.8, 0.04, coatTop, coatBase);
+      c.fillStyle = mahogany;
+      c.beginPath();
+      c.ellipse(headX + 2.6, headY + 2.8, 3.6, 2.7, 0.12, 0, Math.PI * 2);
+      c.ellipse(headX + 6.4, headY + 3.9, 3.9, 1.85, 0.04, 0, Math.PI * 2);
+      c.fill();
+
+      // Unmistakable bright mahogany eyebrow pip!
+      c.fillStyle = mahogany;
+      c.beginPath();
+      c.ellipse(headX + 3.5, headY - 2.9, 1.75, 1.2, -0.12, 0, Math.PI * 2);
+      c.fill();
+
+      // Medium high-set folded triangular glossy black Rottie ear
+      c.fillStyle = coatBase;
+      c.strokeStyle = SOFT_OUTLINE;
+      c.lineWidth = 0.85;
+      c.beginPath();
+      c.moveTo(headX - 4.4, headY - 3.6 + earBounce * 0.4);
+      c.quadraticCurveTo(headX - 7.4, headY + 1.4 + earBounce * 0.65, headX - 3.4, headY + 4.4 + earBounce * 0.7);
+      c.quadraticCurveTo(headX - 0.2, headY + 1.4 + earBounce * 0.5, headX - 0.6, headY - 3.2 + earBounce * 0.4);
+      c.closePath();
+      c.fill();
+      c.stroke();
+
+      drawMouthAndTongue(c, headX + 6.8, headY + 4.2, isSleeping, isJoyful, showTongue, animPhase, '#0f1217', isDrinking);
+      drawGlossyNose(c, headX + 10.1, headY + 1.5, 2.05, 1.55, '#0c0e13');
+      drawDogEye(c, headX + 3.5, headY - 0.5, {
+        isSleeping,
+        isBlinking,
+        isJoyful,
+        irisColor: '#6b3b16',
+        lidColor: mahogany,
+        radius: 1.7
+      });
+    });
+  } else if (breed === 'greatDane') {
+    const fawnTop = sc('#e4ae68', 0.16);
+    const fawnBase = sc('#c98c42', -0.02);
+    const fawnShade = sc('#a46a28', -0.22);
+    const maskBlack = sc('#1c2028', -0.44);
+    const earDark = sc('#2b303b', -0.32);
+    const chestCream = isShiny ? shadeHex(shinyColor, 0.56) : '#f7dfb8';
+
+    const legs: FourLegsConfig = {
+      backX: -11.4,
+      frontX: 9.6,
+      yTop: -4.4,
+      w: 4.5,
+      h: 13.0,
+      swing: legSwing * 1.08,
+      legCol: fawnBase,
+      pawCol: fawnTop,
+      pawH: 3.2,
+      isSleeping
+    };
+
+    drawFarPairLegs(c, legs);
+
+    // Long, sleek tapered Great Dane tail held low-to-level with gentle upturned tip
+    const wag = isSleeping ? tailWag : Math.sin(wagPhase * 1.8) * 3.0 * moodWagAmp;
+    c.save();
+    c.lineCap = 'round';
+    c.strokeStyle = fawnShade;
+    c.lineWidth = 4.5;
+    c.beginPath();
+    c.moveTo(-16.0, isSleeping ? -7.4 : -12.0);
+    c.quadraticCurveTo(
+      isSleeping ? -21.2 : -24.2,
+      (isSleeping ? -5.8 : -9.0) + wag * 0.7,
+      isSleeping ? -24.2 : -28.4,
+      (isSleeping ? -4.4 : -6.6) + wag * 0.6
+    );
+    c.stroke();
+    c.strokeStyle = fawnTop;
+    c.lineWidth = 2.2;
+    c.stroke();
+    c.restore();
+
+    // Towering, deep-chested, athletic giant torso
+    fillShadedEllipse(
+      c,
+      -1.0,
+      (isSleeping ? -7.6 : -12.2) + sleepBreath * 0.16,
+      isSleeping ? 16.0 : 17.4,
+      (isSleeping ? 7.8 : 9.2) + sleepBreath * 0.22,
+      -0.06,
+      fawnTop,
+      fawnBase
+    );
+
+    // Deep noble ribcage keel & slender cream sternum streak
+    c.fillStyle = fawnBase;
+    c.beginPath();
+    c.ellipse(6.2, isSleeping ? -6.4 : -10.6, 7.6, 7.6, 0.12, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = chestCream;
+    c.beginPath();
+    c.ellipse(10.8, isSleeping ? -6.2 : -10.8, 3.2, 5.2, 0.18, 0, Math.PI * 2);
+    c.fill();
+
+    // Sunlit muscular coat highlight
+    c.fillStyle = 'rgba(255, 244, 218, 0.24)';
+    c.beginPath();
+    c.ellipse(-2.8, isSleeping ? -11.4 : -16.4, 10.2, 2.6, -0.06, 0, Math.PI * 2);
+    c.fill();
+
+    // Proud tall arched Great Dane neck (when awake and not dipping to drink)
+    if (!isSleeping && !isDrinking) {
+      fillShadedEllipse(c, 10.4, -16.4, 5.2, 6.8, 0.24, fawnTop, fawnBase);
+    }
+
+    drawNearPairLegs(c, legs);
+
+    const headX = isSleeping ? 11.4 : 13.2;
+    const headY = isSleeping ? -11.6 : -22.2;
+
+    withDrinkingHeadPose(c, headX, headY, isDrinking, animPhase, fawnTop, fawnBase, () => {
+      // Far large dark velvety folded Dane ear
+      c.fillStyle = shadeHex(earDark, -0.18);
+      c.beginPath();
+      c.ellipse(headX + 3.4, headY + 2.4 + earBounce * 0.5, 2.7, 5.4, -0.2, 0, Math.PI * 2);
+      c.fill();
+
+      // Noble sculpted rectangular Great Dane skull
+      fillShadedEllipse(c, headX, headY, 7.3, 6.6, -0.04, fawnTop, fawnBase);
+
+      // Iconic broad deep squared-off jet-black Dane muzzle mask & flews
+      c.fillStyle = maskBlack;
+      c.strokeStyle = SOFT_OUTLINE;
+      c.lineWidth = 0.85;
+      c.beginPath();
+      c.moveTo(headX + 2.4, headY - 1.6);
+      c.lineTo(headX + 12.0, headY - 0.2);
+      c.quadraticCurveTo(headX + 12.8, headY + 3.8, headX + 10.6, headY + 5.2);
+      c.quadraticCurveTo(headX + 6.4, headY + 5.8, headX + 2.2, headY + 4.6);
+      c.closePath();
+      c.fill();
+      c.stroke();
+
+      // Subtle dark mask shading framing the eye
+      c.fillStyle = earDark;
+      c.beginPath();
+      c.ellipse(headX + 3.4, headY - 0.8, 2.8, 2.2, 0.1, 0, Math.PI * 2);
+      c.fill();
+
+      // Near large high-set dark velvety folded Great Dane ear
+      c.fillStyle = earDark;
+      c.strokeStyle = SOFT_OUTLINE;
+      c.lineWidth = 0.85;
+      c.beginPath();
+      c.moveTo(headX - 4.4, headY - 3.4 + earBounce * 0.4);
+      c.quadraticCurveTo(headX - 8.0, headY + 2.4 + earBounce * 0.7, headX - 3.6, headY + 6.8 + earBounce * 0.8);
+      c.quadraticCurveTo(headX - 0.2, headY + 2.8 + earBounce * 0.5, headX - 0.6, headY - 2.8 + earBounce * 0.4);
+      c.closePath();
+      c.fill();
+      c.stroke();
+
+      drawMouthAndTongue(c, headX + 7.6, headY + 4.6, isSleeping, isJoyful, showTongue, animPhase, '#0c0f14', isDrinking);
+      drawGlossyNose(c, headX + 11.8, headY + 1.0, 2.1, 1.55, '#0b0d12');
+      drawDogEye(c, headX + 3.4, headY - 0.9, {
+        isSleeping,
+        isBlinking,
+        isJoyful,
+        irisColor: '#5c3718',
+        lidColor: fawnTop,
+        radius: 1.75
+      });
+    }, { dipAngle: 0.62, dipTx: 2.6, dipTy: 7.4, neckRx: 6.0, neckRy: 4.6 });
   } else {
     // Borzoi (graceful sighthound with long aristocratic snout & silky feathered coat)
     const coatTop = isShiny ? shadeHex(shinyColor, 0.36) : '#fffbf3';

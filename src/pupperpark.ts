@@ -618,19 +618,26 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
   const BREED_LABELS: Record<string, string> = {
     aussie: 'Aussie',
+    chihuahua: 'Chihuahua',
     corgi: 'Corgi',
     beagle: 'Beagle',
+    yorkie: 'Yorkie',
     collie: 'Collie',
     dachshund: 'Dachshund',
     husky: 'Husky',
+    shihTzu: 'Shih Tzu',
     dalmatian: 'Dalmatian',
     golden: 'Golden',
+    pitbull: 'Pitbull',
     samoyed: 'Samoyed',
     shepherd: 'Shepherd',
+    poodle: 'Poodle',
     borzoi: 'Borzoi',
     shiba: 'Shiba',
+    rottweiler: 'Rottweiler',
     labrador: 'Labrador',
-    bernese: 'Bernese'
+    bernese: 'Bernese',
+    greatDane: 'Great Dane'
   };
 
   const DEFAULT_PUP_NAMES = [
@@ -950,19 +957,26 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     try {
       const pitchMap: Record<string, number> = {
         aussie: 430,
+        chihuahua: 720,
         corgi: 600,
         beagle: 510,
+        yorkie: 660,
         collie: 470,
         dachshund: 560,
         husky: 540,
+        shihTzu: 610,
         dalmatian: 445,
         golden: 390,
+        pitbull: 340,
         samoyed: 410,
         shepherd: 350,
+        poodle: 465,
         borzoi: 315,
         shiba: 580,
+        rottweiler: 275,
         labrador: 370,
-        bernese: 295
+        bernese: 295,
+        greatDane: 235
       };
       const baseFreq = (pitchMap[breed] || 430) * (0.94 + Math.random() * 0.12);
       const now = audioCtx.currentTime;
@@ -1050,22 +1064,39 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     treasureChance: number;
   }
 
+  const BREED_ECONOMY_VERSION = 2;
+
   const BREED_CONFIG: Record<string, BreedCfg> = {
-    aussie:    { rank: 1,  cost: 20,    costMult: 1.20, priceCap: 1200,   walkMult: 1.10, digSec: 1.85, payoutMult: 0.95, scalingMult: 1.00, xpMult: 1.00, magicBonus: 0.000, treasureChance: 0.00008 },
-    corgi:     { rank: 2,  cost: 60,    costMult: 1.21, priceCap: 2000,   walkMult: 1.12, digSec: 1.55, payoutMult: 1.15, scalingMult: 1.06, xpMult: 1.12, magicBonus: 0.008, treasureChance: 0.00010 },
-    beagle:    { rank: 3,  cost: 120,   costMult: 1.22, priceCap: 3000,   walkMult: 1.00, digSec: 1.75, payoutMult: 1.35, scalingMult: 1.12, xpMult: 1.05, magicBonus: 0.010, treasureChance: 0.00008 },
-    collie:    { rank: 4,  cost: 340,   costMult: 1.24, priceCap: 6500,   walkMult: 1.20, digSec: 1.35, payoutMult: 1.05, scalingMult: 1.10, xpMult: 1.10, magicBonus: 0.015, treasureChance: 0.00008 },
-    dachshund: { rank: 5,  cost: 560,   costMult: 1.25, priceCap: 9500,   walkMult: 1.15, digSec: 1.25, payoutMult: 1.22, scalingMult: 1.14, xpMult: 1.10, magicBonus: 0.022, treasureChance: 0.00024 },
-    husky:     { rank: 6,  cost: 850,   costMult: 1.26, priceCap: 13000,  walkMult: 1.25, digSec: 1.65, payoutMult: 1.15, scalingMult: 1.15, xpMult: 1.15, magicBonus: 0.020, treasureChance: 0.00008 },
-    dalmatian: { rank: 7,  cost: 1450,  costMult: 1.27, priceCap: 19500,  walkMult: 1.24, digSec: 1.45, payoutMult: 1.40, scalingMult: 1.18, xpMult: 1.16, magicBonus: 0.026, treasureChance: 0.00012 },
-    golden:    { rank: 8,  cost: 2100,  costMult: 1.28, priceCap: 26000,  walkMult: 1.05, digSec: 1.75, payoutMult: 1.65, scalingMult: 1.20, xpMult: 1.08, magicBonus: 0.030, treasureChance: 0.00008 },
-    samoyed:   { rank: 9,  cost: 3200,  costMult: 1.29, priceCap: 36000,  walkMult: 1.12, digSec: 1.60, payoutMult: 1.55, scalingMult: 1.24, xpMult: 1.22, magicBonus: 0.042, treasureChance: 0.00016 },
-    shepherd:  { rank: 10, cost: 4800,  costMult: 1.30, priceCap: 48000,  walkMult: 1.15, digSec: 1.65, payoutMult: 1.25, scalingMult: 1.25, xpMult: 1.12, magicBonus: 0.035, treasureChance: 0.00008 },
-    borzoi:    { rank: 11, cost: 7500,  costMult: 1.31, priceCap: 64000,  walkMult: 1.30, digSec: 1.55, payoutMult: 1.45, scalingMult: 1.26, xpMult: 1.18, magicBonus: 0.048, treasureChance: 0.00024 },
-    shiba:     { rank: 12, cost: 10500, costMult: 1.32, priceCap: 80000,  walkMult: 1.10, digSec: 1.70, payoutMult: 1.20, scalingMult: 1.20, xpMult: 1.12, magicBonus: 0.055, treasureChance: 0.00064 },
-    labrador:  { rank: 13, cost: 22000, costMult: 1.34, priceCap: 125000, walkMult: 1.20, digSec: 1.50, payoutMult: 1.80, scalingMult: 1.32, xpMult: 1.20, magicBonus: 0.050, treasureChance: 0.00012 },
-    bernese:   { rank: 14, cost: 42000, costMult: 1.35, priceCap: 190000, walkMult: 1.10, digSec: 1.45, payoutMult: 2.10, scalingMult: 1.40, xpMult: 1.25, magicBonus: 0.065, treasureChance: 0.00032 }
+    chihuahua:  { rank: 1,  cost: 50,     costMult: 1.20, priceCap: 3500,   walkMult: 1.22, digSec: 1.60, payoutMult: 0.95, scalingMult: 1.00, xpMult: 1.05, magicBonus: 0.004, treasureChance: 0.00008 },
+    yorkie:     { rank: 2,  cost: 140,    costMult: 1.21, priceCap: 6000,   walkMult: 1.18, digSec: 1.45, payoutMult: 1.05, scalingMult: 1.05, xpMult: 1.10, magicBonus: 0.010, treasureChance: 0.00016 },
+    corgi:      { rank: 3,  cost: 320,    costMult: 1.22, priceCap: 9000,   walkMult: 1.12, digSec: 1.50, payoutMult: 1.15, scalingMult: 1.08, xpMult: 1.14, magicBonus: 0.012, treasureChance: 0.00010 },
+    dachshund:  { rank: 4,  cost: 650,    costMult: 1.23, priceCap: 14000,  walkMult: 1.15, digSec: 1.46, payoutMult: 1.20, scalingMult: 1.12, xpMult: 1.12, magicBonus: 0.020, treasureChance: 0.00024 },
+    shihTzu:    { rank: 5,  cost: 1150,   costMult: 1.24, priceCap: 22000,  walkMult: 1.04, digSec: 1.62, payoutMult: 1.28, scalingMult: 1.14, xpMult: 1.18, magicBonus: 0.028, treasureChance: 0.00016 },
+    beagle:     { rank: 6,  cost: 1800,   costMult: 1.25, priceCap: 32000,  walkMult: 1.05, digSec: 1.68, payoutMult: 1.40, scalingMult: 1.16, xpMult: 1.10, magicBonus: 0.022, treasureChance: 0.00012 },
+    collie:     { rank: 7,  cost: 3000,   costMult: 1.26, priceCap: 48000,  walkMult: 1.22, digSec: 1.32, payoutMult: 1.32, scalingMult: 1.18, xpMult: 1.15, magicBonus: 0.024, treasureChance: 0.00008 },
+    pitbull:    { rank: 8,  cost: 4500,   costMult: 1.27, priceCap: 64000,  walkMult: 1.16, digSec: 1.36, payoutMult: 1.55, scalingMult: 1.20, xpMult: 1.14, magicBonus: 0.026, treasureChance: 0.00012 },
+    dalmatian:  { rank: 9,  cost: 6500,   costMult: 1.28, priceCap: 84000,  walkMult: 1.25, digSec: 1.42, payoutMult: 1.50, scalingMult: 1.22, xpMult: 1.18, magicBonus: 0.032, treasureChance: 0.00012 },
+    aussie:     { rank: 10, cost: 9000,   costMult: 1.29, priceCap: 110000, walkMult: 1.20, digSec: 1.40, payoutMult: 1.62, scalingMult: 1.26, xpMult: 1.20, magicBonus: 0.036, treasureChance: 0.00016 },
+    husky:      { rank: 11, cost: 12500,  costMult: 1.29, priceCap: 140000, walkMult: 1.26, digSec: 1.52, payoutMult: 1.58, scalingMult: 1.24, xpMult: 1.20, magicBonus: 0.038, treasureChance: 0.00012 },
+    poodle:     { rank: 12, cost: 17500,  costMult: 1.30, priceCap: 180000, walkMult: 1.22, digSec: 1.46, payoutMult: 1.60, scalingMult: 1.26, xpMult: 1.26, magicBonus: 0.052, treasureChance: 0.00020 },
+    shiba:      { rank: 13, cost: 24000,  costMult: 1.31, priceCap: 225000, walkMult: 1.14, digSec: 1.62, payoutMult: 1.42, scalingMult: 1.24, xpMult: 1.15, magicBonus: 0.058, treasureChance: 0.00064 },
+    samoyed:    { rank: 14, cost: 33000,  costMult: 1.31, priceCap: 275000, walkMult: 1.14, digSec: 1.54, payoutMult: 1.74, scalingMult: 1.29, xpMult: 1.23, magicBonus: 0.050, treasureChance: 0.00016 },
+    golden:     { rank: 15, cost: 46000,  costMult: 1.32, priceCap: 330000, walkMult: 1.10, digSec: 1.60, payoutMult: 1.90, scalingMult: 1.31, xpMult: 1.16, magicBonus: 0.044, treasureChance: 0.00012 },
+    labrador:   { rank: 16, cost: 65000,  costMult: 1.33, priceCap: 400000, walkMult: 1.20, digSec: 1.48, payoutMult: 1.95, scalingMult: 1.34, xpMult: 1.21, magicBonus: 0.050, treasureChance: 0.00016 },
+    shepherd:   { rank: 17, cost: 90000,  costMult: 1.33, priceCap: 480000, walkMult: 1.18, digSec: 1.50, payoutMult: 1.85, scalingMult: 1.38, xpMult: 1.20, magicBonus: 0.052, treasureChance: 0.00016 },
+    borzoi:     { rank: 18, cost: 120000, costMult: 1.34, priceCap: 560000, walkMult: 1.30, digSec: 1.48, payoutMult: 1.90, scalingMult: 1.36, xpMult: 1.22, magicBonus: 0.056, treasureChance: 0.00024 },
+    rottweiler: { rank: 19, cost: 160000, costMult: 1.34, priceCap: 650000, walkMult: 1.10, digSec: 1.52, payoutMult: 2.15, scalingMult: 1.42, xpMult: 1.18, magicBonus: 0.054, treasureChance: 0.00020 },
+    bernese:    { rank: 20, cost: 220000, costMult: 1.35, priceCap: 750000, walkMult: 1.12, digSec: 1.42, payoutMult: 2.28, scalingMult: 1.46, xpMult: 1.26, magicBonus: 0.068, treasureChance: 0.00032 },
+    greatDane:  { rank: 21, cost: 300000, costMult: 1.36, priceCap: 880000, walkMult: 1.24, digSec: 1.48, payoutMult: 2.55, scalingMult: 1.55, xpMult: 1.24, magicBonus: 0.062, treasureChance: 0.00028 }
   };
+
+  function createInitialDogCounts(): Record<string, number> {
+    const counts: Record<string, number> = {};
+    Object.keys(BREED_CONFIG).forEach(b => {
+      counts[b] = b === 'aussie' ? 1 : 0;
+    });
+    return counts;
+  }
 
   function computeNextCappedCost(currentCost: number, mult: number, cap?: number): number {
     const safeCost = Math.max(1, Number(currentCost) || 1);
@@ -1140,6 +1171,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     packHappiness: number;
     lastWhistleBoostAt: number;
     costs: Record<string, number>;
+    breedEconomyVersion: number;
     lastSaveTime: number;
     [key: string]: unknown;
   }
@@ -1150,10 +1182,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     magicBones: 0,
     nextNameIndex: 1,
     namePool: [],
-    dogs: {
-      aussie: 1, corgi: 0, beagle: 0, collie: 0, dachshund: 0, husky: 0,
-      dalmatian: 0, golden: 0, samoyed: 0, shepherd: 0, borzoi: 0, shiba: 0, labrador: 0, bernese: 0
-    },
+    dogs: createInitialDogCounts(),
     shinyDogs: [],
     roster: [],
     perks: [],
@@ -1201,6 +1230,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     packHappiness: HAPPINESS_BASE_FLOOR,
     lastWhistleBoostAt: 0,
     costs: {},
+    breedEconomyVersion: BREED_ECONOMY_VERSION,
     lastSaveTime: Date.now()
   };
 
@@ -2683,6 +2713,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
   function loadGame(): void {
     const saved = localStorage.getItem('pupperpark_save');
+    let migratedBreedEconomy = false;
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -2867,10 +2898,21 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         }
         if (!state.dogs) state.dogs = {};
         if (!state.costs) state.costs = {};
+        const rawEconomyVersion = typeof parsed.breedEconomyVersion === 'number' && !Number.isNaN(parsed.breedEconomyVersion)
+          ? parsed.breedEconomyVersion
+          : 1;
+        const shouldResetBreedCosts = rawEconomyVersion < BREED_ECONOMY_VERSION;
+        if (shouldResetBreedCosts) {
+          migratedBreedEconomy = true;
+        }
+        state.breedEconomyVersion = BREED_ECONOMY_VERSION;
         Object.keys(BREED_CONFIG).forEach(b => {
           if (state.dogs[b] === undefined) state.dogs[b] = 0;
-          if (!state.costs[b]) state.costs[b] = BREED_CONFIG[b].cost;
-          else state.costs[b] = Math.min(BREED_CONFIG[b].priceCap, state.costs[b]);
+          if (shouldResetBreedCosts || !state.costs[b]) {
+            state.costs[b] = BREED_CONFIG[b].cost;
+          } else {
+            state.costs[b] = Math.min(BREED_CONFIG[b].priceCap, state.costs[b]);
+          }
         });
         Object.keys(TOY_CONFIG).forEach(t => {
           if (!state.costs[t]) state.costs[t] = TOY_CONFIG[t].baseCost;
@@ -2974,6 +3016,9 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     loadedFromExistingSave = Boolean(saved);
     if (!document.hidden) {
       handleReturnToGame(Date.now());
+    }
+    if (migratedBreedEconomy) {
+      requestSave();
     }
   }
 
@@ -4949,10 +4994,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       magicBones: clampedMagic,
       nextNameIndex: 1,
       namePool: buildShuffledNamePool(new Set(['biscuit'])),
-      dogs: {
-        aussie: 1, corgi: 0, beagle: 0, collie: 0, dachshund: 0, husky: 0,
-        dalmatian: 0, golden: 0, samoyed: 0, shepherd: 0, borzoi: 0, shiba: 0, labrador: 0, bernese: 0
-      },
+      dogs: createInitialDogCounts(),
       shinyDogs: [],
       roster: [createRosterEntry('aussie', starterShinyRoll.isShiny, starterShinyRoll.shinyColor, 'Biscuit')],
       perks: [],
@@ -5000,6 +5042,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       packHappiness: HAPPINESS_BASE_FLOOR,
       lastWhistleBoostAt: 0,
       costs: {},
+      breedEconomyVersion: BREED_ECONOMY_VERSION,
       lastSaveTime: resetNow
     };
 
@@ -7468,12 +7511,25 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       c.translate(pos.x, pos.y);
       c.scale(scale, scale);
 
+      const isToyBreed = this.breed === 'chihuahua' || this.breed === 'yorkie' || this.breed === 'shihTzu';
+      const isGiantBreed = this.breed === 'greatDane';
+      const shadowScaleX = isToyBreed ? 0.78 : isGiantBreed ? 1.16 : 1.0;
+      const shadowScaleY = isToyBreed ? 0.8 : isGiantBreed ? 1.14 : 1.0;
+
       if (this.isShiny && !isOnSlide) {
         c.save();
         c.strokeStyle = 'rgba(255, 234, 167, 0.8)';
         c.lineWidth = 2;
         c.beginPath();
-        c.ellipse(0, 4, isSleeping ? 22 : 24 + Math.sin(this.animPhase * 3) * 3, isSleeping ? 9.5 : 11, 0, 0, Math.PI * 2);
+        c.ellipse(
+          0,
+          4,
+          (isSleeping ? 22 : 24 + Math.sin(this.animPhase * 3) * 3) * shadowScaleX,
+          (isSleeping ? 9.5 : 11) * shadowScaleY,
+          0,
+          0,
+          Math.PI * 2
+        );
         c.stroke();
         c.restore();
       }
@@ -7491,12 +7547,12 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       if (isOnSlide) {
         c.fillStyle = 'rgba(0, 0, 0, 0.18)';
         c.beginPath();
-        c.ellipse(0, -this.slideElevation + 4.5, 11, 4.2, 0, 0, Math.PI * 2);
+        c.ellipse(0, -this.slideElevation + 4.5, 11 * shadowScaleX, 4.2 * shadowScaleY, 0, 0, Math.PI * 2);
         c.fill();
       } else {
         c.fillStyle = 'rgba(0, 0, 0, 0.34)';
         c.beginPath();
-        c.ellipse(0, 4, isSleeping ? 20 : 17, isSleeping ? 8.5 : 8, 0, 0, Math.PI * 2);
+        c.ellipse(0, 4, (isSleeping ? 20 : 17) * shadowScaleX, (isSleeping ? 8.5 : 8) * shadowScaleY, 0, 0, Math.PI * 2);
         c.fill();
       }
 
@@ -7576,7 +7632,12 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       if (state.showNameTags) {
         const entry = this.getRosterEntry();
         const label = entry ? entry.name : (BREED_LABELS[this.breed] || this.breed);
-        const tagY = (isSleeping ? -22 : -36) - this.slideElevation;
+        const baseTagY = isGiantBreed
+          ? (isSleeping ? -25 : -42)
+          : isToyBreed
+            ? (isSleeping ? -20 : -32)
+            : (isSleeping ? -22 : -36);
+        const tagY = baseTagY - this.slideElevation;
 
         c.font = '700 11px "Plus Jakarta Sans", system-ui, sans-serif';
         const textWidth = c.measureText(label).width;
@@ -10393,20 +10454,10 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     }
   }
 
-  document.getElementById('btnSummonAussie')?.addEventListener('click', () => recruitDog('aussie'));
-  document.getElementById('btnSummonCorgi')?.addEventListener('click', () => recruitDog('corgi'));
-  document.getElementById('btnSummonBeagle')?.addEventListener('click', () => recruitDog('beagle'));
-  document.getElementById('btnSummonCollie')?.addEventListener('click', () => recruitDog('collie'));
-  document.getElementById('btnSummonDachshund')?.addEventListener('click', () => recruitDog('dachshund'));
-  document.getElementById('btnSummonHusky')?.addEventListener('click', () => recruitDog('husky'));
-  document.getElementById('btnSummonDalmatian')?.addEventListener('click', () => recruitDog('dalmatian'));
-  document.getElementById('btnSummonGolden')?.addEventListener('click', () => recruitDog('golden'));
-  document.getElementById('btnSummonSamoyed')?.addEventListener('click', () => recruitDog('samoyed'));
-  document.getElementById('btnSummonShepherd')?.addEventListener('click', () => recruitDog('shepherd'));
-  document.getElementById('btnSummonBorzoi')?.addEventListener('click', () => recruitDog('borzoi'));
-  document.getElementById('btnSummonShiba')?.addEventListener('click', () => recruitDog('shiba'));
-  document.getElementById('btnSummonLabrador')?.addEventListener('click', () => recruitDog('labrador'));
-  document.getElementById('btnSummonBernese')?.addEventListener('click', () => recruitDog('bernese'));
+  Object.keys(BREED_CONFIG).forEach(breed => {
+    const capBreed = breed.charAt(0).toUpperCase() + breed.slice(1);
+    document.getElementById(`btnSummon${capBreed}`)?.addEventListener('click', () => recruitDog(breed));
+  });
 
   function buyTimedTreat(treatKey: string, costKey: string): void {
     const cfg = TREAT_STACK_MAP[treatKey];
