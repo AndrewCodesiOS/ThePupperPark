@@ -1270,16 +1270,99 @@ input:focus-visible {
   gap: 12px;
 }
 
+.dogs-tier-filters {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px;
+  border-radius: 14px;
+  background: rgba(13, 11, 26, 0.58);
+  border: 1px solid var(--border-subtle);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  flex-shrink: 0;
+}
+
+.dogs-tier-filters::-webkit-scrollbar {
+  display: none;
+}
+
+.dogs-tier-btn {
+  flex: 1 0 auto;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #a9b4c9;
+  font-weight: 700;
+  font-size: 0.77rem;
+  font-variant-numeric: tabular-nums;
+  padding: 8px 10px;
+  min-height: 40px;
+  border-radius: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  touch-action: manipulation;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s, transform 0.12s;
+}
+
+.dogs-tier-btn:active {
+  transform: scale(0.97);
+}
+
+.dogs-tier-btn.active {
+  background: rgba(108, 92, 231, 0.34);
+  border-color: rgba(162, 155, 254, 0.55);
+  color: #fff;
+}
+
+.dogs-shop-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dog-breed-card.is-filtered-out {
+  display: none !important;
+}
+
 .dog-breed-card .shop-info {
   min-width: 0;
   flex: 1;
 }
 
 .dog-breed-card .breed-role {
-  margin: 2px 0 6px;
+  margin: 2px 0 4px;
   font-size: 0.78rem;
   color: #cbd5e1;
-  line-height: 1.3;
+  line-height: 1.32;
+}
+
+.dog-breed-card .breed-trait {
+  margin: 0 0 6px;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: #b7f5e4;
+  font-variant-numeric: tabular-nums;
+  white-space: pre-line;
+}
+
+.dog-breed-card .breed-trait-name {
+  color: var(--gold);
+  font-weight: 700;
+}
+
+.roster-trait-line {
+  font-size: 0.72rem;
+  line-height: 1.34;
+  color: #b7f5e4;
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+  white-space: pre-line;
+}
+
+.roster-trait-line strong {
+  color: var(--gold);
+  font-weight: 700;
 }
 
 .breed-stats-group {
@@ -1696,6 +1779,7 @@ input:focus-visible {
     grid-template-areas:
       "title title"
       "role role"
+      "trait trait"
       "stats stats"
       "owned action";
     align-items: center;
@@ -1715,9 +1799,16 @@ input:focus-visible {
 
   .dog-breed-card .breed-role {
     grid-area: role;
-    margin: -2px 0 2px;
+    margin: -2px 0 0;
     font-size: 0.78rem;
     line-height: 1.32;
+  }
+
+  .dog-breed-card .breed-trait {
+    grid-area: trait;
+    margin: -2px 0 2px;
+    font-size: 0.74rem;
+    line-height: 1.34;
   }
 
   .dog-breed-card .breed-stats-group {
@@ -1865,6 +1956,10 @@ html.asymmetric-side-safe-area .drawer-window.clears-side-cutout #btnCloseMenu {
   color: #b8c2d4;
 }
 
+.stat-box-wide {
+  grid-column: 1 / -1;
+}
+
 .stat-box strong {
   color: var(--gold);
   font-size: 1rem;
@@ -1935,6 +2030,13 @@ html.asymmetric-side-safe-area .drawer-window.clears-side-cutout #btnCloseMenu {
   border-radius: 12px;
   margin-bottom: 18px;
   font-variant-numeric: tabular-nums;
+}
+
+.offline-magic-line {
+  margin-top: 6px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--gold);
 }
 
 /* Help / Guide Modal */
@@ -3324,22 +3426,6 @@ html.asymmetric-side-safe-area .drawer-window.clears-side-cutout #btnCloseMenu {
   font-size: 0.74rem;
   font-weight: 600;
   color: #c8d1e4;
-}
-
-/* Sandbox stack */
-.sandbox-btn-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 100%;
-}
-
-.sandbox-chest-btn {
-  width: 100%;
-  min-width: unset;
-  padding: 10px;
-  background: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%);
-  color: #ffffff;
 }
 
 /* ==========================================
