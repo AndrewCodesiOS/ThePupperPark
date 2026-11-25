@@ -137,6 +137,23 @@ input:focus-visible {
   z-index: -1;
 }
 
+.ios-top-edge-cap {
+  display: none;
+}
+
+html.pwa-standalone.ios-device .ios-top-edge-cap {
+  display: block;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: max(2px, env(safe-area-inset-top, 0px));
+  background-color: var(--bg-void);
+  pointer-events: none;
+  z-index: 19;
+  transition: background-color 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 /* Unified Responsive Top HUD Header — prevents overlap at all viewport widths */
 .hud-header {
   position: fixed;
@@ -809,6 +826,17 @@ input:focus-visible {
   .placement-banner,
   .tile-paint-bar {
     top: max(148px, calc(env(safe-area-inset-top) + 138px));
+  }
+}
+
+@media (max-width: 659px) and (orientation: portrait) {
+  html.pwa-standalone.ios-device .hud-header {
+    padding-top: max(54px, calc(env(safe-area-inset-top, 0px) + 44px));
+  }
+
+  html.pwa-standalone.ios-device .placement-banner,
+  html.pwa-standalone.ios-device .tile-paint-bar {
+    top: max(192px, calc(env(safe-area-inset-top, 0px) + 182px));
   }
 }
 

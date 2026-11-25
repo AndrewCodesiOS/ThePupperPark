@@ -3285,13 +3285,28 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
   let lastTime = performance.now();
 
+  const isAppleTouchDevice =
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const isStandalonePwa =
     (window.navigator as Navigator & { standalone?: boolean }).standalone === true ||
     (typeof window.matchMedia === 'function' && (
       window.matchMedia('(display-mode: standalone)').matches ||
       window.matchMedia('(display-mode: fullscreen)').matches
     ));
+  document.documentElement.classList.toggle('ios-device', isAppleTouchDevice);
   document.documentElement.classList.toggle('pwa-standalone', isStandalonePwa);
+
+  const iosTopEdgeCapEl = document.getElementById('iosTopEdgeCap');
+  if (isAppleTouchDevice && isStandalonePwa && iosTopEdgeCapEl) {
+    const flushIosTopEdgeCap = (): void => {
+      window.requestAnimationFrame(() => {
+        void iosTopEdgeCapEl.offsetHeight;
+      });
+    };
+    window.addEventListener('load', flushIosTopEdgeCap, { once: true });
+    window.addEventListener('pageshow', flushIosTopEdgeCap);
+  }
 
   const pwaSnapshotCoverEl = document.getElementById('pwaSnapshotCover');
   let pwaResumeTimer: number | null = null;
@@ -3546,6 +3561,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       lastAppliedThemeColor = desiredThemeColor;
       const themeMeta = document.querySelector('meta[name="theme-color"]');
       if (themeMeta) themeMeta.setAttribute('content', desiredThemeColor);
+      if (iosTopEdgeCapEl) iosTopEdgeCapEl.style.backgroundColor = desiredThemeColor;
     }
   }
 
@@ -5259,9 +5275,6 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     performReset(0, 0);
   });
 
-  const isAppleTouchDevice =
-    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   let orientationRecoveryTimers: number[] = [];
   let resizeRafId: number | null = null;
   let lastAppliedAppHeight = '';
