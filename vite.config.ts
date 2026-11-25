@@ -28,6 +28,19 @@ export default defineConfig(() => {
           }
         },
       },
+      {
+        name: 'exclude-aistudio-uploads-from-dist',
+        apply: 'build',
+        closeBundle(error?: Error): void {
+          if (error) {
+            return;
+          }
+          const distAiStudioAssets = path.resolve(__dirname, 'dist/assets/aistudio');
+          if (fs.existsSync(distAiStudioAssets)) {
+            fs.rmSync(distAiStudioAssets, {recursive: true, force: true});
+          }
+        },
+      },
     ],
     resolve: {
       alias: {
