@@ -39,6 +39,7 @@ export interface RosterEntry {
   bonusXp: number;
   rollGrade: string;
   rerollCount: number;
+  lastPetHappinessAt?: number;
 }
 
 export interface PerkItem {
@@ -576,6 +577,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
   const HAPPINESS_AWAY_CHECKIN_HOURS = 8; // Lose 1/3 of decayable happiness per 8h away (3 check-ins/day)
   const HAPPINESS_AWAY_FULL_DECAY_HOURS = HAPPINESS_AWAY_CHECKIN_HOURS * 3; // 24h to settle to Cozy Floor
   const WHISTLE_HAPPINESS_COOLDOWN_MS = 15000;
+  const PET_HAPPINESS_COOLDOWN_MS = 20 * 60 * 1000; // 20 minutes per dog
 
   const TOY_CONFIG: Record<string, { baseCost: number; costMult: number; priceCap: number }> = {
     toyBones: { baseCost: 35, costMult: 1.26, priceCap: 10000 },
@@ -1447,8 +1449,28 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       bonusScaling: rolls.bonusScaling,
       bonusXp: rolls.bonusXp,
       rollGrade: rolls.rollGrade,
-      rerollCount: 0
+      rerollCount: 0,
+      lastPetHappinessAt: 0
     };
+  }
+
+  function getDogPetHappinessCooldownMs(entry: RosterEntry | null | undefined, nowMs = Date.now()): number {
+    if (!entry) return 0;
+    const last = typeof entry.lastPetHappinessAt === 'number' && !Number.isNaN(entry.lastPetHappinessAt)
+      ? entry.lastPetHappinessAt
+      : 0;
+    if (last <= 0) return 0;
+    return Math.max(0, PET_HAPPINESS_COOLDOWN_MS - (nowMs - last));
+  }
+
+  function formatPetCooldownShort(ms: number): string {
+    const totalSec = Math.max(1, Math.ceil(ms / 1000));
+    const mins = Math.floor(totalSec / 60);
+    const secs = totalSec % 60;
+    if (mins > 0) {
+      return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+    }
+    return `${secs}s`;
   }
 
   function getXpNeededForLevel(level: number): number {
@@ -2995,6 +3017,9 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       }
       if (typeof entry.rerollCount !== 'number' || Number.isNaN(entry.rerollCount) || entry.rerollCount < 0) {
         entry.rerollCount = 0;
+      }
+      if (typeof entry.lastPetHappinessAt !== 'number' || Number.isNaN(entry.lastPetHappinessAt) || entry.lastPetHappinessAt < 0) {
+        entry.lastPetHappinessAt = 0;
       }
     });
 
@@ -6826,10 +6851,17 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         });
       }
 
+      const entry = this.getRosterEntry();
+      const nowMs = Date.now();
+      let gaveHappiness = false;
+      if (entry && getDogPetHappinessCooldownMs(entry, nowMs) <= 0) {
+        entry.lastPetHappinessAt = nowMs;
+        addPackHappiness(5);
+        gaveHappiness = true;
+      }
+
       if (this.petCooldown <= 0) {
         this.petCooldown = 3.0;
-        addPackHappiness(5);
-        const entry = this.getRosterEntry();
         if (entry && entry.level < MAX_DOG_LEVEL) {
           const stats = getEffectiveBreedStats(entry, this.breed);
           const xpGain = Math.max(1, Math.round(stats.quickLearner * getActiveXpBoostMult()));
@@ -6844,15 +6876,28 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
             entry.level = MAX_DOG_LEVEL;
             entry.xp = 0;
           }
-          addFloatingText(pos.x, pos.y - (32 + this.slideElevation) * scale, leveledUp ? 'Level Up!' : `♥ +${xpGain} XP`, leveledUp ? '#ffeaa7' : '#ff9ff3');
+          const petMsg = leveledUp
+            ? 'Level Up!'
+            : gaveHappiness
+              ? `♥ +${xpGain} XP • +5 Mood`
+              : `♥ +${xpGain} XP`;
+          addFloatingText(pos.x, pos.y - (32 + this.slideElevation) * scale, petMsg, leveledUp ? '#ffeaa7' : '#ff9ff3');
           if (leveledUp) {
             sfx.upgrade();
             triggerHaptic(22);
           }
           requestSave();
         } else {
-          addFloatingText(pos.x, pos.y - (32 + this.slideElevation) * scale, '♥ Happy Pup!', '#ff9ff3');
+          const petMsg = gaveHappiness ? '♥ +5 Mood!' : '♥ Happy Pup!';
+          addFloatingText(pos.x, pos.y - (32 + this.slideElevation) * scale, petMsg, '#ff9ff3');
+          if (gaveHappiness) {
+            requestSave();
+          }
         }
+        updateUI();
+      } else if (gaveHappiness) {
+        addFloatingText(pos.x, pos.y - (32 + this.slideElevation) * scale, '♥ +5 Mood!', '#ff9ff3');
+        requestSave();
         updateUI();
       }
     }
@@ -11370,20 +11415,21 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     const toyInfo = getToyFloorBreakdown();
     const decorFloor = getDecorFloorBonus();
 
-    const totalPups = dogs.length;
-    const readyPups = dogs.filter(d => d.petCooldown <= 0).length;
-    const minPetCooldown = totalPups > 0
-      ? Math.min(...dogs.map(d => Math.max(0, d.petCooldown)))
+    const nowMs = Date.now();
+    const totalPups = state.roster.length;
+    const readyPups = state.roster.filter(entry => getDogPetHappinessCooldownMs(entry, nowMs) <= 0).length;
+    const minPetCooldownMs = totalPups > 0
+      ? Math.min(...state.roster.map(entry => getDogPetHappinessCooldownMs(entry, nowMs)))
       : 0;
 
     const petSourceEl = document.getElementById('moodSourcePetting');
     if (petSourceEl) {
       if (totalPups <= 1) {
-        petSourceEl.textContent = readyPups > 0 ? 'Ready (+5)' : `Cooldown (${Math.max(1, Math.ceil(minPetCooldown))}s)`;
+        petSourceEl.textContent = readyPups > 0 ? 'Ready (+5)' : `Cooldown (${formatPetCooldownShort(minPetCooldownMs)})`;
       } else if (readyPups > 0) {
         petSourceEl.textContent = `${readyPups}/${totalPups} ready (+5)`;
       } else {
-        petSourceEl.textContent = `Cooldown (${Math.max(1, Math.ceil(minPetCooldown))}s)`;
+        petSourceEl.textContent = `Next in ${formatPetCooldownShort(minPetCooldownMs)}`;
       }
     }
     const treatSourceEl = document.getElementById('moodSourceTreats');
