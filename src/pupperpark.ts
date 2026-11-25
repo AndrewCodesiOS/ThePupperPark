@@ -117,7 +117,10 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
   if (!ctxMaybe) return noopHandle;
   const ctx: CanvasRenderingContext2D = ctxMaybe;
 
-  const GRID_SIZE = 7;
+  const BASE_GRID_SIZE = 7;
+  const EXPANDED_GRID_SIZE = 8;
+  const PARK_EXPANSION_BONE_COST = 1000000;
+  const PARK_EXPANSION_MAGIC_COST = 10000;
   const BASE_TILE_W = 96;
   const BASE_TILE_H = 48;
   const MAX_DOGS = 6;
@@ -1137,6 +1140,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     isClearingDecor: boolean;
     unlockedTiles: Record<CustomTileStyle, boolean>;
     tileMap: Record<string, CustomTileStyle>;
+    parkExpanded: boolean;
     unlockedManorColors: Record<ManorColorUpgradeId, boolean>;
     manorColor: ManorColorId;
     isPaintingTiles: boolean;
@@ -1196,6 +1200,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     isClearingDecor: false,
     unlockedTiles: createDefaultUnlockedTiles(),
     tileMap: {},
+    parkExpanded: false,
     unlockedManorColors: createDefaultUnlockedManorColors(),
     manorColor: 'classic',
     isPaintingTiles: false,
@@ -2129,9 +2134,13 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     speed: 0.72 + Math.random() * 0.38
   }));
 
+  function getGridSize(): number {
+    return state.parkExpanded ? EXPANDED_GRID_SIZE : BASE_GRID_SIZE;
+  }
+
   const rainSplashes = Array.from({ length: 12 }, () => ({
-    gx: 0.4 + Math.random() * (GRID_SIZE - 0.8),
-    gy: 0.4 + Math.random() * (GRID_SIZE - 0.8),
+    gx: 0.4 + Math.random() * (getGridSize() - 0.8),
+    gy: 0.4 + Math.random() * (getGridSize() - 0.8),
     age: Math.random() * 0.7,
     duration: 0.55 + Math.random() * 0.25
   }));
@@ -2620,8 +2629,12 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     rawGx: number,
     rawGy: number
   ): { ok: true; gx: number; gy: number } | { ok: false; gx: number; gy: number; reason: string } {
+    const gridSize = getGridSize();
     const tx = clampTileIndex(rawGx);
     const ty = clampTileIndex(rawGy);
+    if (rawGx < 0 || rawGx >= gridSize || rawGy < 0 || rawGy >= gridSize) {
+      return { ok: false, gx: tx, gy: ty, reason: 'Tap a tile inside your park!' };
+    }
     const occupied = getOccupiedTileMap();
     const width = DECOR_CONFIG[type]?.tileWidth || 1;
 
@@ -2634,17 +2647,17 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
     // 2-tile wide placement (Dog Slide): try (tx, ty) + (tx+1, ty), or shift left to (tx-1, ty) + (tx, ty)
     const candidates: number[] = [];
-    if (tx <= GRID_SIZE - width) {
+    if (tx <= gridSize - width) {
       candidates.push(tx);
     }
-    if (tx - 1 >= 0 && tx - 1 <= GRID_SIZE - width) {
+    if (tx - 1 >= 0 && tx - 1 <= gridSize - width) {
       candidates.push(tx - 1);
     }
 
     for (const anchorX of candidates) {
       const footprint = getDecorFootprint(type, anchorX, ty);
       const fits = footprint.every(
-        t => t.gx >= 0 && t.gx < GRID_SIZE && t.gy >= 0 && t.gy < GRID_SIZE && !occupied.has(`${t.gx},${t.gy}`)
+        t => t.gx >= 0 && t.gx < gridSize && t.gy >= 0 && t.gy < gridSize && !occupied.has(`${t.gx},${t.gy}`)
       );
       if (fits) {
         return { ok: true, gx: anchorX, gy: ty };
@@ -2661,21 +2674,26 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
   // Deterministic grass tuft positions per tile for organic texture
   const tileDetails: Array<{ gx: number; gy: number; tufts: Array<{ dx: number; dy: number; h: number }> }> = [];
-  for (let gx = 0; gx < GRID_SIZE; gx++) {
-    for (let gy = 0; gy < GRID_SIZE; gy++) {
-      const seed = ((gx + 1) * 73856093) ^ ((gy + 1) * 19349663);
-      if ((seed & 3) === 0) {
-        tileDetails.push({
-          gx,
-          gy,
-          tufts: [
-            { dx: ((seed >> 2) % 3) * 0.14 + 0.25, dy: ((seed >> 4) % 3) * 0.14 + 0.25, h: 4 + (seed % 3) },
-            { dx: ((seed >> 6) % 3) * 0.12 + 0.52, dy: ((seed >> 8) % 3) * 0.12 + 0.48, h: 3 + ((seed >> 1) % 3) }
-          ]
-        });
+  function rebuildTileDetails(): void {
+    tileDetails.length = 0;
+    const gridSize = getGridSize();
+    for (let gx = 0; gx < gridSize; gx++) {
+      for (let gy = 0; gy < gridSize; gy++) {
+        const seed = ((gx + 1) * 73856093) ^ ((gy + 1) * 19349663);
+        if ((seed & 3) === 0) {
+          tileDetails.push({
+            gx,
+            gy,
+            tufts: [
+              { dx: ((seed >> 2) % 3) * 0.14 + 0.25, dy: ((seed >> 4) % 3) * 0.14 + 0.25, h: 4 + (seed % 3) },
+              { dx: ((seed >> 6) % 3) * 0.12 + 0.52, dy: ((seed >> 8) % 3) * 0.12 + 0.48, h: 3 + ((seed >> 1) % 3) }
+            ]
+          });
+        }
       }
     }
   }
+  rebuildTileDetails();
 
   const dogs: Dog[] = [];
   const droppedBones: Array<{
@@ -2710,10 +2728,11 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         1.5 + Math.random() * 4,
         0.12
       );
+      const gridSize = getGridSize();
       for (let attempt = 0; attempt < 16; attempt++) {
         const candidate = pushOutsideAllObstacles(
-          0.8 + Math.random() * (GRID_SIZE - 1.6),
-          0.8 + Math.random() * (GRID_SIZE - 1.6),
+          0.8 + Math.random() * (gridSize - 1.6),
+          0.8 + Math.random() * (gridSize - 1.6),
           0.12
         );
         const clearOfDogs = dogs.every(other => Math.hypot(other.gx - candidate.gx, other.gy - candidate.gy) >= 0.58);
@@ -2825,13 +2844,21 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
             state.magicBones = (state.magicBones || 0) + legacyCount * 600;
           }
         }
+        state.parkExpanded = Boolean(parsed.parkExpanded);
+        const activeGridSize = getGridSize();
         state.decorInventory = mergedDecorInv;
         if (!Array.isArray(state.placedDecorations)) {
           state.placedDecorations = [];
         } else {
-          state.placedDecorations = state.placedDecorations.filter(
-            (d): d is PlacedDecor => Boolean(d && typeof d.type === 'string' && d.type in DECOR_CONFIG)
-          );
+          state.placedDecorations = state.placedDecorations.filter((d): d is PlacedDecor => {
+            if (!d || typeof d.type !== 'string' || !(d.type in DECOR_CONFIG)) return false;
+            if (d.type === 'doghouseManor') return true;
+            if (!Number.isInteger(d.gx) || !Number.isInteger(d.gy)) return false;
+            const footprint = getDecorFootprint(d.type, d.gx, d.gy);
+            return footprint.every(
+              t => t.gx >= 0 && t.gx < activeGridSize && t.gy >= 0 && t.gy < activeGridSize
+            );
+          });
         }
         const rawStarterProps = (state.starterProps && typeof state.starterProps === 'object')
           ? state.starterProps as Partial<StarterPropsState>
@@ -2863,7 +2890,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
             const gy = Number(parts[1]);
             if (
               Number.isInteger(gx) && Number.isInteger(gy) &&
-              gx >= 0 && gx < GRID_SIZE && gy >= 0 && gy < GRID_SIZE &&
+              gx >= 0 && gx < activeGridSize && gy >= 0 && gy < activeGridSize &&
               (val === 'cobble' || val === 'sand' || val === 'clover')
             ) {
               cleanTileMap[`${gx},${gy}`] = val;
@@ -3034,8 +3061,10 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       state.lifetimeBones = Math.max(0, state.bones || 0);
     }
 
+    rebuildTileDetails();
     syncBreedCountsFromRoster();
     rebuildCanvasDogsFromRoster();
+    resize(true);
 
     hasLoadedGame = true;
     loadedFromExistingSave = Boolean(saved);
@@ -4750,6 +4779,54 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     startTilePaintMode('grass');
   });
 
+  document.getElementById('btnExpandPark')?.addEventListener('click', () => {
+    initAudio();
+    if (state.parkExpanded) return;
+    if (state.bones < PARK_EXPANSION_BONE_COST || state.magicBones < PARK_EXPANSION_MAGIC_COST) {
+      sfx.thud();
+      triggerHaptic(10);
+      return;
+    }
+
+    spendRegularBones(PARK_EXPANSION_BONE_COST);
+    state.magicBones = Math.max(0, state.magicBones - PARK_EXPANSION_MAGIC_COST);
+    state.parkExpanded = true;
+
+    cancelDecorPlacement();
+    stopSingleClearMode();
+    stopTilePaintMode();
+    rebuildTileDetails();
+    invalidateNavCache();
+    resize(true);
+
+    const gridSize = getGridSize();
+    const center = gridToScreen(gridSize / 2, gridSize / 2);
+    addFloatingText(center.x, center.y - 26, '8×8 Park Unlocked!', '#ffeaa7');
+    particles.push({
+      x: center.x,
+      y: center.y,
+      vx: 0,
+      vy: 0,
+      life: 0.9,
+      maxLife: 0.9,
+      color: '#ffd700',
+      size: 6,
+      isRing: true
+    });
+    for (let i = 0; i < gridSize; i++) {
+      tileRipples.push({ gx: gridSize - 1, gy: i, age: 0, duration: 0.65, color: '#ffeaa7' });
+      if (i < gridSize - 1) {
+        tileRipples.push({ gx: i, gy: gridSize - 1, age: 0, duration: 0.65, color: '#55efc4' });
+      }
+    }
+
+    sfx.upgrade();
+    triggerHaptic(18);
+    closeMenu();
+    updateUI();
+    saveGame();
+  });
+
   const clearDecorConfirmModal = document.getElementById('clearDecorConfirmModal');
   function syncClearDecorModalButtons(): void {
     const decorCount = state.placedDecorations.length;
@@ -5031,6 +5108,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       isClearingDecor: false,
       unlockedTiles: createDefaultUnlockedTiles(),
       tileMap: {},
+      parkExpanded: false,
       unlockedManorColors: createDefaultUnlockedManorColors(),
       manorColor: 'classic',
       isPaintingTiles: false,
@@ -5071,10 +5149,12 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       lastSaveTime: resetNow
     };
 
+    rebuildTileDetails();
     syncBreedCountsFromRoster();
     initDefaultCosts();
 
     rebuildCanvasDogsFromRoster();
+    resize(true);
     droppedBones.length = 0;
     particles.length = 0;
     barkPopups.length = 0;
@@ -5234,10 +5314,11 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    // Auto-fit the 7x7 isometric island comfortably inside narrow portrait or wide landscape screens
-    const fitW = (width - 28) / (GRID_SIZE * BASE_TILE_W * 1.05);
-    const fitH = (visibleHeight - 150) / (GRID_SIZE * BASE_TILE_H * 1.45);
-    autoFitScale = Math.max(0.48, Math.min(1.15, Math.min(fitW, fitH)));
+    // Auto-fit the active isometric island (7x7 or 8x8) comfortably inside narrow portrait or wide landscape screens
+    const gridSize = getGridSize();
+    const fitW = (width - 28) / (gridSize * BASE_TILE_W * 1.05);
+    const fitH = (visibleHeight - 150) / (gridSize * BASE_TILE_H * 1.45);
+    autoFitScale = Math.max(0.40, Math.min(1.15, Math.min(fitW, fitH)));
 
     originX = viewportW / 2;
     originY = visibleHeight / 2 + 8;
@@ -5289,8 +5370,9 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
   resize(true);
 
   function gridToScreen(gx: number, gy: number): { x: number; y: number } {
-    const cx = GRID_SIZE / 2;
-    const cy = GRID_SIZE / 2;
+    const gridSize = getGridSize();
+    const cx = gridSize / 2;
+    const cy = gridSize / 2;
 
     const relX = gx - cx;
     const relY = gy - cy;
@@ -5326,8 +5408,9 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     const relX = rotX * cosA - rotY * sinA;
     const relY = rotX * sinA + rotY * cosA;
 
-    const cx = GRID_SIZE / 2;
-    const cy = GRID_SIZE / 2;
+    const gridSize = getGridSize();
+    const cx = gridSize / 2;
+    const cy = gridSize / 2;
 
     return {
       gx: relX + cx,
@@ -5336,7 +5419,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
   }
 
   function clampTileIndex(val: number): number {
-    return Math.max(0, Math.min(GRID_SIZE - 1, Math.floor(val)));
+    return Math.max(0, Math.min(getGridSize() - 1, Math.floor(val)));
   }
 
   function getCenteredTilePos(gx: number, gy: number): { x: number; y: number } {
@@ -5354,14 +5437,15 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       updateUI();
       requestSave();
     }
+    const gridSize = getGridSize();
     dogs.forEach((dog, idx) => {
       dog.cancelSlide();
       dog.cancelDrink();
       dog.onReachToy = null;
       const angle = (Math.PI * 2 * idx) / Math.max(1, dogs.length);
       const ringRadius = dogs.length > 1 ? 0.36 + (idx % 2) * 0.16 : 0;
-      const rawGx = Math.max(0.45, Math.min(GRID_SIZE - 0.45, gx + Math.cos(angle) * ringRadius));
-      const rawGy = Math.max(0.45, Math.min(GRID_SIZE - 0.45, gy + Math.sin(angle) * ringRadius));
+      const rawGx = Math.max(0.45, Math.min(gridSize - 0.45, gx + Math.cos(angle) * ringRadius));
+      const rawGy = Math.max(0.45, Math.min(gridSize - 0.45, gy + Math.sin(angle) * ringRadius));
       const safeTarget = pushOutsideAllObstacles(rawGx, rawGy, 0.1);
       dog.setWalkTarget(safeTarget.gx, safeTarget.gy);
       dog.state = 'WALK';
@@ -5389,8 +5473,9 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
   document.getElementById('btnWhistle')?.addEventListener('click', () => {
     dismissOnboardingHint();
-    const center = gridToScreen(GRID_SIZE / 2, GRID_SIZE / 2);
-    gatherPackAt(GRID_SIZE / 2, GRID_SIZE / 2, center.x, center.y);
+    const gridSize = getGridSize();
+    const center = gridToScreen(gridSize / 2, gridSize / 2);
+    gatherPackAt(gridSize / 2, gridSize / 2, center.x, center.y);
   });
 
   // Multi-touch pointer tracking for pinch-to-zoom + drag rotation + tap + hold whistle
@@ -5424,9 +5509,10 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     const clickX = clientX - rect.left;
     const clickY = clientY - rect.top;
     const gridPos = screenToGrid(clickX, clickY);
+    const gridSize = getGridSize();
     if (
-      gridPos.gx < 0 || gridPos.gx >= GRID_SIZE ||
-      gridPos.gy < 0 || gridPos.gy >= GRID_SIZE
+      gridPos.gx < 0 || gridPos.gx >= gridSize ||
+      gridPos.gy < 0 || gridPos.gy >= gridSize
     ) {
       return false;
     }
@@ -5605,10 +5691,12 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       const clickY = e.clientY - rect.top;
       const gridPos = screenToGrid(clickX, clickY);
 
+      const gridSize = getGridSize();
+
       if (state.isPlacingDecor && state.activeDecorType) {
         if (
-          gridPos.gx >= 0 && gridPos.gx <= GRID_SIZE &&
-          gridPos.gy >= 0 && gridPos.gy <= GRID_SIZE
+          gridPos.gx >= 0 && gridPos.gx < gridSize &&
+          gridPos.gy >= 0 && gridPos.gy < gridSize
         ) {
           const check = resolvePlacementAnchor(state.activeDecorType, gridPos.gx, gridPos.gy);
           if (!check.ok) {
@@ -5650,8 +5738,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
       if (state.isClearingDecor) {
         if (
-          gridPos.gx >= 0 && gridPos.gx <= GRID_SIZE &&
-          gridPos.gy >= 0 && gridPos.gy <= GRID_SIZE
+          gridPos.gx >= 0 && gridPos.gx < gridSize &&
+          gridPos.gy >= 0 && gridPos.gy < gridSize
         ) {
           clearSingleTileAt(clampTileIndex(gridPos.gx), clampTileIndex(gridPos.gy));
         }
@@ -5677,8 +5765,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       }
 
       if (
-        gridPos.gx >= 0 && gridPos.gx <= GRID_SIZE &&
-        gridPos.gy >= 0 && gridPos.gy <= GRID_SIZE
+        gridPos.gx >= 0 && gridPos.gx < gridSize &&
+        gridPos.gy >= 0 && gridPos.gy < gridSize
       ) {
         const { magicBonus } = getPerkMultipliers();
         const decorMagic = getDecorBonuses().magicAdd;
@@ -5809,16 +5897,19 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     | { kind: 'circle'; key: string; cx: number; cy: number; r: number };
 
   const NAV_SUBDIV = 2;
-  const NAV_SIZE = GRID_SIZE * NAV_SUBDIV;
   const NAV_CELL = 1 / NAV_SUBDIV;
   const NAV_AGENT_PAD = 0.08;
   const DOG_AVOID_RADIUS = 0.56;
   const DOG_MIN_SEPARATION = 0.35;
 
+  function getNavSize(): number {
+    return getGridSize() * NAV_SUBDIV;
+  }
+
   let navCacheVersion = 0;
   let navCacheBuiltForVersion = -1;
   let cachedStaticObstacles: StaticObstacle[] = [];
-  let cachedNavBlocked: Uint8Array = new Uint8Array(NAV_SIZE * NAV_SIZE);
+  let cachedNavBlocked: Uint8Array = new Uint8Array(BASE_GRID_SIZE * NAV_SUBDIV * BASE_GRID_SIZE * NAV_SUBDIV);
 
   function invalidateNavCache(): void {
     navCacheVersion += 1;
@@ -5844,8 +5935,9 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
   }
 
   function pushOutsideDoghouseObstacle(gx: number, gy: number): { gx: number; gy: number } {
-    const clampedGx = Math.max(0.32, Math.min(GRID_SIZE - 0.32, gx));
-    const clampedGy = Math.max(0.32, Math.min(GRID_SIZE - 0.32, gy));
+    const gridSize = getGridSize();
+    const clampedGx = Math.max(0.32, Math.min(gridSize - 0.32, gx));
+    const clampedGy = Math.max(0.32, Math.min(gridSize - 0.32, gy));
     const b = getDoghouseBlockedBounds();
     if (!(clampedGx > b.minGx && clampedGx < b.maxGx && clampedGy > b.minGy && clampedGy < b.maxGy)) {
       return { gx: clampedGx, gy: clampedGy };
@@ -5863,8 +5955,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     }
     candidates.sort((a, c) => a.dist - c.dist);
     return {
-      gx: Math.max(0.32, Math.min(GRID_SIZE - 0.32, candidates[0].gx)),
-      gy: Math.max(0.32, Math.min(GRID_SIZE - 0.32, candidates[0].gy))
+      gx: Math.max(0.32, Math.min(gridSize - 0.32, candidates[0].gx)),
+      gy: Math.max(0.32, Math.min(gridSize - 0.32, candidates[0].gy))
     };
   }
 
@@ -5966,11 +6058,13 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
     cachedStaticObstacles = obstacles;
 
-    const blocked = new Uint8Array(NAV_SIZE * NAV_SIZE);
-    for (let cy = 0; cy < NAV_SIZE; cy++) {
-      const wy = Math.max(0.32, Math.min(GRID_SIZE - 0.32, (cy + 0.5) * NAV_CELL));
-      for (let cx = 0; cx < NAV_SIZE; cx++) {
-        const wx = Math.max(0.32, Math.min(GRID_SIZE - 0.32, (cx + 0.5) * NAV_CELL));
+    const gridSize = getGridSize();
+    const navSize = getNavSize();
+    const blocked = new Uint8Array(navSize * navSize);
+    for (let cy = 0; cy < navSize; cy++) {
+      const wy = Math.max(0.32, Math.min(gridSize - 0.32, (cy + 0.5) * NAV_CELL));
+      for (let cx = 0; cx < navSize; cx++) {
+        const wx = Math.max(0.32, Math.min(gridSize - 0.32, (cx + 0.5) * NAV_CELL));
         let isBlocked = false;
         for (let i = 0; i < obstacles.length; i++) {
           if (pointIntersectsObstacle(wx, wy, obstacles[i], NAV_AGENT_PAD)) {
@@ -5978,7 +6072,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
             break;
           }
         }
-        blocked[cy * NAV_SIZE + cx] = isBlocked ? 1 : 0;
+        blocked[cy * navSize + cx] = isBlocked ? 1 : 0;
       }
     }
     cachedNavBlocked = blocked;
@@ -6016,8 +6110,9 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     ignoreKey?: string
   ): { gx: number; gy: number } {
     ensureNavCache();
-    let x = Math.max(0.32, Math.min(GRID_SIZE - 0.32, gx));
-    let y = Math.max(0.32, Math.min(GRID_SIZE - 0.32, gy));
+    const gridSize = getGridSize();
+    let x = Math.max(0.32, Math.min(gridSize - 0.32, gx));
+    let y = Math.max(0.32, Math.min(gridSize - 0.32, gy));
 
     for (let iter = 0; iter < 5; iter++) {
       let moved = false;
@@ -6053,8 +6148,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
             y = obs.cy + (dy / d) * targetR;
           }
         }
-        x = Math.max(0.32, Math.min(GRID_SIZE - 0.32, x));
-        y = Math.max(0.32, Math.min(GRID_SIZE - 0.32, y));
+        x = Math.max(0.32, Math.min(gridSize - 0.32, x));
+        y = Math.max(0.32, Math.min(gridSize - 0.32, y));
       }
       if (!moved) break;
     }
@@ -6161,23 +6256,26 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
   }
 
   function worldToNavCell(gx: number, gy: number): { cx: number; cy: number } {
+    const navSize = getNavSize();
     return {
-      cx: Math.max(0, Math.min(NAV_SIZE - 1, Math.floor(gx * NAV_SUBDIV))),
-      cy: Math.max(0, Math.min(NAV_SIZE - 1, Math.floor(gy * NAV_SUBDIV)))
+      cx: Math.max(0, Math.min(navSize - 1, Math.floor(gx * NAV_SUBDIV))),
+      cy: Math.max(0, Math.min(navSize - 1, Math.floor(gy * NAV_SUBDIV)))
     };
   }
 
   function navCellToWorld(cx: number, cy: number): { gx: number; gy: number } {
+    const gridSize = getGridSize();
     return {
-      gx: Math.max(0.34, Math.min(GRID_SIZE - 0.34, (cx + 0.5) * NAV_CELL)),
-      gy: Math.max(0.34, Math.min(GRID_SIZE - 0.34, (cy + 0.5) * NAV_CELL))
+      gx: Math.max(0.34, Math.min(gridSize - 0.34, (cx + 0.5) * NAV_CELL)),
+      gy: Math.max(0.34, Math.min(gridSize - 0.34, (cy + 0.5) * NAV_CELL))
     };
   }
 
   function findNearestWalkableCell(gx: number, gy: number): { cx: number; cy: number } | null {
     ensureNavCache();
+    const navSize = getNavSize();
     const base = worldToNavCell(gx, gy);
-    if (cachedNavBlocked[base.cy * NAV_SIZE + base.cx] === 0) {
+    if (cachedNavBlocked[base.cy * navSize + base.cx] === 0) {
       return base;
     }
 
@@ -6190,8 +6288,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
           if (Math.abs(dx) !== radius && Math.abs(dy) !== radius) continue;
           const cx = base.cx + dx;
           const cy = base.cy + dy;
-          if (cx < 0 || cx >= NAV_SIZE || cy < 0 || cy >= NAV_SIZE) continue;
-          if (cachedNavBlocked[cy * NAV_SIZE + cx] !== 0) continue;
+          if (cx < 0 || cx >= navSize || cy < 0 || cy >= navSize) continue;
+          if (cachedNavBlocked[cy * navSize + cx] !== 0) continue;
           const wp = navCellToWorld(cx, cy);
           const distSq = (wp.gx - gx) * (wp.gx - gx) + (wp.gy - gy) * (wp.gy - gy);
           if (distSq < bestDistSq) {
@@ -6222,9 +6320,10 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     const goalCell = findNearestWalkableCell(goalGx, goalGy);
     if (!startCell || !goalCell) return null;
 
-    const total = NAV_SIZE * NAV_SIZE;
-    const startIdx = startCell.cy * NAV_SIZE + startCell.cx;
-    const goalIdx = goalCell.cy * NAV_SIZE + goalCell.cx;
+    const navSize = getNavSize();
+    const total = navSize * navSize;
+    const startIdx = startCell.cy * navSize + startCell.cx;
+    const goalIdx = goalCell.cy * navSize + goalCell.cx;
 
     if (startIdx === goalIdx) {
       return [{ gx: goalGx, gy: goalGy }];
@@ -6279,19 +6378,19 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       inOpen[current] = 0;
       closed[current] = 1;
 
-      const cx = current % NAV_SIZE;
-      const cy = (current - cx) / NAV_SIZE;
+      const cx = current % navSize;
+      const cy = (current - cx) / navSize;
 
       for (let d = 0; d < dirs.length; d++) {
         const nx = cx + dirs[d][0];
         const ny = cy + dirs[d][1];
-        if (nx < 0 || nx >= NAV_SIZE || ny < 0 || ny >= NAV_SIZE) continue;
-        const nIdx = ny * NAV_SIZE + nx;
+        if (nx < 0 || nx >= navSize || ny < 0 || ny >= navSize) continue;
+        const nIdx = ny * navSize + nx;
         if (closed[nIdx] || cachedNavBlocked[nIdx]) continue;
 
         // Prevent diagonal corner cutting across solid obstacles
         if (dirs[d][0] !== 0 && dirs[d][1] !== 0) {
-          if (cachedNavBlocked[cy * NAV_SIZE + nx] || cachedNavBlocked[ny * NAV_SIZE + cx]) {
+          if (cachedNavBlocked[cy * navSize + nx] || cachedNavBlocked[ny * navSize + cx]) {
             continue;
           }
         }
@@ -6314,8 +6413,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     const rawWaypoints: Array<{ gx: number; gy: number }> = [];
     let cur = goalIdx;
     while (cur !== -1 && cur !== startIdx) {
-      const cx = cur % NAV_SIZE;
-      const cy = (cur - cx) / NAV_SIZE;
+      const cx = cur % navSize;
+      const cy = (cur - cx) / navSize;
       rawWaypoints.push(navCellToWorld(cx, cy));
       cur = cameFrom[cur];
     }
@@ -6359,8 +6458,9 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     const startCell = findNearestWalkableCell(startGx, startGy);
     if (!startCell) return [];
 
-    const visited = new Uint8Array(NAV_SIZE * NAV_SIZE);
-    const startIdx = startCell.cy * NAV_SIZE + startCell.cx;
+    const navSize = getNavSize();
+    const visited = new Uint8Array(navSize * navSize);
+    const startIdx = startCell.cy * navSize + startCell.cx;
     const queue: number[] = [startIdx];
     visited[startIdx] = 1;
 
@@ -6369,14 +6469,14 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     const orthDirs: ReadonlyArray<[number, number]> = [[1, 0], [-1, 0], [0, 1], [0, -1]];
     while (head < queue.length) {
       const cur = queue[head++];
-      const cx = cur % NAV_SIZE;
-      const cy = (cur - cx) / NAV_SIZE;
+      const cx = cur % navSize;
+      const cy = (cur - cx) / navSize;
       positions.push(navCellToWorld(cx, cy));
       for (let d = 0; d < orthDirs.length; d++) {
         const nx = cx + orthDirs[d][0];
         const ny = cy + orthDirs[d][1];
-        if (nx < 0 || nx >= NAV_SIZE || ny < 0 || ny >= NAV_SIZE) continue;
-        const nIdx = ny * NAV_SIZE + nx;
+        if (nx < 0 || nx >= navSize || ny < 0 || ny >= navSize) continue;
+        const nIdx = ny * navSize + nx;
         if (visited[nIdx] || cachedNavBlocked[nIdx]) continue;
         visited[nIdx] = 1;
         queue.push(nIdx);
@@ -6438,13 +6538,14 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       screenToGrid(waterScreen.x - sideOffsetPx * 0.8 * s, waterScreen.y + (dyPx + 14) * s)
     ];
 
+    const gridSize = getGridSize();
     const scored = rawOptions.map(raw => {
-      const clampedGx = Math.max(0.35, Math.min(GRID_SIZE - 0.35, raw.gx));
-      const clampedGy = Math.max(0.35, Math.min(GRID_SIZE - 0.35, raw.gy));
+      const clampedGx = Math.max(0.35, Math.min(gridSize - 0.35, raw.gx));
+      const clampedGy = Math.max(0.35, Math.min(gridSize - 0.35, raw.gy));
       const blocked = isPointBlockedByObstacle(clampedGx, clampedGy, 0.02);
       const safe = blocked ? pushOutsideAllObstacles(clampedGx, clampedGy, 0.05) : { gx: clampedGx, gy: clampedGy };
-      const finalGx = Math.max(0.35, Math.min(GRID_SIZE - 0.35, safe.gx));
-      const finalGy = Math.max(0.35, Math.min(GRID_SIZE - 0.35, safe.gy));
+      const finalGx = Math.max(0.35, Math.min(gridSize - 0.35, safe.gx));
+      const finalGy = Math.max(0.35, Math.min(gridSize - 0.35, safe.gy));
       const finalScreen = gridToScreen(finalGx, finalGy);
       const horizSep = Math.abs(finalScreen.x - waterScreen.x) / Math.max(0.01, s);
       const distFromDog = Math.hypot(finalGx - dogGx, finalGy - dogGy);
@@ -6721,7 +6822,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
     finishSlide(): void {
       const target = this.slideTarget;
-      const landGx = target ? Math.min(GRID_SIZE - 0.25, target.gx + 1.66) : this.gx;
+      const landGx = target ? Math.min(getGridSize() - 0.25, target.gx + 1.66) : this.gx;
       const landGy = target ? target.gy + 0.5 : this.gy;
       const safeLand = pushOutsideAllObstacles(landGx, landGy, 0.04);
       this.gx = safeLand.gx;
@@ -6940,9 +7041,10 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       let chosenPath: Array<{ gx: number; gy: number }> | null = null;
 
       // Sample open, reachable digging spots spaced away from obstacles and other dogs
+      const gridSize = getGridSize();
       for (let attempt = 0; attempt < 18; attempt++) {
-        const rx = 0.62 + Math.random() * (GRID_SIZE - 1.24);
-        const ry = 0.62 + Math.random() * (GRID_SIZE - 1.24);
+        const rx = 0.62 + Math.random() * (gridSize - 1.24);
+        const ry = 0.62 + Math.random() * (gridSize - 1.24);
         if (isPointBlockedByObstacle(rx, ry, 0.12)) continue;
         if (Math.hypot(rx - this.gx, ry - this.gy) < 0.55) continue;
 
@@ -7337,21 +7439,22 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
             steerY = moveY;
           }
 
+          const gridSize = getGridSize();
           const edgeMargin = this.slideTarget ? 0.2 : 0.32;
           const step = Math.min(Math.max(sDist, 0.05), walkSpeed * dt);
           const prevGx = this.gx;
           const prevGy = this.gy;
 
-          const tryGx = Math.max(edgeMargin, Math.min(GRID_SIZE - edgeMargin, prevGx + steerX * step));
-          const tryGy = Math.max(edgeMargin, Math.min(GRID_SIZE - edgeMargin, prevGy + steerY * step));
+          const tryGx = Math.max(edgeMargin, Math.min(gridSize - edgeMargin, prevGx + steerX * step));
+          const tryGy = Math.max(edgeMargin, Math.min(gridSize - edgeMargin, prevGy + steerY * step));
 
           if (!isPointBlockedByObstacle(tryGx, tryGy, 0.02)) {
             this.gx = tryGx;
             this.gy = tryGy;
           } else {
             // Smooth wall-sliding along whichever axis stays clear of obstacles
-            const slideX = Math.max(edgeMargin, Math.min(GRID_SIZE - edgeMargin, prevGx + steerX * step));
-            const slideY = Math.max(edgeMargin, Math.min(GRID_SIZE - edgeMargin, prevGy + steerY * step));
+            const slideX = Math.max(edgeMargin, Math.min(gridSize - edgeMargin, prevGx + steerX * step));
+            const slideY = Math.max(edgeMargin, Math.min(gridSize - edgeMargin, prevGy + steerY * step));
             const xClear = !isPointBlockedByObstacle(slideX, prevGy, 0.02);
             const yClear = !isPointBlockedByObstacle(prevGx, slideY, 0.02);
             if (xClear && (!yClear || Math.abs(steerX) >= Math.abs(steerY))) {
@@ -7360,10 +7463,10 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
               this.gy = slideY;
             } else {
               // Gentle tangential nudge around circular obstacles (fountains/trees)
-              const tan1Gx = Math.max(edgeMargin, Math.min(GRID_SIZE - edgeMargin, prevGx - steerY * step));
-              const tan1Gy = Math.max(edgeMargin, Math.min(GRID_SIZE - edgeMargin, prevGy + steerX * step));
-              const tan2Gx = Math.max(edgeMargin, Math.min(GRID_SIZE - edgeMargin, prevGx + steerY * step));
-              const tan2Gy = Math.max(edgeMargin, Math.min(GRID_SIZE - edgeMargin, prevGy - steerX * step));
+              const tan1Gx = Math.max(edgeMargin, Math.min(gridSize - edgeMargin, prevGx - steerY * step));
+              const tan1Gy = Math.max(edgeMargin, Math.min(gridSize - edgeMargin, prevGy + steerX * step));
+              const tan2Gx = Math.max(edgeMargin, Math.min(gridSize - edgeMargin, prevGx + steerY * step));
+              const tan2Gy = Math.max(edgeMargin, Math.min(gridSize - edgeMargin, prevGy - steerX * step));
               if (!isPointBlockedByObstacle(tan1Gx, tan1Gy, 0.02)) {
                 this.gx = tan1Gx;
                 this.gy = tan1Gy;
@@ -7400,8 +7503,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
                 uy = ry / d;
               }
               const push = Math.min(0.08, (DOG_MIN_SEPARATION - d) * 0.55);
-              const candGx = Math.max(edgeMargin, Math.min(GRID_SIZE - edgeMargin, this.gx + ux * push));
-              const candGy = Math.max(edgeMargin, Math.min(GRID_SIZE - edgeMargin, this.gy + uy * push));
+              const candGx = Math.max(edgeMargin, Math.min(gridSize - edgeMargin, this.gx + ux * push));
+              const candGy = Math.max(edgeMargin, Math.min(gridSize - edgeMargin, this.gy + uy * push));
               if (!isPointBlockedByObstacle(candGx, candGy, 0.02)) {
                 this.gx = candGx;
                 this.gy = candGy;
@@ -7897,20 +8000,21 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     const subDepth = 10 * scale;
 
     // Soft floating island shadow
-    const center = gridToScreen(GRID_SIZE / 2, GRID_SIZE / 2);
+    const gridSize = getGridSize();
+    const center = gridToScreen(gridSize / 2, gridSize / 2);
     ctx.save();
     ctx.fillStyle = 'rgba(0, 0, 0, 0.42)';
     ctx.beginPath();
-    ctx.ellipse(center.x, center.y + depth + 26 * scale, GRID_SIZE * getTileW() * 0.52, GRID_SIZE * getTileH() * 0.52, 0, 0, Math.PI * 2);
+    ctx.ellipse(center.x, center.y + depth + 26 * scale, gridSize * getTileW() * 0.52, gridSize * getTileH() * 0.52, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
 
     // Determine the 4 outer edges and draw only the two front-facing ones (highest mid-Y)
     const edges = [
-      { a: gridToScreen(0, 0), b: gridToScreen(GRID_SIZE, 0), shade: '#5d4037', rim: '#4e342e' },
-      { a: gridToScreen(GRID_SIZE, 0), b: gridToScreen(GRID_SIZE, GRID_SIZE), shade: '#6d4c41', rim: '#563930' },
-      { a: gridToScreen(GRID_SIZE, GRID_SIZE), b: gridToScreen(0, GRID_SIZE), shade: '#5d4037', rim: '#4e342e' },
-      { a: gridToScreen(0, GRID_SIZE), b: gridToScreen(0, 0), shade: '#6d4c41', rim: '#563930' }
+      { a: gridToScreen(0, 0), b: gridToScreen(gridSize, 0), shade: '#5d4037', rim: '#4e342e' },
+      { a: gridToScreen(gridSize, 0), b: gridToScreen(gridSize, gridSize), shade: '#6d4c41', rim: '#563930' },
+      { a: gridToScreen(gridSize, gridSize), b: gridToScreen(0, gridSize), shade: '#5d4037', rim: '#4e342e' },
+      { a: gridToScreen(0, gridSize), b: gridToScreen(0, 0), shade: '#6d4c41', rim: '#563930' }
     ];
 
     edges.sort((e1, e2) => ((e1.a.y + e1.b.y) / 2) - ((e2.a.y + e2.b.y) / 2));
@@ -11181,6 +11285,30 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       });
     }
 
+    // Park Expansion (8x8) UI sync
+    const parkGridSizeStatus = document.getElementById('parkGridSizeStatus');
+    if (parkGridSizeStatus) {
+      parkGridSizeStatus.textContent = state.parkExpanded
+        ? '8×8 Unlocked (64 tiles)'
+        : '7×7 (49 tiles)';
+    }
+    const btnExpandPark = document.getElementById('btnExpandPark') as HTMLButtonElement | null;
+    if (btnExpandPark) {
+      const nameSpan = btnExpandPark.querySelector('.btn-name');
+      const costSpan = document.getElementById('costExpandPark');
+      if (state.parkExpanded) {
+        if (nameSpan) nameSpan.textContent = 'Unlocked';
+        if (costSpan) costSpan.style.display = 'none';
+        btnExpandPark.disabled = true;
+      } else {
+        if (nameSpan) nameSpan.textContent = 'Expand Park';
+        if (costSpan) costSpan.style.display = '';
+        btnExpandPark.disabled =
+          state.bones < PARK_EXPANSION_BONE_COST ||
+          state.magicBones < PARK_EXPANSION_MAGIC_COST;
+      }
+    }
+
     // Custom Ground Tiles UI sync
     const tileEntries = Object.values(state.tileMap || {});
     CUSTOM_TILE_STYLES.forEach(style => {
@@ -11829,9 +11957,10 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
                   sfx.squeak();
                   addPackHappiness(1.5);
                   tennisBall.isRolling = true;
+                  const gridSize = getGridSize();
                   const safeBall = pushOutsideAllObstacles(
-                    Math.max(0.7, Math.min(GRID_SIZE - 0.7, tennisBall.gx + (Math.random() - 0.5) * 3.5)),
-                    Math.max(0.7, Math.min(GRID_SIZE - 0.7, tennisBall.gy + (Math.random() - 0.5) * 3.5)),
+                    Math.max(0.7, Math.min(gridSize - 0.7, tennisBall.gx + (Math.random() - 0.5) * 3.5)),
+                    Math.max(0.7, Math.min(gridSize - 0.7, tennisBall.gy + (Math.random() - 0.5) * 3.5)),
                     0.1
                   );
                   tennisBall.targetGx = safeBall.gx;
@@ -11869,9 +11998,10 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
                   sfx.shiny();
                   addPackHappiness(1.5);
                   frisbee.isMoving = true;
+                  const gridSize = getGridSize();
                   const safeFrisbee = pushOutsideAllObstacles(
-                    Math.max(0.7, Math.min(GRID_SIZE - 0.7, frisbee.gx + (Math.random() - 0.5) * 3.5)),
-                    Math.max(0.7, Math.min(GRID_SIZE - 0.7, frisbee.gy + (Math.random() - 0.5) * 3.5)),
+                    Math.max(0.7, Math.min(gridSize - 0.7, frisbee.gx + (Math.random() - 0.5) * 3.5)),
+                    Math.max(0.7, Math.min(gridSize - 0.7, frisbee.gy + (Math.random() - 0.5) * 3.5)),
                     0.1
                   );
                   frisbee.targetGx = safeFrisbee.gx;
@@ -11909,9 +12039,10 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
                   sfx.quack();
                   addPackHappiness(1.5);
                   duck.isMoved = true;
+                  const gridSize = getGridSize();
                   const safeDuck = pushOutsideAllObstacles(
-                    Math.max(0.7, Math.min(GRID_SIZE - 0.7, duck.gx + (Math.random() - 0.5) * 2.5)),
-                    Math.max(0.7, Math.min(GRID_SIZE - 0.7, duck.gy + (Math.random() - 0.5) * 2.5)),
+                    Math.max(0.7, Math.min(gridSize - 0.7, duck.gx + (Math.random() - 0.5) * 2.5)),
+                    Math.max(0.7, Math.min(gridSize - 0.7, duck.gy + (Math.random() - 0.5) * 2.5)),
                     0.1
                   );
                   duck.targetGx = safeDuck.gx;
@@ -12216,8 +12347,9 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       // 3D Soil & Bedrock Island Platform
       drawIslandBase();
 
-      for (let gx = 0; gx < GRID_SIZE; gx++) {
-        for (let gy = 0; gy < GRID_SIZE; gy++) {
+      const activeGridSize = getGridSize();
+      for (let gx = 0; gx < activeGridSize; gx++) {
+        for (let gy = 0; gy < activeGridSize; gy++) {
           drawIsometricTile(gx, gy);
         }
       }
@@ -12577,8 +12709,9 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
           sp.age += dt;
           if (sp.age >= sp.duration) {
             sp.age = 0;
-            sp.gx = 0.4 + Math.random() * (GRID_SIZE - 0.8);
-            sp.gy = 0.4 + Math.random() * (GRID_SIZE - 0.8);
+            const gridSize = getGridSize();
+            sp.gx = 0.4 + Math.random() * (gridSize - 0.8);
+            sp.gy = 0.4 + Math.random() * (gridSize - 0.8);
           }
           const t = sp.age / sp.duration;
           const pos = gridToScreen(sp.gx, sp.gy);

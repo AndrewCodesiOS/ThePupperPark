@@ -1675,6 +1675,19 @@ input:focus-visible {
   font-size: 0.71rem;
 }
 
+.expansion-action-btn {
+  min-width: 122px;
+  padding: 9px 12px;
+}
+
+.btn-cost-dual {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  line-height: 1.2;
+}
+
 @media (max-width: 659px) {
 
   .dog-breed-card {
