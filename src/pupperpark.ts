@@ -154,6 +154,9 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
   const BASE_MAGIC_CHANCE = 0.15;
   const MAX_MAGIC_CHANCE = 0.75;
 
+  const MIN_USER_ZOOM = 0.65;
+  const MAX_USER_ZOOM = 2.40;
+
   const BONUS_PAYOUT_MAX = 0.25;
   const BONUS_SCALING_MAX = 0.16;
   const BONUS_XP_MAX = 0.15;
@@ -2884,7 +2887,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         if (typeof state.zoomLevel !== 'number' || Number.isNaN(state.zoomLevel)) {
           state.zoomLevel = 1;
         }
-        state.zoomLevel = Math.max(0.75, Math.min(1.65, state.zoomLevel));
+        state.zoomLevel = Math.max(MIN_USER_ZOOM, Math.min(MAX_USER_ZOOM, state.zoomLevel));
         if (typeof state.xpTreatTimer !== 'number' || Number.isNaN(state.xpTreatTimer)) {
           state.xpTreatTimer = 0;
         }
@@ -5289,7 +5292,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     const winH = window.innerHeight || (docEl ? docEl.clientHeight : 0) || 640;
     const activeTag = document.activeElement?.tagName;
     const isInputFocused = activeTag === 'INPUT' || activeTag === 'TEXTAREA';
-    const vvH = (!isInputFocused && window.visualViewport && window.visualViewport.height > 0)
+    const isPageZoomed = Boolean(window.visualViewport && window.visualViewport.scale > 1.02);
+    const vvH = (!isInputFocused && !isPageZoomed && window.visualViewport && window.visualViewport.height > 0)
       ? window.visualViewport.height
       : winH;
     const { lvhH, fixedH } = measureCssViewportHeights();
@@ -5320,7 +5324,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
     const width = Math.max(240, Math.round(winW));
     const height = Math.max(240, Math.round(fullH));
-    const visibleHeight = isInputFocused
+    const visibleHeight = (isInputFocused || isPageZoomed)
       ? height
       : Math.max(240, Math.min(height, Math.round(Math.max(vvH, fullH))));
     return { width, height, visibleHeight };
@@ -5329,6 +5333,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
   function resetPhantomScroll(): void {
     const activeTag = document.activeElement?.tagName;
     if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') return;
+    if (window.visualViewport && window.visualViewport.scale > 1.02) return;
     if (window.scrollX !== 0 || window.scrollY !== 0) {
       window.scrollTo(0, 0);
     }
@@ -5575,10 +5580,18 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
   canvas.addEventListener('wheel', (e: WheelEvent) => {
     e.preventDefault();
     const factor = e.deltaY > 0 ? 0.92 : 1.08;
-    userZoom = Math.max(0.75, Math.min(1.65, userZoom * factor));
+    userZoom = Math.max(MIN_USER_ZOOM, Math.min(MAX_USER_ZOOM, userZoom * factor));
     dismissOnboardingHint();
     requestSave();
   }, { passive: false });
+
+  // Prevent iOS Safari native page-pinch from competing with in-park canvas pinch/rotation,
+  // while leaving menus, drawers, and modals freely zoomable for accessibility.
+  const preventCanvasSafariGesture = (e: Event): void => {
+    e.preventDefault();
+  };
+  canvas.addEventListener('gesturestart', preventCanvasSafariGesture, { passive: false });
+  canvas.addEventListener('gesturechange', preventCanvasSafariGesture, { passive: false });
 
   let isPaintingStroke = false;
   let lastPaintedTileKey: string | null = null;
@@ -5636,6 +5649,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       isRotating = false;
       isPaintingStroke = false;
       lastPaintedTileKey = null;
+      try { canvas.setPointerCapture(e.pointerId); } catch { /* ignore */ }
       const pts = Array.from(activePointers.values());
       pinchStartDist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
       pinchStartZoom = userZoom;
@@ -5688,7 +5702,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     if (activePointers.size === 2 && pinchStartDist > 0) {
       const pts = Array.from(activePointers.values());
       const dist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
-      userZoom = Math.max(0.75, Math.min(1.65, pinchStartZoom * (dist / pinchStartDist)));
+      userZoom = Math.max(MIN_USER_ZOOM, Math.min(MAX_USER_ZOOM, pinchStartZoom * (dist / pinchStartDist)));
       dismissOnboardingHint();
       requestSave();
       return;
