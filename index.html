@@ -339,16 +339,16 @@
       </div>
       <div id="moodPopover" class="weather-popover mood-popover" style="display: none;" role="region" aria-label="Pack Happiness Details">
         <div class="weather-popover-head">
-          <strong id="moodPopoverTitle">😌 Cozy (35%)</strong>
+          <strong id="moodPopoverTitle">😌 Cozy (30%)</strong>
           <span id="moodPopoverBonus" class="weather-popover-mod">Baseline</span>
         </div>
         <div class="mood-meter-track mood-meter-track-sm">
-          <div id="moodPopoverFill" class="mood-meter-fill" style="width: 35%;"></div>
-          <div id="moodPopoverFloor" class="mood-floor-marker" style="left: 35%;" title="Cozy Floor"></div>
+          <div id="moodPopoverFill" class="mood-meter-fill" style="width: 30%;"></div>
+          <div id="moodPopoverFloor" class="mood-floor-marker" style="left: 30%;" title="Cozy Floor"></div>
         </div>
-        <p id="moodPopoverDesc" class="weather-popover-desc">Pet pups, toss toys, and give treats to lift morale. Happiness cools gently while away (1/3 every 8h) down to your Cozy Floor.</p>
+        <p id="moodPopoverDesc" class="weather-popover-desc">Pet pups, feed treats, and refresh toys to lift morale into Ecstatic (90%+). Mood gently cools down to your Cozy Floor (up to 75% permanent, or 84% with Fresh Toys).</p>
         <div class="weather-popover-foot">
-          <span id="moodPopoverFloorLabel">Cozy floor: 35%</span>
+          <span id="moodPopoverFloorLabel">Cozy floor: 30%</span>
           <button type="button" id="btnOpenMoodBreakdown" class="mood-popover-link">View Breakdown</button>
         </div>
       </div>
@@ -482,10 +482,10 @@
           <div class="shop-card">
             <div class="shop-info">
               <h3>Tennis Ball <span id="ballCurrentBoost" class="toy-live-badge">+0 | 1</span></h3>
-              <p>+1 Dig Power per buy, up to max 25 (price caps at 10,000 🦴).</p>
+              <p id="descToyBones">+1 Dig Power per buy, up to max 25 (price caps at 10,000 🦴). Unlocks Fresh Ball boosts at max!</p>
             </div>
             <button type="button" class="action-btn" id="btnToyBones">
-              <span class="btn-name">Get Toy</span>
+              <span class="btn-name" id="nameToyBones">Get Toy</span>
               <span class="btn-cost" id="costToyBones">35 🦴</span>
             </button>
           </div>
@@ -493,10 +493,10 @@
           <div class="shop-card">
             <div class="shop-info">
               <h3>Rubber Duck <span id="duckCurrentBoost" class="toy-live-badge">+0% | 10%</span></h3>
-              <p>Boosts base offline bone yield by +1% per buy, from 10% up to 30% (+20% max from toy; price caps at 15,000 🦴). Dog abilities can lift total offline yield up to 75%.</p>
+              <p id="descToyIdle">Boosts base offline bone yield by +1% per buy, from 10% up to 30% (+20% max from toy; price caps at 15,000 🦴). Dog abilities lift total offline yield up to 75%. Unlocks Fresh Duck boosts at max!</p>
             </div>
             <button type="button" class="action-btn" id="btnToyIdle">
-              <span class="btn-name">Get Toy</span>
+              <span class="btn-name" id="nameToyIdle">Get Toy</span>
               <span class="btn-cost" id="costToyIdle">250 🦴</span>
             </button>
           </div>
@@ -504,10 +504,10 @@
           <div class="shop-card">
             <div class="shop-info">
               <h3>Frisbee <span id="frisbeeCurrentBoost" class="toy-live-badge">+0% | 100%</span></h3>
-              <p>Boosts the pack's dig multiplier by +3% per buy, up to 1.80x (price caps at 20,000 🦴).</p>
+              <p id="descToySpeed">Boosts the pack's dig multiplier by +3% per buy, up to 1.80x (price caps at 20,000 🦴). Unlocks Fresh Frisbee boosts at max!</p>
             </div>
             <button type="button" class="action-btn" id="btnToySpeed">
-              <span class="btn-name">Get Toy</span>
+              <span class="btn-name" id="nameToySpeed">Get Toy</span>
               <span class="btn-cost" id="costToySpeed">500 🦴</span>
             </button>
           </div>
@@ -612,7 +612,7 @@
             <div class="shop-card">
               <div class="shop-info">
                 <h3>Flower Patch</h3>
-                <p>Vibrant wildflowers. Each placed patch gives +1% ✨ Magic Bone chance | +1.5 Cozy Floor. (Max 5)</p>
+                <p>Vibrant wildflowers. Each placed patch gives +1% ✨ Magic Bone chance | +0.5 Cozy Floor. (Max 5)</p>
                 <div class="shop-owned">Owned: <span id="ownedDecorFlowers">0</span> | Placed: <span id="countDecorFlowers">0</span> / 5</div>
               </div>
               <div class="decor-btn-group">
@@ -629,7 +629,7 @@
             <div class="shop-card">
               <div class="shop-info">
                 <h3>Fire Hydrant</h3>
-                <p>Classic neighborhood hydrant. Each placed hydrant gives +3% pack walk &amp; dig pace | +2 Cozy Floor. (Max 3)</p>
+                <p>Classic neighborhood hydrant. Each placed hydrant gives +3% pack walk &amp; dig pace | +1 Cozy Floor. (Max 3)</p>
                 <div class="shop-owned">Owned: <span id="ownedDecorHydrant">0</span> | Placed: <span id="countDecorHydrant">0</span> / 3</div>
               </div>
               <div class="decor-btn-group">
@@ -646,7 +646,7 @@
             <div class="shop-card">
               <div class="shop-info">
                 <h3>Park Tree</h3>
-                <p>Shady park tree. Each placed tree gives +3% pup XP | +2 Cozy Floor. (Max 3)</p>
+                <p>Shady park tree. Each placed tree gives +3% pup XP | +1 Cozy Floor. (Max 3)</p>
                 <div class="shop-owned">Owned: <span id="ownedDecorTree">0</span> | Placed: <span id="countDecorTree">0</span> / 3</div>
               </div>
               <div class="decor-btn-group">
@@ -663,7 +663,7 @@
             <div class="shop-card">
               <div class="shop-info">
                 <h3>Warm Lamp Post</h3>
-                <p>Victorian lantern that glows warmly in Twilight &amp; Rain. +1% ✨ Magic chance | +2% bone payout | +3 Cozy Floor. (Max 4)</p>
+                <p>Victorian lantern that glows warmly in Twilight &amp; Rain. +1% ✨ Magic chance | +2% bone payout | +1.5 Cozy Floor. (Max 4)</p>
                 <div class="shop-owned">Owned: <span id="ownedDecorLamp">0</span> | Placed: <span id="countDecorLamp">0</span> / 4</div>
               </div>
               <div class="decor-btn-group">
@@ -680,7 +680,7 @@
             <div class="shop-card">
               <div class="shop-info">
                 <h3>Water Fountain</h3>
-                <p>Sculpted 3-tier marble centerpiece. Each placed fountain gives +5% bone payout | +4 Cozy Floor. (Max 2)</p>
+                <p>Sculpted 3-tier marble centerpiece. Each placed fountain gives +5% bone payout | +2 Cozy Floor. (Max 2)</p>
                 <div class="shop-owned">Owned: <span id="ownedDecorFountain">0</span> | Placed: <span id="countDecorFountain">0</span> / 2</div>
               </div>
               <div class="decor-btn-group">
@@ -697,7 +697,7 @@
             <div class="shop-card shop-card-slide">
               <div class="shop-info">
                 <h3>Dog Slide</h3>
-                <p>Grand 2-tile playground slide! Pups climb &amp; zoom down for bonus XP &amp; mood. +8% pup XP | +12 Cozy Floor. (Max 1)</p>
+                <p>Grand 2-tile playground slide! Pups climb &amp; zoom down for bonus XP &amp; mood. +8% pup XP | +4 Cozy Floor. (Max 1)</p>
                 <div class="shop-owned">Owned: <span id="ownedDecorSlide">0</span> | Placed: <span id="countDecorSlide">0</span> / 1</div>
               </div>
               <div class="decor-btn-group">
@@ -714,7 +714,7 @@
             <div class="shop-card shop-card-gold">
               <div class="shop-info">
                 <h3>Golden Fire Hydrant</h3>
-                <p>Prestige 24k gold park monument. Gives +10% bone payout | +5% pack pace | +2.5% ✨ Magic chance | +8 Cozy Floor. (Max 1)</p>
+                <p>Prestige 24k gold park monument. Gives +10% bone payout | +5% pack pace | +2.5% ✨ Magic chance | +3 Cozy Floor. (Max 1)</p>
                 <div class="shop-owned">Owned: <span id="ownedDecorGoldenHydrant">0</span> | Placed: <span id="countDecorGoldenHydrant">0</span> / 1</div>
               </div>
               <div class="decor-btn-group">
@@ -732,7 +732,7 @@
               <div class="manor-card-main">
                 <div class="shop-info">
                   <h3>Grand Doghouse Manor</h3>
-                  <p>4-tile (2×2) storybook estate upgrading your doghouse &amp; the 3 tiles behind it (returns any placed decor there to inventory). +15% bone payout | +10% pup XP | +8% pack pace | +3.5% ✨ Magic chance | +15 Cozy Floor. (Max 1)</p>
+                  <p>4-tile (2×2) storybook estate upgrading your doghouse &amp; the 3 tiles behind it (returns any placed decor there to inventory). +15% bone payout | +10% pup XP | +8% pack pace | +3.5% ✨ Magic chance | +6 Cozy Floor. (Max 1)</p>
                   <div class="shop-owned">Owned: <span id="ownedDecorDoghouseManor">0</span> | Placed: <span id="countDecorDoghouseManor">0</span> / 1</div>
                 </div>
                 <div class="decor-btn-group">
@@ -1005,7 +1005,7 @@
         <div class="help-row"><strong>Decor &amp; Toys</strong><span>Placed decor grants permanent XP, Magic, and Bone bonuses; toys boost digs &amp; offline yield.</span></div>
         <div class="help-row"><strong>Hourly Weather</strong><span>Weather shifts every hour with atmospheric effects and perks (tap the weather badge for details).</span></div>
         <div class="help-row"><strong>Pack Growth &amp; Levels</strong><span>Every pup's bones dug boost the whole pack's Dig Multiplier (scaled by Pack Growth), and each dog level adds +1% to its own bone yield.</span></div>
-        <div class="help-row"><strong>Pack Happiness</strong><span>Pet pups, toss treats, own toys, and place decor to lift mood. Happiness gently cools while away (1/3 every 8h) down to your Cozy Floor — about 3 quick check-ins a day keeps the pack Ecstatic.</span></div>
+        <div class="help-row"><strong>Pack Happiness</strong><span>Decor, toys, breeds &amp; treasures raise your permanent Cozy Floor up to 75% (Joyful), and Fresh Toys lift it +3% each while active. Pet pups, feed treats, and refresh toys to reach Ecstatic (90%+); mood gently cools back toward your Cozy Floor over 2h live or 24h away.</span></div>
       </div>
       <button type="button" id="btnConfirmHelp" class="action-btn" style="width: 100%; padding: 11px;">Got It</button>
     </div>

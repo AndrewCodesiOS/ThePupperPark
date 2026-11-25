@@ -128,11 +128,11 @@ export const TREASURE_SETS: readonly TreasureSetDef[] = [
     id: 'kennel',
     name: 'Gilded Kennel',
     shortName: 'Gilded Kennel',
-    bonusLabel: '+35% Dig Bones | +10 Cozy Floor',
+    bonusLabel: '+35% Dig Bones | +6 Cozy Floor',
     relicIds: ['gp_1', 'bp_4', 'bp_5', 'bp_6'],
     bonus: {
       boneAdd: 0.35,
-      cozyFloor: 10
+      cozyFloor: 6
     }
   },
   {
@@ -279,7 +279,7 @@ export const TREASURE_CATALOG: readonly TreasureDef[] = [
     setId: 'mythic',
     rarity: 'Legendary',
     lore: 'Its pearlescent chime wraps the whole park in a calm, cozy glow that never fades.',
-    cozyFloor: 12,
+    cozyFloor: 6,
     xpAdd: 0.22
   },
   {

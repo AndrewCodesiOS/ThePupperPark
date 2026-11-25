@@ -148,8 +148,8 @@ export const BREED_LIST: readonly BreedDefinition[] = [
     highlights: ['walk', 'dig', 'xp', 'magic'],
     trait: {
       name: 'Fluff Charm',
-      summary: '+3 Cozy Floor to park mood while in pack.',
-      cozyFloorAdd: 3
+      summary: '+2 Cozy Floor to park mood while in pack.',
+      cozyFloorAdd: 2
     }
   },
   {
@@ -502,9 +502,9 @@ export const BREED_LIST: readonly BreedDefinition[] = [
     highlights: ['boneYield', 'walk', 'dig', 'xp'],
     trait: {
       name: 'Playful Bounce',
-      summary: '2x XP & +3 bonus Pack Mood from Dog Slide rides and Toy chases.',
+      summary: '2x XP & +1 bonus Pack Mood from Dog Slide rides and Toy chases.',
       playXpMult: 2.0,
-      playMoodBonus: 3
+      playMoodBonus: 1
     }
   },
   {
@@ -644,8 +644,8 @@ export const BREED_LIST: readonly BreedDefinition[] = [
     highlights: ['boneYield', 'packGrowth', 'magic', 'treasure'],
     trait: {
       name: 'Imperial Poise',
-      summary: '+6 Cozy Floor & +18% Bone Yield while Park Mood is Joyful or Ecstatic.',
-      cozyFloorAdd: 6,
+      summary: '+4 Cozy Floor & +18% Bone Yield while Park Mood is Joyful or Ecstatic.',
+      cozyFloorAdd: 4,
       happyMoodBoneBonus: 0.18
     }
   },
@@ -671,8 +671,8 @@ export const BREED_LIST: readonly BreedDefinition[] = [
     highlights: ['boneYield', 'packGrowth', 'xp', 'magic'],
     trait: {
       name: 'Cloud Smile',
-      summary: 'Pack Aura: +5 Cozy Floor & 25% slower Mood decay.',
-      cozyFloorAdd: 5,
+      summary: 'Pack Aura: +4 Cozy Floor & 25% slower Mood decay.',
+      cozyFloorAdd: 4,
       moodDecayMult: 0.75
     }
   },
@@ -923,9 +923,9 @@ export const BREED_LIST: readonly BreedDefinition[] = [
     highlights: ['boneYield', 'xp', 'magic', 'treasure'],
     trait: {
       name: 'Alpine Fortune',
-      summary: '30% chance for +1 extra ✨ on Magic digs & +6 Cozy Floor.',
+      summary: '30% chance for +1 extra ✨ on Magic digs & +4 Cozy Floor.',
       extraMagicChance: 0.30,
-      cozyFloorAdd: 6
+      cozyFloorAdd: 4
     }
   },
   {
@@ -982,8 +982,8 @@ export const BREED_LIST: readonly BreedDefinition[] = [
     highlights: ['boneYield', 'packGrowth', 'xp', 'magic'],
     trait: {
       name: 'Alpine Rescue',
-      summary: 'Pack Aura: +8 Cozy Floor, +8% Bone Yield for all pups & +18% Offline earnings.',
-      cozyFloorAdd: 8,
+      summary: 'Pack Aura: +6 Cozy Floor, +8% Bone Yield for all pups & +18% Offline earnings.',
+      cozyFloorAdd: 6,
       packBoneAura: 0.08,
       offlineBonus: 0.18
     }

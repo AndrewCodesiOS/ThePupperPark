@@ -151,6 +151,22 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
   const FRISBEE_SPEED_STEP = 1.03;
   const MAX_SPEED_MULTIPLIER = 1.80;
 
+  const FRESH_BALL_COST = 20000;
+  const FRESH_BALL_DURATION_MS = 30 * 60 * 1000;
+  const FRESH_BALL_POWER_BONUS = 10;
+
+  const FRESH_DUCK_COST = 30000;
+  const FRESH_DUCK_DURATION_MS = 12 * 60 * 60 * 1000;
+  const FRESH_DUCK_OFFLINE_BONUS = 0.10;
+  const FRESH_DUCK_TREASURE_BONUS = 0.25;
+
+  const FRESH_FRISBEE_COST = 25000;
+  const FRESH_FRISBEE_DURATION_MS = 30 * 60 * 1000;
+  const FRESH_FRISBEE_SPEED_BONUS = 0.25;
+
+  const FRESH_TOY_HAPPINESS_GAIN = 8;
+  const FRESH_TOY_COZY_FLOOR_BONUS = 3;
+
   const BASE_MAGIC_CHANCE = 0.15;
   const MAX_MAGIC_CHANCE = 0.75;
 
@@ -215,7 +231,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       magicBonus: 0.01,
       payoutBonus: 0,
       paceBonus: 0,
-      cozyFloor: 1.5
+      cozyFloor: 0.5
     },
     hydrant: {
       cost: 350,
@@ -231,7 +247,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       magicBonus: 0,
       payoutBonus: 0,
       paceBonus: 0.03,
-      cozyFloor: 2.0
+      cozyFloor: 1.0
     },
     tree: {
       cost: 500,
@@ -247,7 +263,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       magicBonus: 0,
       payoutBonus: 0,
       paceBonus: 0,
-      cozyFloor: 2.0
+      cozyFloor: 1.0
     },
     lamp: {
       cost: 800,
@@ -263,7 +279,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       magicBonus: 0.01,
       payoutBonus: 0.02,
       paceBonus: 0,
-      cozyFloor: 3.0
+      cozyFloor: 1.5
     },
     fountain: {
       cost: 1000,
@@ -279,7 +295,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       magicBonus: 0,
       payoutBonus: 0.05,
       paceBonus: 0,
-      cozyFloor: 4.0
+      cozyFloor: 2.0
     },
     slide: {
       cost: 1500,
@@ -295,7 +311,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       magicBonus: 0,
       payoutBonus: 0,
       paceBonus: 0,
-      cozyFloor: 12.0
+      cozyFloor: 4.0
     },
     goldenHydrant: {
       cost: 2500,
@@ -311,7 +327,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       magicBonus: 0.025,
       payoutBonus: 0.10,
       paceBonus: 0.05,
-      cozyFloor: 8.0
+      cozyFloor: 3.0
     },
     doghouseManor: {
       cost: 10000,
@@ -327,7 +343,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       magicBonus: 0.035,
       payoutBonus: 0.15,
       paceBonus: 0.08,
-      cozyFloor: 15.0
+      cozyFloor: 6.0
     }
   };
 
@@ -584,13 +600,15 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     };
   }
 
-  const HAPPINESS_BASE_FLOOR = 35;
+  const HAPPINESS_BASE_FLOOR = 30;
   const HAPPINESS_MAX = 100;
-  const HAPPINESS_MAX_FLOOR = 95;
-  const HAPPINESS_TREAT_TRICKLE_PER_SEC = 0.25;
+  const HAPPINESS_MAX_FLOOR = 75;
+  const HAPPINESS_TREAT_TRICKLE_PER_SEC = 0.12;
   const HAPPINESS_AWAY_CHECKIN_HOURS = 8; // Lose 1/3 of decayable happiness per 8h away (3 check-ins/day)
   const HAPPINESS_AWAY_FULL_DECAY_HOURS = HAPPINESS_AWAY_CHECKIN_HOURS * 3; // 24h to settle to Cozy Floor
-  const WHISTLE_HAPPINESS_COOLDOWN_MS = 15000;
+  const HAPPINESS_LIVE_FULL_DECAY_HOURS = 2; // 2h of idle in-park play to cool from 100 down to Cozy Floor
+  const WHISTLE_HAPPINESS_COOLDOWN_MS = 2 * 60 * 1000; // 2 minutes between Whistle mood boosts
+  const PLAY_MOOD_COOLDOWN_MS = 15000; // 15s park-wide cooldown for autonomous toy chase & slide mood bumps
   const PET_HAPPINESS_COOLDOWN_MS = 20 * 60 * 1000; // 20 minutes per dog
 
   const TOY_CONFIG: Record<string, { baseCost: number; costMult: number; priceCap: number }> = {
@@ -1119,13 +1137,71 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     };
   }
 
-  function getTotalOfflineRate(): number {
+  function getFreshToyRemainingMs(untilTs: number, now = Date.now()): number {
+    if (typeof untilTs !== 'number' || !Number.isFinite(untilTs)) return 0;
+    return Math.max(0, untilTs - now);
+  }
+
+  function isFreshBallActive(now = Date.now()): boolean {
+    return state.digPower >= MAX_DIG_POWER && getFreshToyRemainingMs(state.freshBallUntil, now) > 0;
+  }
+
+  function isFreshDuckActive(now = Date.now()): boolean {
+    return state.idleMultiplier >= MAX_IDLE_MULTIPLIER && getFreshToyRemainingMs(state.freshDuckUntil, now) > 0;
+  }
+
+  function isFreshFrisbeeActive(now = Date.now()): boolean {
+    return state.speedMultiplier >= MAX_SPEED_MULTIPLIER && getFreshToyRemainingMs(state.freshFrisbeeUntil, now) > 0;
+  }
+
+  function formatFreshRemaining(ms: number): string {
+    const totalSec = Math.max(1, Math.ceil(ms / 1000));
+    if (totalSec >= 3600) {
+      const hrs = Math.floor(totalSec / 3600);
+      const mins = Math.floor((totalSec % 3600) / 60);
+      return mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`;
+    }
+    if (totalSec >= 60) {
+      const mins = Math.floor(totalSec / 60);
+      const secs = totalSec % 60;
+      return secs > 0 && mins < 10 ? `${mins}m ${secs}s` : `${mins}m`;
+    }
+    return `${totalSec}s`;
+  }
+
+  function getEffectiveDigPower(now = Date.now()): number {
+    const basePower = Math.max(BASE_DIG_POWER, Math.min(MAX_DIG_POWER, Number(state.digPower) || BASE_DIG_POWER));
+    return isFreshBallActive(now) ? basePower + FRESH_BALL_POWER_BONUS : basePower;
+  }
+
+  function getEffectiveSpeedMultiplier(now = Date.now()): number {
+    const baseSpeed = Math.max(
+      BASE_SPEED_MULTIPLIER,
+      Math.min(MAX_SPEED_MULTIPLIER, Number(state.speedMultiplier) || BASE_SPEED_MULTIPLIER)
+    );
+    return isFreshFrisbeeActive(now)
+      ? Math.round((baseSpeed + FRESH_FRISBEE_SPEED_BONUS) * 1000) / 1000
+      : baseSpeed;
+  }
+
+  function getTotalOfflineRate(now = Date.now(), freshDuckFrac?: number): number {
     const duckBase = Math.max(
       BASE_IDLE_MULTIPLIER,
       Math.min(MAX_IDLE_MULTIPLIER, Number(state.idleMultiplier) || BASE_IDLE_MULTIPLIER)
     );
     const packOfflineAdd = getPackTraitBonuses().offlineBonus;
-    return Math.min(MAX_TOTAL_OFFLINE_RATE, Math.round((duckBase + packOfflineAdd) * 1000) / 1000);
+    const baseTotal = Math.min(MAX_TOTAL_OFFLINE_RATE, Math.round((duckBase + packOfflineAdd) * 1000) / 1000);
+    if (typeof freshDuckFrac === 'number') {
+      const clampedFrac = Math.max(0, Math.min(1, freshDuckFrac));
+      if (clampedFrac <= 0) return baseTotal;
+      const boostedTotal = Math.min(
+        MAX_TOTAL_OFFLINE_RATE,
+        Math.round((duckBase + FRESH_DUCK_OFFLINE_BONUS + packOfflineAdd) * 1000) / 1000
+      );
+      return Math.round((baseTotal * (1 - clampedFrac) + boostedTotal * clampedFrac) * 10000) / 10000;
+    }
+    const freshAdd = isFreshDuckActive(now) ? FRESH_DUCK_OFFLINE_BONUS : 0;
+    return Math.min(MAX_TOTAL_OFFLINE_RATE, Math.round((duckBase + freshAdd + packOfflineAdd) * 1000) / 1000);
   }
 
   interface GameState {
@@ -1178,6 +1254,9 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     hasTennisBall: boolean;
     hasFrisbee: boolean;
     hasDuck: boolean;
+    freshBallUntil: number;
+    freshDuckUntil: number;
+    freshFrisbeeUntil: number;
     isDraftingPerk: boolean;
     packHappiness: number;
     lastWhistleBoostAt: number;
@@ -1237,6 +1316,9 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     hasTennisBall: false,
     hasFrisbee: false,
     hasDuck: false,
+    freshBallUntil: 0,
+    freshDuckUntil: 0,
+    freshFrisbeeUntil: 0,
     isDraftingPerk: false,
     packHappiness: HAPPINESS_BASE_FLOOR,
     lastWhistleBoostAt: 0,
@@ -1782,39 +1864,54 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     bonusSummary: string;
   }
 
-  function getToyFloorBreakdown(): {
+  function getToyFloorBreakdown(now = Date.now()): {
     ownedCount: number;
     floorBonus: number;
+    freshCount: number;
+    freshFloorBonus: number;
   } {
     let ownedCount = 0;
     let floorBonus = 0;
+    let freshCount = 0;
     if (state.hasTennisBall) {
       ownedCount += 1;
-      floorBonus += 3 + Math.min(2, Math.floor(Math.max(0, state.digPower - BASE_DIG_POWER) / 8));
+      floorBonus += 1 + Math.min(2, Math.floor(Math.max(0, state.digPower - BASE_DIG_POWER) / 10));
+      if (isFreshBallActive(now)) freshCount += 1;
     }
     if (state.hasDuck) {
       ownedCount += 1;
-      floorBonus += 3 + Math.min(2, Math.floor(Math.max(0, state.idleMultiplier - BASE_IDLE_MULTIPLIER) / 0.10));
+      floorBonus += 1 + Math.min(2, Math.floor(Math.max(0, state.idleMultiplier - BASE_IDLE_MULTIPLIER) / 0.10));
+      if (isFreshDuckActive(now)) freshCount += 1;
     }
     if (state.hasFrisbee) {
       ownedCount += 1;
-      floorBonus += 3 + Math.min(2, Math.floor(Math.max(0, state.speedMultiplier - BASE_SPEED_MULTIPLIER) / 0.25));
+      floorBonus += 1 + Math.min(2, Math.floor(Math.max(0, state.speedMultiplier - BASE_SPEED_MULTIPLIER) / 0.35));
+      if (isFreshFrisbeeActive(now)) freshCount += 1;
     }
-    return { ownedCount, floorBonus };
+    return {
+      ownedCount,
+      floorBonus,
+      freshCount,
+      freshFloorBonus: freshCount * FRESH_TOY_COZY_FLOOR_BONUS
+    };
   }
 
   function getDecorFloorBonus(): number {
     return getDecorBonuses().cozyFloorBonus;
   }
 
-  function getCozyFloor(): number {
-    const toyFloor = getToyFloorBreakdown().floorBonus;
+  function getCozyFloor(now = Date.now()): number {
+    const toyInfo = getToyFloorBreakdown(now);
     const decorFloor = getDecorFloorBonus();
     const treasureFloor = getPerkMultipliers().cozyFloorAdd;
     const packTraitFloor = getPackTraitBonuses().cozyFloorAdd;
-    return Math.min(
+    const permanentFloor = Math.min(
       HAPPINESS_MAX_FLOOR,
-      Math.round((HAPPINESS_BASE_FLOOR + toyFloor + decorFloor + treasureFloor + packTraitFloor) * 10) / 10
+      HAPPINESS_BASE_FLOOR + toyInfo.floorBonus + decorFloor + treasureFloor + packTraitFloor
+    );
+    return Math.min(
+      HAPPINESS_MAX,
+      Math.round((permanentFloor + toyInfo.freshFloorBonus) * 10) / 10
     );
   }
 
@@ -1918,6 +2015,14 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     } else if (Math.round(next) !== Math.round(prev)) {
       refreshMoodHUD();
     }
+  }
+
+  let lastPlayMoodAt = 0;
+  function awardPlayMood(baseAmount: number, traitBonus = 0): void {
+    const nowMs = Date.now();
+    if (nowMs - lastPlayMoodAt < PLAY_MOOD_COOLDOWN_MS) return;
+    lastPlayMoodAt = nowMs;
+    addPackHappiness(baseAmount + traitBonus);
   }
 
   function getActiveXpBoostMult(): number {
@@ -2306,20 +2411,26 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     return dugSum * (1 + packTraits.packGrowthAura);
   }
 
-  function getDigMultiplier(overrides?: { feastActive?: boolean; baconActive?: boolean }): number {
+  function getDigMultiplier(overrides?: { feastActive?: boolean; baconActive?: boolean; speedMultOverride?: number }): number {
     const dugSum = getPackGrowthBonus();
     const { boneMult, workBonus } = getPerkMultipliers();
     const treatDigMult = getActiveFeastAndBaconMult(overrides?.feastActive, overrides?.baconActive);
     const decorMult = getDecorBonuses().payoutMult;
     const moodBoneMult = getPackHappinessInfo().boneMult;
     const packTraits = getPackTraitBonuses();
-    return (DIG_MULT_BASE + dugSum) * state.speedMultiplier * treatDigMult * workBonus * boneMult * decorMult * moodBoneMult * (1 + packTraits.packBoneAura);
+    const effectiveSpeed = typeof overrides?.speedMultOverride === 'number'
+      ? overrides.speedMultOverride
+      : getEffectiveSpeedMultiplier();
+    return (DIG_MULT_BASE + dugSum) * effectiveSpeed * treatDigMult * workBonus * boneMult * decorMult * moodBoneMult * (1 + packTraits.packBoneAura);
   }
 
-  function getAverageBonesPerDig(): number {
-    if (!state.roster || state.roster.length === 0) return state.digPower;
+  function getAverageBonesPerDig(overrides?: { digPowerOverride?: number; speedMultOverride?: number }): number {
+    const effectiveDigPower = typeof overrides?.digPowerOverride === 'number'
+      ? overrides.digPowerOverride
+      : getEffectiveDigPower();
+    if (!state.roster || state.roster.length === 0) return effectiveDigPower;
     const cupMult = getActiveCupMult();
-    const packDigMult = getDigMultiplier();
+    const packDigMult = getDigMultiplier({ speedMultOverride: overrides?.speedMultOverride });
     const weather = getCurrentWeather();
     const moodInfo = getPackHappinessInfo();
     const anyTreatActive = getActiveTreatTypeCount() > 0;
@@ -2343,7 +2454,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       if (trait.luckyDigChance && trait.luckyDigMult && trait.luckyDigMult > 1) {
         personalBoneMult *= 1 + trait.luckyDigChance * (trait.luckyDigMult - 1);
       }
-      const raw = state.digPower * stats.boneYield * levelMult * cupMult * packDigMult * personalBoneMult;
+      const raw = effectiveDigPower * stats.boneYield * levelMult * cupMult * packDigMult * personalBoneMult;
       total += Math.max(1, Math.round(raw * 10) / 10);
     });
 
@@ -2412,7 +2523,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         personalBoneMult *= 1 + trait.luckyDigChance * (trait.luckyDigMult - 1);
       }
 
-      const rawBones = state.digPower * stats.boneYield * levelMult * cupMult * packDigMult * personalBoneMult;
+      const rawBones = getEffectiveDigPower() * stats.boneYield * levelMult * cupMult * packDigMult * personalBoneMult;
       const bonesPerRegularDig = Math.max(1, Math.round(rawBones * 10) / 10);
 
       const dogVisualPace = baseVisualPace * (1 + (weatherMatch?.paceBonus || 0));
@@ -2545,10 +2656,27 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
     isSettlingAwayProgress = true;
     try {
+      const prevSaveTime = state.lastSaveTime;
       // Advance timestamp immediately so overlapping return events cannot settle the same span twice
       state.lastSaveTime = now;
 
       const effectiveSeconds = Math.min(rawElapsedSeconds, MAX_OFFLINE_SECONDS);
+      const awaySpanMs = Math.max(1, effectiveSeconds * 1000);
+      const getAwayFreshOverlapFrac = (isMaxed: boolean, untilTs: number): number => {
+        if (!isMaxed || typeof untilTs !== 'number' || !Number.isFinite(untilTs) || untilTs <= prevSaveTime) {
+          return 0;
+        }
+        const overlapMs = Math.max(0, Math.min(awaySpanMs, untilTs - prevSaveTime));
+        return Math.max(0, Math.min(1, overlapMs / awaySpanMs));
+      };
+      const freshBallFrac = getAwayFreshOverlapFrac(state.digPower >= MAX_DIG_POWER, state.freshBallUntil);
+      const freshFrisbeeFrac = getAwayFreshOverlapFrac(state.speedMultiplier >= MAX_SPEED_MULTIPLIER, state.freshFrisbeeUntil);
+      const freshDuckFrac = getAwayFreshOverlapFrac(state.idleMultiplier >= MAX_IDLE_MULTIPLIER, state.freshDuckUntil);
+
+      if (state.freshBallUntil > 0 && state.freshBallUntil <= now) state.freshBallUntil = 0;
+      if (state.freshDuckUntil > 0 && state.freshDuckUntil <= now) state.freshDuckUntil = 0;
+      if (state.freshFrisbeeUntil > 0 && state.freshFrisbeeUntil <= now) state.freshFrisbeeUntil = 0;
+
       const packTraits = getPackTraitBonuses();
       const cozyFloor = getCozyFloor();
       const currentMood = typeof state.packHappiness === 'number' && !Number.isNaN(state.packHappiness)
@@ -2562,17 +2690,26 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       state.packHappiness = nextMood;
 
       const estimatedDigs = estimateOfflineDigs(effectiveSeconds);
-      const avgPerDig = getAverageBonesPerDig();
-      const effectiveOfflineRate = getTotalOfflineRate();
+      const awayDigPower = state.digPower + FRESH_BALL_POWER_BONUS * freshBallFrac;
+      const awaySpeedMult = state.speedMultiplier + FRESH_FRISBEE_SPEED_BONUS * freshFrisbeeFrac;
+      const avgPerDig = getAverageBonesPerDig({
+        digPowerOverride: awayDigPower,
+        speedMultOverride: awaySpeedMult
+      });
+      const effectiveOfflineRate = getTotalOfflineRate(now, freshDuckFrac);
       const earned = Math.floor(estimatedDigs * avgPerDig * effectiveOfflineRate);
 
       const rawMagicEarned = packTraits.offlineMagicPerDay > 0
         ? Math.floor(packTraits.offlineMagicPerDay * (effectiveSeconds / 86400))
         : 0;
 
+      const freshDuckTreasureMult = 1 + FRESH_DUCK_TREASURE_BONUS * freshDuckFrac;
       const offlineTreasureChance = Math.min(
-        0.08,
-        (0.002 + estimatedDigs * 0.0000015) * getPerkMultipliers().treasureOddsMult * (1 + packTraits.packTreasureAura)
+        0.08 * freshDuckTreasureMult,
+        (0.002 + estimatedDigs * 0.0000015) *
+          getPerkMultipliers().treasureOddsMult *
+          (1 + packTraits.packTreasureAura) *
+          freshDuckTreasureMult
       );
       const foundTreasure = Math.random() < offlineTreasureChance ? rollOfflineTreasure() : null;
 
@@ -3023,6 +3160,18 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
           state.idleMultiplier = BASE_IDLE_MULTIPLIER;
         }
         state.idleMultiplier = Math.max(BASE_IDLE_MULTIPLIER, Math.min(MAX_IDLE_MULTIPLIER, state.idleMultiplier));
+        state.freshBallUntil =
+          typeof state.freshBallUntil === 'number' && Number.isFinite(state.freshBallUntil) && state.freshBallUntil > 0
+            ? state.freshBallUntil
+            : 0;
+        state.freshDuckUntil =
+          typeof state.freshDuckUntil === 'number' && Number.isFinite(state.freshDuckUntil) && state.freshDuckUntil > 0
+            ? state.freshDuckUntil
+            : 0;
+        state.freshFrisbeeUntil =
+          typeof state.freshFrisbeeUntil === 'number' && Number.isFinite(state.freshFrisbeeUntil) && state.freshFrisbeeUntil > 0
+            ? state.freshFrisbeeUntil
+            : 0;
         state.isDraftingPerk = false;
         state.isPlacingDecor = false;
         state.activeDecorType = null;
@@ -5234,6 +5383,9 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       hasTennisBall: false,
       hasFrisbee: false,
       hasDuck: false,
+      freshBallUntil: 0,
+      freshDuckUntil: 0,
+      freshFrisbeeUntil: 0,
       isDraftingPerk: false,
       packHappiness: HAPPINESS_BASE_FLOOR,
       lastWhistleBoostAt: 0,
@@ -5871,7 +6023,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         );
         const naturalMagic = Math.random() < manualMagicChance;
         const cupMult = getActiveCupMult();
-        const tapBones = Math.max(1, Math.round(state.digPower * cupMult * 10) / 10);
+        const tapBones = Math.max(1, Math.round(getEffectiveDigPower() * cupMult * 10) / 10);
 
         dogs.forEach(d => {
           const t = getBreedTrait(d.breed);
@@ -6957,7 +7109,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       const scale = getScale();
       const trait = getBreedTrait(this.breed);
       sfx.pet();
-      addPackHappiness(2 + (trait.playMoodBonus || 0));
+      awardPlayMood(0.6, trait.playMoodBonus || 0);
 
       for (let i = 0; i < 5; i++) {
         particles.push({
@@ -7796,7 +7948,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         }
       }
 
-      const rawAmount = state.digPower * stats.boneYield * levelMult * cupMult * packDigMult * personalBoneMult;
+      const rawAmount = getEffectiveDigPower() * stats.boneYield * levelMult * cupMult * packDigMult * personalBoneMult;
       const amount = Math.max(1, Math.round(rawAmount * 10) / 10);
       const breakEvenBonus = this.isMagicDig ? 0 : applyTreatBreakEvenOnDig(amount);
       const magicYield = 1 + (this.isShiny ? SHINY_MAGIC_BONE_BONUS : 0);
@@ -10713,10 +10865,33 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     ctx.restore();
   }
 
+  function drawFreshToySparkle(x: number, y: number, phaseOffset: number, maxRadius = 4.2): void {
+    const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.0055 + phaseOffset);
+    const r = maxRadius * (0.45 + 0.55 * pulse);
+    const inner = r * 0.28;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.fillStyle = `rgba(255, 252, 224, ${(0.55 + 0.45 * pulse).toFixed(2)})`;
+    ctx.beginPath();
+    ctx.moveTo(0, -r);
+    ctx.lineTo(inner, -inner);
+    ctx.lineTo(r, 0);
+    ctx.lineTo(inner, inner);
+    ctx.lineTo(0, r);
+    ctx.lineTo(-inner, inner);
+    ctx.lineTo(-r, 0);
+    ctx.lineTo(-inner, -inner);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
   function drawTennisBall(): void {
     if (!state.hasTennisBall) return;
     const pos = gridToScreen(tennisBall.gx, tennisBall.gy);
     const scale = getScale();
+    const isFresh = isFreshBallActive();
+    const isWorn = !isFresh && state.digPower >= MAX_DIG_POWER;
     ctx.save();
     ctx.translate(pos.x, pos.y);
     ctx.scale(scale, scale);
@@ -10729,13 +10904,34 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     const bounceOffset = Math.abs(Math.sin(tennisBall.bouncePhase * 6)) * 8;
     ctx.translate(0, -bounceOffset);
 
-    ctx.fillStyle = '#ccff00';
-    ctx.strokeStyle = '#739900';
+    ctx.fillStyle = isFresh ? '#d8ff1f' : (isWorn ? '#b7d42c' : '#ccff00');
+    ctx.strokeStyle = isFresh ? '#7aa800' : (isWorn ? '#6d7f23' : '#739900');
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.arc(0, -4, 6, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
+
+    // Classic curved tennis seam
+    ctx.strokeStyle = isFresh ? 'rgba(255,255,255,0.92)' : (isWorn ? 'rgba(240,242,225,0.45)' : 'rgba(255,255,255,0.65)');
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(-2.6, -4, 3.8, -0.85, 0.85);
+    ctx.stroke();
+
+    if (isWorn) {
+      // Cute subtle scuff mark when Well-Loved
+      ctx.fillStyle = 'rgba(92, 74, 42, 0.38)';
+      ctx.beginPath();
+      ctx.ellipse(2.2, -2.2, 1.8, 1.1, 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (isFresh) {
+      ctx.fillStyle = 'rgba(255,255,255,0.75)';
+      ctx.beginPath();
+      ctx.arc(-2, -6.4, 1.4, 0, Math.PI * 2);
+      ctx.fill();
+      drawFreshToySparkle(5.5, -9.5, 0.4, 3.8);
+    }
 
     ctx.restore();
   }
@@ -10744,6 +10940,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     if (!state.hasFrisbee) return;
     const pos = gridToScreen(frisbee.gx, frisbee.gy);
     const scale = getScale();
+    const isFresh = isFreshFrisbeeActive();
+    const isWorn = !isFresh && state.speedMultiplier >= MAX_SPEED_MULTIPLIER;
     ctx.save();
     ctx.translate(pos.x, pos.y);
     ctx.scale(scale, scale);
@@ -10753,18 +10951,37 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     ctx.ellipse(0, 4, 9, 4.5, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = '#0984e3';
-    ctx.strokeStyle = '#00cec9';
+    ctx.fillStyle = isFresh ? '#1696f7' : (isWorn ? '#3179ad' : '#0984e3');
+    ctx.strokeStyle = isFresh ? '#55efc4' : (isWorn ? '#4ca6a8' : '#00cec9');
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.ellipse(0, -2, 11, 6, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = '#74b9ff';
+    ctx.fillStyle = isFresh ? '#9bd1ff' : (isWorn ? '#6ba0c9' : '#74b9ff');
     ctx.beginPath();
     ctx.ellipse(0, -3, 6, 3, 0, 0, Math.PI * 2);
     ctx.fill();
+
+    if (isWorn) {
+      // Cute chew/scuff marks on rim
+      ctx.strokeStyle = 'rgba(25, 42, 66, 0.45)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(6.5, -0.5);
+      ctx.lineTo(8.5, 1.2);
+      ctx.moveTo(-7.5, -3.4);
+      ctx.lineTo(-5.8, -2.0);
+      ctx.stroke();
+    } else if (isFresh) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(-2.5, -3.2, 4.2, Math.PI * 1.08, Math.PI * 1.68);
+      ctx.stroke();
+      drawFreshToySparkle(9.2, -7.2, 2.1, 4.0);
+    }
 
     ctx.restore();
   }
@@ -10773,6 +10990,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     if (!state.hasDuck) return;
     const pos = gridToScreen(duck.gx, duck.gy);
     const scale = getScale();
+    const isFresh = isFreshDuckActive();
+    const isWorn = !isFresh && state.idleMultiplier >= MAX_IDLE_MULTIPLIER;
     ctx.save();
     ctx.translate(pos.x, pos.y);
     ctx.scale(scale, scale);
@@ -10782,8 +11001,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     ctx.ellipse(0, 4, 9, 4.5, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = '#ffeaa7';
-    ctx.strokeStyle = '#fdcb6e';
+    ctx.fillStyle = isFresh ? '#fff06b' : (isWorn ? '#e6d396' : '#ffeaa7');
+    ctx.strokeStyle = isFresh ? '#f9ca24' : (isWorn ? '#c9ad63' : '#fdcb6e');
     ctx.lineWidth = 1.5;
 
     ctx.beginPath();
@@ -10796,7 +11015,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = '#e17055';
+    ctx.fillStyle = isFresh ? '#ff793f' : (isWorn ? '#cc7a5c' : '#e17055');
     ctx.beginPath();
     ctx.ellipse(9, -9, 3.5, 2, 0, 0, Math.PI * 2);
     ctx.fill();
@@ -10805,6 +11024,20 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     ctx.beginPath();
     ctx.arc(6, -11, 1, 0, Math.PI * 2);
     ctx.fill();
+
+    if (isWorn) {
+      // Cute tiny love-worn smudge on wing
+      ctx.fillStyle = 'rgba(130, 102, 58, 0.28)';
+      ctx.beginPath();
+      ctx.ellipse(-2.4, -2.4, 2.5, 1.3, -0.25, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (isFresh) {
+      ctx.fillStyle = 'rgba(255,255,255,0.82)';
+      ctx.beginPath();
+      ctx.arc(3.5, -12.2, 1.3, 0, Math.PI * 2);
+      ctx.fill();
+      drawFreshToySparkle(-5.5, -12.5, 3.8, 4.0);
+    }
 
     ctx.restore();
   }
@@ -10970,7 +11203,20 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
   document.getElementById('btnToyBones')?.addEventListener('click', () => {
     initAudio();
-    if (state.digPower >= MAX_DIG_POWER) return;
+    const now = Date.now();
+    if (state.digPower >= MAX_DIG_POWER) {
+      if (isFreshBallActive(now)) return;
+      if (state.bones >= FRESH_BALL_COST) {
+        spendRegularBones(FRESH_BALL_COST);
+        state.freshBallUntil = now + FRESH_BALL_DURATION_MS;
+        state.hasTennisBall = true;
+        addPackHappiness(FRESH_TOY_HAPPINESS_GAIN);
+        sfx.upgrade();
+        updateUI();
+        saveGame();
+      }
+      return;
+    }
     const econ = TOY_CONFIG.toyBones;
     if (state.bones >= state.costs.toyBones) {
       spendRegularBones(state.costs.toyBones);
@@ -10986,6 +11232,20 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
   document.getElementById('btnToyIdle')?.addEventListener('click', () => {
     initAudio();
+    const now = Date.now();
+    if (state.idleMultiplier >= MAX_IDLE_MULTIPLIER) {
+      if (isFreshDuckActive(now)) return;
+      if (state.bones >= FRESH_DUCK_COST) {
+        spendRegularBones(FRESH_DUCK_COST);
+        state.freshDuckUntil = now + FRESH_DUCK_DURATION_MS;
+        state.hasDuck = true;
+        addPackHappiness(FRESH_TOY_HAPPINESS_GAIN);
+        sfx.upgrade();
+        updateUI();
+        saveGame();
+      }
+      return;
+    }
     const econ = TOY_CONFIG.toyIdle;
     if (state.bones >= state.costs.toyIdle && state.idleMultiplier < MAX_IDLE_MULTIPLIER) {
       spendRegularBones(state.costs.toyIdle);
@@ -11001,7 +11261,20 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
   document.getElementById('btnToySpeed')?.addEventListener('click', () => {
     initAudio();
-    if (state.speedMultiplier >= MAX_SPEED_MULTIPLIER) return;
+    const now = Date.now();
+    if (state.speedMultiplier >= MAX_SPEED_MULTIPLIER) {
+      if (isFreshFrisbeeActive(now)) return;
+      if (state.bones >= FRESH_FRISBEE_COST) {
+        spendRegularBones(FRESH_FRISBEE_COST);
+        state.freshFrisbeeUntil = now + FRESH_FRISBEE_DURATION_MS;
+        state.hasFrisbee = true;
+        addPackHappiness(FRESH_TOY_HAPPINESS_GAIN);
+        sfx.upgrade();
+        updateUI();
+        saveGame();
+      }
+      return;
+    }
     const econ = TOY_CONFIG.toySpeed;
     if (state.bones >= state.costs.toySpeed) {
       spendRegularBones(state.costs.toySpeed);
@@ -11458,28 +11731,152 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     return `+${bonusPct}% | ${totalPct}%`;
   }
 
-  function refreshToyBoostBadges(): void {
+  function refreshToyBoostBadges(now = Date.now()): void {
+    const atDigPowerCap = state.digPower >= MAX_DIG_POWER;
+    const atDuckCap = state.idleMultiplier >= MAX_IDLE_MULTIPLIER;
+    const atSpeedCap = state.speedMultiplier >= MAX_SPEED_MULTIPLIER;
+
+    const ballRem = atDigPowerCap ? getFreshToyRemainingMs(state.freshBallUntil, now) : 0;
+    const duckRem = atDuckCap ? getFreshToyRemainingMs(state.freshDuckUntil, now) : 0;
+    const frisbeeRem = atSpeedCap ? getFreshToyRemainingMs(state.freshFrisbeeUntil, now) : 0;
+
+    const ballFresh = ballRem > 0;
+    const duckFresh = duckRem > 0;
+    const frisbeeFresh = frisbeeRem > 0;
+
     const ballBoostEl = document.getElementById('ballCurrentBoost');
     if (ballBoostEl) {
-      const currentPower = Number(state.digPower) || BASE_DIG_POWER;
-      const bonusVal = Math.max(0, currentPower - BASE_DIG_POWER);
-      ballBoostEl.textContent = formatToyFlatBadge(bonusVal, currentPower);
+      ballBoostEl.classList.toggle('is-fresh', ballFresh);
+      ballBoostEl.classList.toggle('is-worn', atDigPowerCap && !ballFresh);
+      if (ballFresh) {
+        ballBoostEl.textContent = `Fresh ${formatFreshRemaining(ballRem)} | ${getEffectiveDigPower(now)}`;
+      } else if (atDigPowerCap) {
+        ballBoostEl.textContent = `MAX | ${MAX_DIG_POWER}`;
+      } else {
+        const currentPower = Number(state.digPower) || BASE_DIG_POWER;
+        const bonusVal = Math.max(0, currentPower - BASE_DIG_POWER);
+        ballBoostEl.textContent = formatToyFlatBadge(bonusVal, currentPower);
+      }
     }
 
     const duckBoostEl = document.getElementById('duckCurrentBoost');
     if (duckBoostEl) {
-      const currentIdle = Number(state.idleMultiplier) || BASE_IDLE_MULTIPLIER;
-      const bonusRatio = Math.max(0, currentIdle - BASE_IDLE_MULTIPLIER);
-      const totalRatio = getTotalOfflineRate();
-      duckBoostEl.textContent = formatToyBoostBadge(bonusRatio, totalRatio);
+      duckBoostEl.classList.toggle('is-fresh', duckFresh);
+      duckBoostEl.classList.toggle('is-worn', atDuckCap && !duckFresh);
+      const totalRatio = getTotalOfflineRate(now);
+      if (duckFresh) {
+        duckBoostEl.textContent = `Fresh ${formatFreshRemaining(duckRem)} | ${Math.round(totalRatio * 100)}%`;
+      } else if (atDuckCap) {
+        duckBoostEl.textContent = `MAX | ${Math.round(totalRatio * 100)}%`;
+      } else {
+        const currentIdle = Number(state.idleMultiplier) || BASE_IDLE_MULTIPLIER;
+        const bonusRatio = Math.max(0, currentIdle - BASE_IDLE_MULTIPLIER);
+        duckBoostEl.textContent = formatToyBoostBadge(bonusRatio, totalRatio);
+      }
     }
 
     const frisbeeBoostEl = document.getElementById('frisbeeCurrentBoost');
     if (frisbeeBoostEl) {
-      const currentSpeed = Number(state.speedMultiplier) || BASE_SPEED_MULTIPLIER;
-      const bonusRatio = Math.max(0, (currentSpeed - BASE_SPEED_MULTIPLIER) / BASE_SPEED_MULTIPLIER);
-      const totalRatio = currentSpeed / BASE_SPEED_MULTIPLIER;
-      frisbeeBoostEl.textContent = formatToyBoostBadge(bonusRatio, totalRatio);
+      frisbeeBoostEl.classList.toggle('is-fresh', frisbeeFresh);
+      frisbeeBoostEl.classList.toggle('is-worn', atSpeedCap && !frisbeeFresh);
+      if (frisbeeFresh) {
+        frisbeeBoostEl.textContent = `Fresh ${formatFreshRemaining(frisbeeRem)} | ${getEffectiveSpeedMultiplier(now).toFixed(2)}x`;
+      } else if (atSpeedCap) {
+        frisbeeBoostEl.textContent = `MAX | ${MAX_SPEED_MULTIPLIER.toFixed(2)}x`;
+      } else {
+        const currentSpeed = Number(state.speedMultiplier) || BASE_SPEED_MULTIPLIER;
+        const bonusRatio = Math.max(0, (currentSpeed - BASE_SPEED_MULTIPLIER) / BASE_SPEED_MULTIPLIER);
+        const totalRatio = currentSpeed / BASE_SPEED_MULTIPLIER;
+        frisbeeBoostEl.textContent = formatToyBoostBadge(bonusRatio, totalRatio);
+      }
+    }
+
+    const descToyBones = document.getElementById('descToyBones');
+    if (descToyBones) {
+      descToyBones.textContent = atDigPowerCap
+        ? `Maxed (${MAX_DIG_POWER})! Grab a Fresh Ball for +${FRESH_BALL_POWER_BONUS} Dig Power (${MAX_DIG_POWER + FRESH_BALL_POWER_BONUS} total) for 30m, +${FRESH_TOY_HAPPINESS_GAIN} Mood & +${FRESH_TOY_COZY_FLOOR_BONUS}% Cozy Floor. Counts toward offline digs too.`
+        : '+1 Dig Power per buy, up to max 25 (price caps at 10,000 🦴). Unlocks Fresh Ball boosts at max!';
+    }
+    const descToyIdle = document.getElementById('descToyIdle');
+    if (descToyIdle) {
+      descToyIdle.textContent = atDuckCap
+        ? `Maxed (+20%)! Grab a Fresh Duck for +10% Offline Yield (up to 75% cap) & +25% Offline Treasure odds for 12h, +${FRESH_TOY_HAPPINESS_GAIN} Mood & +${FRESH_TOY_COZY_FLOOR_BONUS}% Cozy Floor.`
+        : 'Boosts base offline bone yield by +1% per buy, from 10% up to 30% (+20% max from toy; price caps at 15,000 🦴). Dog abilities lift total offline yield up to 75%. Unlocks Fresh Duck boosts at max!';
+    }
+    const descToySpeed = document.getElementById('descToySpeed');
+    if (descToySpeed) {
+      descToySpeed.textContent = atSpeedCap
+        ? `Maxed (${MAX_SPEED_MULTIPLIER.toFixed(2)}x)! Grab a Fresh Frisbee for +${FRESH_FRISBEE_SPEED_BONUS.toFixed(2)}x Pack Dig Multiplier (${(MAX_SPEED_MULTIPLIER + FRESH_FRISBEE_SPEED_BONUS).toFixed(2)}x total) for 30m, +${FRESH_TOY_HAPPINESS_GAIN} Mood & +${FRESH_TOY_COZY_FLOOR_BONUS}% Cozy Floor. Counts toward offline digs too.`
+        : "Boosts the pack's dig multiplier by +3% per buy, up to 1.80x (price caps at 20,000 🦴). Unlocks Fresh Frisbee boosts at max!";
+    }
+
+    const nameToyBones = document.getElementById('nameToyBones');
+    const costToyBonesEl = document.getElementById('costToyBones');
+    const btnToyBones = document.getElementById('btnToyBones') as HTMLButtonElement | null;
+    if (nameToyBones) {
+      nameToyBones.textContent = ballFresh ? 'Fresh Active' : (atDigPowerCap ? 'Fresh Ball' : 'Get Toy');
+    }
+    if (costToyBonesEl) {
+      costToyBonesEl.textContent = ballFresh
+        ? `${formatFreshRemaining(ballRem)} left`
+        : atDigPowerCap
+          ? `${FRESH_BALL_COST.toLocaleString()} 🦴`
+          : `${state.costs.toyBones.toLocaleString()} 🦴`;
+    }
+    if (btnToyBones) {
+      btnToyBones.classList.toggle('is-fresh-ready', atDigPowerCap && !ballFresh);
+      btnToyBones.classList.toggle('is-fresh-active', ballFresh);
+      btnToyBones.disabled = ballFresh
+        ? true
+        : atDigPowerCap
+          ? state.bones < FRESH_BALL_COST
+          : state.bones < state.costs.toyBones;
+    }
+
+    const nameToyIdle = document.getElementById('nameToyIdle');
+    const costToyIdleEl = document.getElementById('costToyIdle');
+    const btnToyIdle = document.getElementById('btnToyIdle') as HTMLButtonElement | null;
+    if (nameToyIdle) {
+      nameToyIdle.textContent = duckFresh ? 'Fresh Active' : (atDuckCap ? 'Fresh Duck' : 'Get Toy');
+    }
+    if (costToyIdleEl) {
+      costToyIdleEl.textContent = duckFresh
+        ? `${formatFreshRemaining(duckRem)} left`
+        : atDuckCap
+          ? `${FRESH_DUCK_COST.toLocaleString()} 🦴`
+          : `${state.costs.toyIdle.toLocaleString()} 🦴`;
+    }
+    if (btnToyIdle) {
+      btnToyIdle.classList.toggle('is-fresh-ready', atDuckCap && !duckFresh);
+      btnToyIdle.classList.toggle('is-fresh-active', duckFresh);
+      btnToyIdle.disabled = duckFresh
+        ? true
+        : atDuckCap
+          ? state.bones < FRESH_DUCK_COST
+          : state.bones < state.costs.toyIdle;
+    }
+
+    const nameToySpeed = document.getElementById('nameToySpeed');
+    const costToySpeedEl = document.getElementById('costToySpeed');
+    const btnToySpeed = document.getElementById('btnToySpeed') as HTMLButtonElement | null;
+    if (nameToySpeed) {
+      nameToySpeed.textContent = frisbeeFresh ? 'Fresh Active' : (atSpeedCap ? 'Fresh Frisbee' : 'Get Toy');
+    }
+    if (costToySpeedEl) {
+      costToySpeedEl.textContent = frisbeeFresh
+        ? `${formatFreshRemaining(frisbeeRem)} left`
+        : atSpeedCap
+          ? `${FRESH_FRISBEE_COST.toLocaleString()} 🦴`
+          : `${state.costs.toySpeed.toLocaleString()} 🦴`;
+    }
+    if (btnToySpeed) {
+      btnToySpeed.classList.toggle('is-fresh-ready', atSpeedCap && !frisbeeFresh);
+      btnToySpeed.classList.toggle('is-fresh-active', frisbeeFresh);
+      btnToySpeed.disabled = frisbeeFresh
+        ? true
+        : atSpeedCap
+          ? state.bones < FRESH_FRISBEE_COST
+          : state.bones < state.costs.toySpeed;
     }
   }
 
@@ -11689,30 +12086,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     const bpsCountEl = document.getElementById('bpsCount');
     if (bpsCountEl) bpsCountEl.textContent = `avg ${formattedTrueBones}/dig`;
 
-    const atDigPowerCap = state.digPower >= MAX_DIG_POWER;
-    const atDuckCap = state.idleMultiplier >= MAX_IDLE_MULTIPLIER;
-    const atSpeedCap = state.speedMultiplier >= MAX_SPEED_MULTIPLIER;
-
     refreshToyBoostBadges();
-
-    const costToyBonesEl = document.getElementById('costToyBones');
-    if (costToyBonesEl) {
-      costToyBonesEl.textContent = atDigPowerCap
-        ? `MAX (${MAX_DIG_POWER})`
-        : `${state.costs.toyBones.toLocaleString()} 🦴`;
-    }
-    const costToyIdleEl = document.getElementById('costToyIdle');
-    if (costToyIdleEl) {
-      costToyIdleEl.textContent = atDuckCap
-        ? `MAX (+${Math.round((MAX_IDLE_MULTIPLIER - BASE_IDLE_MULTIPLIER) * 100)}%)`
-        : `${state.costs.toyIdle.toLocaleString()} 🦴`;
-    }
-    const costToySpeedEl = document.getElementById('costToySpeed');
-    if (costToySpeedEl) {
-      costToySpeedEl.textContent = atSpeedCap
-        ? `MAX (${MAX_SPEED_MULTIPLIER.toFixed(2)}x)`
-        : `${state.costs.toySpeed.toLocaleString()} 🦴`;
-    }
 
     refreshTreatButtonTimers();
 
@@ -11732,7 +12106,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       statMagicPerHourEl.textContent = `~${formattedMph} ✨`;
     }
     const statDigPowerEl = document.getElementById('statDigPower');
-    if (statDigPowerEl) statDigPowerEl.textContent = String(Number(state.digPower.toFixed(1)));
+    if (statDigPowerEl) statDigPowerEl.textContent = String(Number(getEffectiveDigPower().toFixed(1)));
     const statSpeedEl = document.getElementById('statSpeed');
     if (statSpeedEl) statSpeedEl.textContent = `${getDigMultiplier().toFixed(2)}x`;
     const packTraits = getPackTraitBonuses();
@@ -11792,13 +12166,6 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
     refreshWeatherHUD();
     refreshMoodHUD();
-
-    const btnToyBones = document.getElementById('btnToyBones') as HTMLButtonElement | null;
-    if (btnToyBones) btnToyBones.disabled = state.bones < state.costs.toyBones || atDigPowerCap;
-    const btnToyIdle = document.getElementById('btnToyIdle') as HTMLButtonElement | null;
-    if (btnToyIdle) btnToyIdle.disabled = state.bones < state.costs.toyIdle || atDuckCap;
-    const btnToySpeed = document.getElementById('btnToySpeed') as HTMLButtonElement | null;
-    if (btnToySpeed) btnToySpeed.disabled = state.bones < state.costs.toySpeed || atSpeedCap;
 
     refreshTreatButtonStates();
     refreshTreatRoiHints();
@@ -11886,10 +12253,16 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     if (rosterFloorEl) rosterFloorEl.style.left = `${info.floor}%`;
 
     const activeTreats = getActiveTreatTypeCount();
-    const toyInfo = getToyFloorBreakdown();
+    const nowMs = Date.now();
+    const toyInfo = getToyFloorBreakdown(nowMs);
     const decorFloor = getDecorFloorBonus();
 
-    const nowMs = Date.now();
+    if (popFloorLabelEl) {
+      popFloorLabelEl.textContent = toyInfo.freshFloorBonus > 0
+        ? `Cozy floor: ${floorPct}% (+${toyInfo.freshFloorBonus}% Fresh)`
+        : `Cozy floor: ${floorPct}%`;
+    }
+
     const totalPups = state.roster.length;
     const readyPups = state.roster.filter(entry => getDogPetHappinessCooldownMs(entry, nowMs) <= 0).length;
     const minPetCooldownMs = totalPups > 0
@@ -11912,7 +12285,11 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     }
     const toySourceEl = document.getElementById('moodSourceToys');
     if (toySourceEl) {
-      toySourceEl.textContent = toyInfo.floorBonus > 0 ? `+${toyInfo.floorBonus}% floor` : '0/3 owned';
+      if (toyInfo.freshFloorBonus > 0) {
+        toySourceEl.textContent = `+${toyInfo.floorBonus}% (+${toyInfo.freshFloorBonus}% Fresh)`;
+      } else {
+        toySourceEl.textContent = toyInfo.floorBonus > 0 ? `+${toyInfo.floorBonus}% floor` : '0/3 owned';
+      }
     }
     const decorSourceEl = document.getElementById('moodSourceDecor');
     if (decorSourceEl) {
@@ -12135,6 +12512,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
   lastTime = performance.now();
   let lastRosterUiRefresh = 0;
   let lastMoodUiRefresh = 0;
+  let lastFreshToyTickSec = 0;
 
   function loop(now: number): void {
     try {
@@ -12223,6 +12601,36 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         }
       }
 
+      const freshNowMs = Date.now();
+      let freshToyExpired = false;
+      if (state.freshBallUntil > 0 && state.freshBallUntil <= freshNowMs) {
+        state.freshBallUntil = 0;
+        freshToyExpired = true;
+      }
+      if (state.freshDuckUntil > 0 && state.freshDuckUntil <= freshNowMs) {
+        state.freshDuckUntil = 0;
+        freshToyExpired = true;
+      }
+      if (state.freshFrisbeeUntil > 0 && state.freshFrisbeeUntil <= freshNowMs) {
+        state.freshFrisbeeUntil = 0;
+        freshToyExpired = true;
+      }
+      if (freshToyExpired) {
+        lastFreshToyTickSec = Math.floor(freshNowMs / 1000);
+        updateUI();
+        requestSave();
+      } else if (
+        state.freshBallUntil > freshNowMs ||
+        state.freshDuckUntil > freshNowMs ||
+        state.freshFrisbeeUntil > freshNowMs
+      ) {
+        const freshSec = Math.floor(freshNowMs / 1000);
+        if (freshSec !== lastFreshToyTickSec) {
+          lastFreshToyTickSec = freshSec;
+          refreshToyBoostBadges(freshNowMs);
+        }
+      }
+
       if (state.feastAnimTimer > 0) state.feastAnimTimer = Math.max(0, state.feastAnimTimer - dt);
 
       // Update Pack Happiness gentle trickle (treats) or cooldown (idle toward Cozy Floor)
@@ -12230,15 +12638,15 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       const prevMoodTier = getPackHappinessInfo().tier;
       const activeTreats = getActiveTreatTypeCount();
       if (activeTreats > 0) {
-        const trickle = Math.min(0.9, activeTreats * HAPPINESS_TREAT_TRICKLE_PER_SEC) * dt;
+        const trickle = Math.min(0.45, activeTreats * HAPPINESS_TREAT_TRICKLE_PER_SEC) * dt;
         addPackHappiness(trickle, true);
       } else {
         const floor = getCozyFloor();
         const cur = Number(state.packHappiness) || floor;
         if (cur > floor) {
-          // Gentle live-park cooldown (half the away rate) so pups stay happy while you're hanging out
+          // Gentle live-park cooldown (2h full cool to Cozy Floor, slowed by Samoyed)
           const decayableSpan = Math.max(0, HAPPINESS_MAX - floor);
-          const liveCoolPerSec = (decayableSpan / (HAPPINESS_AWAY_FULL_DECAY_HOURS * 3600)) * 0.5 * getPackTraitBonuses().moodDecayMult;
+          const liveCoolPerSec = (decayableSpan / (HAPPINESS_LIVE_FULL_DECAY_HOURS * 3600)) * getPackTraitBonuses().moodDecayMult;
           state.packHappiness = Math.max(floor, cur - liveCoolPerSec * dt);
         } else if (cur < floor) {
           state.packHappiness = floor;
@@ -12278,7 +12686,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
       const applyToyPlayBonuses = (walker: Dog): void => {
         const trait = getBreedTrait(walker.breed);
-        addPackHappiness(1.5 + (trait.playMoodBonus || 0));
+        awardPlayMood(0.4, trait.playMoodBonus || 0);
         if (trait.playXpMult && trait.playXpMult > 1) {
           const entry = walker.getRosterEntry();
           if (entry && entry.level < MAX_DOG_LEVEL) {
