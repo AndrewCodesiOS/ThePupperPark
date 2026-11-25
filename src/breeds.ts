@@ -366,8 +366,8 @@ export const BREED_LIST: readonly BreedDefinition[] = [
     highlights: ['boneYield', 'packGrowth', 'magic', 'treasure'],
     trait: {
       name: 'Easygoing Earner',
-      summary: '+10% Offline earnings (additive up to 70% max).',
-      offlineBonus: 0.10
+      summary: '+6% Offline earnings (additive up to 75% max).',
+      offlineBonus: 0.06
     }
   },
   {
@@ -950,8 +950,8 @@ export const BREED_LIST: readonly BreedDefinition[] = [
     highlights: ['boneYield', 'packGrowth', 'magic', 'treasure'],
     trait: {
       name: 'Tidebringer',
-      summary: '+35% Bone Yield & +5% ✨ Magic chance in Rain, plus +15% Offline earnings.\n+Offline ✨',
-      offlineBonus: 0.15,
+      summary: '+35% Bone Yield & +5% ✨ Magic chance in Rain, plus +12% Offline earnings.\n+Offline ✨',
+      offlineBonus: 0.12,
       offlineMagicPerDay: 25,
       weatherAffinity: {
         weather: 'rain',
@@ -982,10 +982,10 @@ export const BREED_LIST: readonly BreedDefinition[] = [
     highlights: ['boneYield', 'packGrowth', 'xp', 'magic'],
     trait: {
       name: 'Alpine Rescue',
-      summary: 'Pack Aura: +8 Cozy Floor, +8% Bone Yield for all pups & +25% Offline earnings.',
+      summary: 'Pack Aura: +8 Cozy Floor, +8% Bone Yield for all pups & +18% Offline earnings.',
       cozyFloorAdd: 8,
       packBoneAura: 0.08,
-      offlineBonus: 0.25
+      offlineBonus: 0.18
     }
   },
   {

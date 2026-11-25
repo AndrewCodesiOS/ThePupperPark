@@ -141,7 +141,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
   const BASE_IDLE_MULTIPLIER = 0.10;
   const DUCK_IDLE_STEP = 0.010;
   const MAX_IDLE_MULTIPLIER = 0.30;
-  const MAX_TOTAL_OFFLINE_RATE = 0.70;
+  const MAX_TOTAL_OFFLINE_RATE = 0.75;
 
   const BASE_DIG_POWER = 1;
   const MAX_DIG_POWER = 25;
@@ -11690,7 +11690,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     const costToyIdleEl = document.getElementById('costToyIdle');
     if (costToyIdleEl) {
       costToyIdleEl.textContent = atDuckCap
-        ? `MAX (${Math.round(MAX_IDLE_MULTIPLIER * 100)}%)`
+        ? `MAX (+${Math.round((MAX_IDLE_MULTIPLIER - BASE_IDLE_MULTIPLIER) * 100)}%)`
         : `${state.costs.toyIdle.toLocaleString()} 🦴`;
     }
     const costToySpeedEl = document.getElementById('costToySpeed');
