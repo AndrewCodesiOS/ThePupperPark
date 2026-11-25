@@ -3197,7 +3197,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       text.innerHTML = '';
 
       const bonesLine = document.createElement('div');
-      bonesLine.textContent = `They dug ${formatAwardedBones(summary.actualEarned)} Bones while you were away!`;
+      bonesLine.textContent = `+${formatAwardedBones(summary.actualEarned)} 🦴`;
       text.appendChild(bonesLine);
 
       if (
