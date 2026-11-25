@@ -151,6 +151,9 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
   const FRISBEE_SPEED_STEP = 1.03;
   const MAX_SPEED_MULTIPLIER = 1.80;
 
+  const BASE_MAGIC_CHANCE = 0.15;
+  const MAX_MAGIC_CHANCE = 0.75;
+
   const BONUS_PAYOUT_MAX = 0.25;
   const BONUS_SCALING_MAX = 0.16;
   const BONUS_XP_MAX = 0.15;
@@ -206,7 +209,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       buyBtnId: 'btnBuyDecorFlowers',
       placeBtnId: 'btnPlaceDecorFlowers',
       xpBonus: 0,
-      magicBonus: 0.02,
+      magicBonus: 0.01,
       payoutBonus: 0,
       paceBonus: 0,
       cozyFloor: 1.5
@@ -254,7 +257,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       buyBtnId: 'btnBuyDecorLamp',
       placeBtnId: 'btnPlaceDecorLamp',
       xpBonus: 0,
-      magicBonus: 0.025,
+      magicBonus: 0.01,
       payoutBonus: 0.02,
       paceBonus: 0,
       cozyFloor: 3.0
@@ -302,7 +305,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       buyBtnId: 'btnBuyDecorGoldenHydrant',
       placeBtnId: 'btnPlaceDecorGoldenHydrant',
       xpBonus: 0,
-      magicBonus: 0.05,
+      magicBonus: 0.025,
       payoutBonus: 0.10,
       paceBonus: 0.05,
       cozyFloor: 8.0
@@ -318,7 +321,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       buyBtnId: 'btnBuyDecorDoghouseManor',
       placeBtnId: 'btnPlaceDecorDoghouseManor',
       xpBonus: 0.10,
-      magicBonus: 0.06,
+      magicBonus: 0.035,
       payoutBonus: 0.15,
       paceBonus: 0.08,
       cozyFloor: 15.0
@@ -1107,7 +1110,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       packBoneAura: Math.min(0.80, packBoneAura),
       packPaceAura: Math.min(0.35, packPaceAura),
       packXpAura: Math.min(0.60, packXpAura),
-      packMagicAura: Math.min(0.15, packMagicAura),
+      packMagicAura: Math.min(0.10, packMagicAura),
       packGrowthAura: Math.min(0.60, packGrowthAura),
       packTreasureAura: Math.min(1.80, packTreasureAura)
     };
@@ -1213,7 +1216,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     digPower: BASE_DIG_POWER,
     speedMultiplier: BASE_SPEED_MULTIPLIER,
     idleMultiplier: BASE_IDLE_MULTIPLIER,
-    magicChance: 0.22,
+    magicChance: BASE_MAGIC_CHANCE,
     boneCapEverShown: false,
     boneCapReachedNotified: false,
     kongTimer: 0,
@@ -2426,7 +2429,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       totalDigsPerMin += digsPerMin;
 
       const magicChanceTotal = Math.min(
-        0.9,
+        MAX_MAGIC_CHANCE,
         state.magicChance +
           magicBonus +
           decorMagic +
@@ -2845,6 +2848,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       try {
         const parsed = JSON.parse(saved);
         state = { ...state, ...parsed };
+        state.magicChance = BASE_MAGIC_CHANCE;
         if (typeof state.lifetimeBones !== 'number' || Number.isNaN(state.lifetimeBones)) {
           state.lifetimeBones = Math.max(0, state.bones || 0);
         }
@@ -5193,7 +5197,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       digPower: BASE_DIG_POWER,
       speedMultiplier: BASE_SPEED_MULTIPLIER,
       idleMultiplier: BASE_IDLE_MULTIPLIER,
-      magicChance: 0.22,
+      magicChance: BASE_MAGIC_CHANCE,
       boneCapEverShown: clampedBones >= MAX_BONES,
       boneCapReachedNotified: clampedBones >= MAX_BONES,
       kongTimer: 0,
@@ -5834,7 +5838,11 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         const moodMagic = getPackHappinessInfo().magicAdd;
         const packMagicAura = getPackTraitBonuses().packMagicAura;
         const kongActive = state.kongTimer > 0;
-        const naturalMagic = Math.random() < (state.magicChance + magicBonus + decorMagic + weatherMagic + moodMagic + packMagicAura);
+        const manualMagicChance = Math.min(
+          MAX_MAGIC_CHANCE,
+          state.magicChance + magicBonus + decorMagic + weatherMagic + moodMagic + packMagicAura
+        );
+        const naturalMagic = Math.random() < manualMagicChance;
         const cupMult = getActiveCupMult();
         const tapBones = Math.max(1, Math.round(state.digPower * cupMult * 10) / 10);
 
@@ -7466,7 +7474,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
           const decorMagic = getDecorBonuses().magicAdd;
           const moodMagic = getPackHappinessInfo().magicAdd;
           const magicChanceTotal = Math.min(
-            0.9,
+            MAX_MAGIC_CHANCE,
             state.magicChance +
               magicBonus +
               decorMagic +
@@ -11704,7 +11712,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     const statChanceEl = document.getElementById('statChance');
     if (statChanceEl) {
       const totalMagic = Math.min(
-        0.9,
+        MAX_MAGIC_CHANCE,
         state.magicChance +
           getPerkMultipliers().magicBonus +
           decorBonuses.magicAdd +

@@ -139,10 +139,10 @@ export const TREASURE_SETS: readonly TreasureSetDef[] = [
     id: 'arcane',
     name: 'Arcane Playbox',
     shortName: 'Arcane Playbox',
-    bonusLabel: '+6% Magic Chance | +20% Pup XP',
+    bonusLabel: '+3% Magic Chance | +20% Pup XP',
     relicIds: ['mp_1', 'xp_1', 'tr_1', 'mp_2'],
     bonus: {
-      magicAdd: 0.06,
+      magicAdd: 0.03,
       xpAdd: 0.20
     }
   },
@@ -235,7 +235,7 @@ export const TREASURE_CATALOG: readonly TreasureDef[] = [
     setId: 'arcane',
     rarity: 'Rare',
     lore: 'Hums softly with twilight runes and leaves faint violet stardust after every squeak.',
-    magicAdd: 0.03
+    magicAdd: 0.015
   },
   {
     id: 'xp_1',
@@ -252,7 +252,7 @@ export const TREASURE_CATALOG: readonly TreasureDef[] = [
     rarity: 'Rare',
     lore: 'An amber-flamed brass lantern that reveals hidden treasure chests pulsing beneath the turf.',
     treasureOddsAdd: 0.18,
-    magicAdd: 0.02
+    magicAdd: 0.01
   },
   {
     id: 'mp_2',
@@ -260,7 +260,7 @@ export const TREASURE_CATALOG: readonly TreasureDef[] = [
     setId: 'arcane',
     rarity: 'Legendary',
     lore: 'A gilded chest brimming with enchanted starlight treats saved for the very best companions.',
-    magicAdd: 0.07
+    magicAdd: 0.025
   },
 
   // Set 4: Mythic Vault
@@ -298,7 +298,7 @@ export const TREASURE_CATALOG: readonly TreasureDef[] = [
     rarity: 'Mythic',
     lore: 'The ancient rose-gold circlet said to have crowned the very first pup who dug in PupperPark.',
     boneMultRanks: [2.0, 2.4, 2.85, 3.3, 3.8],
-    magicAdd: 0.08,
+    magicAdd: 0.03,
     xpAdd: 0.25
   }
 ] as const;
