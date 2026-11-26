@@ -155,7 +155,7 @@ html.pwa-standalone.ios-device .ios-top-edge-cap {
   transition: background-color 0.34s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* Unified Responsive Top HUD Header — prevents overlap at all viewport widths */
+/* Unified Responsive Top HUD Header — keeps upper sky wide open for sun & moon */
 .hud-header {
   position: fixed;
   top: 0;
@@ -164,7 +164,7 @@ html.pwa-standalone.ios-device .ios-top-edge-cap {
   padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 0 max(12px, env(safe-area-inset-left));
   z-index: 20;
   display: grid;
-  grid-template-columns: minmax(max-content, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   grid-template-rows: auto auto;
   column-gap: 10px;
   row-gap: 8px;
@@ -225,18 +225,16 @@ html.pwa-standalone.ios-device .ios-top-edge-cap {
 }
 
 .weather-top-bar {
-  position: relative;
-  grid-column: 2;
-  grid-row: 1;
-  justify-self: end;
-  align-self: start;
-  margin-top: 4px;
+  position: fixed;
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  left: max(12px, env(safe-area-inset-left, 0px));
+  right: auto;
   z-index: 22;
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  max-width: 100%;
-  pointer-events: auto;
+  align-items: flex-start;
+  max-width: calc(100vw - 260px);
+  pointer-events: none;
 }
 
 .top-center-chips {
@@ -244,8 +242,9 @@ html.pwa-standalone.ios-device .ios-top-edge-cap {
   flex-direction: row;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 8px;
+  pointer-events: auto;
 }
 
 .weather-chip-btn,
@@ -323,9 +322,10 @@ html.pwa-standalone.ios-device .ios-top-edge-cap {
 
 .weather-popover {
   position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  left: auto;
+  bottom: calc(100% + 10px);
+  top: auto;
+  left: 0;
+  right: auto;
   width: min(292px, calc(100vw - 24px));
   background: rgba(21, 17, 46, 0.96);
   border: 1px solid rgba(162, 155, 254, 0.45);
@@ -337,6 +337,7 @@ html.pwa-standalone.ios-device .ios-top-edge-cap {
   display: flex;
   flex-direction: column;
   gap: 7px;
+  pointer-events: auto;
 }
 
 .mood-popover-link {
@@ -436,7 +437,7 @@ html.pwa-standalone.ios-device .ios-top-edge-cap {
 
 /* Top Right Quick Utility Buttons */
 #topRightHud {
-  grid-column: 3;
+  grid-column: 2;
   grid-row: 1;
   justify-self: end;
   z-index: 21;
@@ -713,7 +714,7 @@ html.pwa-standalone.ios-device .ios-top-edge-cap {
   transform: scale(0.95);
 }
 
-/* Responsive Top HUD Breakpoints (after all base HUD & toolbar rules) */
+/* Responsive HUD Breakpoints (after all base HUD & toolbar rules) */
 @media (max-width: 960px) and (min-width: 660px) {
   .hud-header {
     padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) 0 max(10px, env(safe-area-inset-left));
@@ -733,7 +734,8 @@ html.pwa-standalone.ios-device .ios-top-edge-cap {
   }
 
   .weather-top-bar {
-    margin-top: 2px;
+    bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+    max-width: calc(100vw - 244px);
   }
 
   .top-center-chips {
@@ -763,7 +765,7 @@ html.pwa-standalone.ios-device .ios-top-edge-cap {
   .hud-header {
     padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) 0 max(10px, env(safe-area-inset-left));
     grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto auto;
     column-gap: 8px;
     row-gap: 6px;
   }
@@ -799,15 +801,17 @@ html.pwa-standalone.ios-device .ios-top-edge-cap {
     border-radius: 12px;
   }
 
+  /* On narrower viewports, dock Happiness & Weather cleanly along the bottom right above #bottomBar */
   .weather-top-bar {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    justify-self: end;
-    align-self: start;
-    margin-top: 0;
+    bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+    left: max(12px, env(safe-area-inset-left, 0px));
+    right: max(12px, env(safe-area-inset-right, 0px));
+    max-width: none;
+    align-items: center;
   }
 
   .top-center-chips {
+    justify-content: center;
     gap: 6px;
   }
 
@@ -818,9 +822,20 @@ html.pwa-standalone.ios-device .ios-top-edge-cap {
     min-height: 32px;
   }
 
+  .weather-popover {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    bottom: calc(100% + 10px);
+  }
+
+  .onboarding-hint {
+    bottom: calc(112px + env(safe-area-inset-bottom, 0px));
+  }
+
   .active-buffs-bar {
     grid-column: 1 / -1;
-    grid-row: 3;
+    grid-row: 2;
     justify-self: start;
     flex-direction: column;
     align-items: flex-start;
@@ -828,7 +843,7 @@ html.pwa-standalone.ios-device .ios-top-edge-cap {
 
   .placement-banner,
   .tile-paint-bar {
-    top: max(148px, calc(env(safe-area-inset-top) + 138px));
+    top: max(98px, calc(env(safe-area-inset-top) + 88px));
   }
 }
 
@@ -839,7 +854,7 @@ html.pwa-standalone.ios-device .ios-top-edge-cap {
 
   html.pwa-standalone.ios-device .placement-banner,
   html.pwa-standalone.ios-device .tile-paint-bar {
-    top: max(192px, calc(env(safe-area-inset-top, 0px) + 182px));
+    top: max(144px, calc(env(safe-area-inset-top, 0px) + 134px));
   }
 }
 
@@ -855,7 +870,7 @@ html.pwa-standalone.ios-device .ios-top-edge-cap {
   }
 
   .weather-top-bar {
-    margin-top: 2px;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   }
 
   .hud-icon-btn {
@@ -1972,6 +1987,10 @@ html.pwa-standalone.ios-device .ios-top-edge-cap {
 @media (orientation: landscape) and (max-height: 540px) {
   #bottomBar {
     right: calc(12px + env(safe-area-inset-right, 0px));
+  }
+
+  .weather-top-bar {
+    left: calc(12px + env(safe-area-inset-left, 0px));
   }
 
   .modal-header {

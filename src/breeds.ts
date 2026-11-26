@@ -931,7 +931,7 @@ export const BREED_LIST: readonly BreedDefinition[] = [
   {
     key: 'newfoundland',
     name: 'Newfoundland',
-    shortLabel: 'Newfie',
+    shortLabel: 'Newfoundland',
     tier: 'giant',
     rank: 31,
     role: 'Gentle bear-like water giant that dominates Rain showers and away time.',

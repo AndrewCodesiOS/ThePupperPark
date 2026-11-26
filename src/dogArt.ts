@@ -14,7 +14,14 @@ export interface DogRenderParams {
   tailWag: number;
   earBounce: number;
   isDrinking?: boolean;
+  isLayingDown?: boolean;
+  isSitting?: boolean;
 }
+
+const SIT_TORSO_TILT = -0.44;
+let activePoseEyesAsleep = false;
+let activePoseLayingAwake = false;
+let activePoseSitting = false;
 
 function clampByte(n: number): number {
   return Math.max(0, Math.min(255, Math.round(n)));
@@ -200,6 +207,66 @@ interface FourLegsConfig {
   opts?: LegOptions;
 }
 
+function drawSeatedHindHaunch(
+  c: CanvasRenderingContext2D,
+  x: number,
+  yTop: number,
+  w: number,
+  h: number,
+  legCol: string,
+  pawCol: string,
+  pawH: number,
+  isFar: boolean
+): void {
+  c.save();
+  c.translate(x + (isFar ? 2.4 : 0.6), yTop + (isFar ? 0.3 : 0.4));
+  c.rotate(-SIT_TORSO_TILT);
+
+  const pawY = Math.min(4.6, Math.max(2.6, h * 0.36));
+  if (isFar) {
+    // Subtle tucked far hind paw peeking forward beneath the seated rump
+    c.fillStyle = shadeHex(pawCol, -0.2);
+    c.strokeStyle = SOFT_OUTLINE;
+    c.lineWidth = 0.75;
+    c.beginPath();
+    c.ellipse(3.2, pawY - 0.3, Math.max(2.6, w * 0.68), Math.max(1.5, pawH * 0.54), 0.04, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    c.restore();
+    return;
+  }
+
+  // Rounded seated haunch / folded thigh
+  fillShadedEllipse(
+    c,
+    -0.5,
+    0.2,
+    Math.max(3.6, w * 1.12),
+    Math.max(3.2, w * 0.92),
+    0.22,
+    shadeHex(legCol, 0.06),
+    shadeHex(legCol, -0.14),
+    SOFT_OUTLINE
+  );
+
+  // Folded lower shin angled forward along the grass
+  c.fillStyle = legCol;
+  c.strokeStyle = SOFT_OUTLINE;
+  c.lineWidth = 0.8;
+  c.beginPath();
+  c.ellipse(1.6, pawY - 0.6, Math.max(3.0, w * 0.82), Math.max(1.75, w * 0.46), 0.14, 0, Math.PI * 2);
+  c.fill();
+  c.stroke();
+
+  // Forward-resting hind paw planted flat on the grass
+  c.fillStyle = pawCol;
+  c.beginPath();
+  c.ellipse(4.0, pawY + 0.15, Math.max(2.9, w * 0.74), Math.max(1.65, pawH * 0.58), 0.02, 0, Math.PI * 2);
+  c.fill();
+  c.stroke();
+  c.restore();
+}
+
 function drawFarPairLegs(c: CanvasRenderingContext2D, cfg: FourLegsConfig): void {
   if (cfg.isSleeping) return;
   const farLeg = cfg.farLegCol ?? shadeHex(cfg.legCol, -0.24);
@@ -209,6 +276,18 @@ function drawFarPairLegs(c: CanvasRenderingContext2D, cfg: FourLegsConfig): void
     bandColor: cfg.opts?.bandColor ? shadeHex(cfg.opts.bandColor, -0.22) : undefined,
     featherColor: cfg.opts?.featherColor ? shadeHex(cfg.opts.featherColor, -0.16) : undefined
   };
+  if (activePoseSitting) {
+    drawSeatedHindHaunch(c, cfg.backX, cfg.yTop, cfg.w * 0.92, cfg.h, farLeg, farPaw, cfg.pawH, true);
+    const fx = cfg.frontX + 1.5;
+    const fy = cfg.yTop - 0.4;
+    const sitFrontH = cfg.h + Math.min(1.4, cfg.h * 0.14) - 0.5;
+    c.save();
+    c.translate(fx, fy);
+    c.rotate(-SIT_TORSO_TILT);
+    drawRoundedLeg(c, 0, 0, cfg.w * 0.9, sitFrontH, farLeg, farPaw, cfg.pawH, farOpts);
+    c.restore();
+    return;
+  }
   drawRoundedLeg(c, cfg.backX + 2.2 + cfg.swing * 0.85, cfg.yTop - 0.5, cfg.w * 0.92, cfg.h - 0.7, farLeg, farPaw, cfg.pawH, farOpts);
   drawRoundedLeg(c, cfg.frontX + 1.8 - cfg.swing * 0.85, cfg.yTop - 0.5, cfg.w * 0.92, cfg.h - 0.7, farLeg, farPaw, cfg.pawH, farOpts);
 }
@@ -216,6 +295,18 @@ function drawFarPairLegs(c: CanvasRenderingContext2D, cfg: FourLegsConfig): void
 function drawNearPairLegs(c: CanvasRenderingContext2D, cfg: FourLegsConfig): void {
   if (cfg.isSleeping) {
     drawTuckedSleepPaws(c, cfg.backX + 1.5, cfg.frontX + 3.0, 2.2, cfg.pawCol, cfg.pawCol);
+    return;
+  }
+  if (activePoseSitting) {
+    drawSeatedHindHaunch(c, cfg.backX, cfg.yTop, cfg.w, cfg.h, cfg.legCol, cfg.pawCol, cfg.pawH, false);
+    const fx = cfg.frontX - 0.3;
+    const fy = cfg.yTop;
+    const sitFrontH = cfg.h + Math.min(1.5, cfg.h * 0.14);
+    c.save();
+    c.translate(fx, fy);
+    c.rotate(-SIT_TORSO_TILT);
+    drawRoundedLeg(c, 0, 0, cfg.w, sitFrontH, cfg.legCol, cfg.pawCol, cfg.pawH, cfg.opts);
+    c.restore();
     return;
   }
   drawRoundedLeg(c, cfg.backX - cfg.swing, cfg.yTop, cfg.w, cfg.h, cfg.legCol, cfg.pawCol, cfg.pawH, cfg.opts);
@@ -255,7 +346,7 @@ function drawDogEye(c: CanvasRenderingContext2D, x: number, y: number, opts: Eye
   const r = opts.radius ?? 1.65;
   const lid = opts.lidColor ?? '#1c1f26';
 
-  if (opts.isSleeping) {
+  if (opts.isSleeping && activePoseEyesAsleep) {
     c.strokeStyle = lid;
     c.lineWidth = 1.45;
     c.lineCap = 'round';
@@ -332,7 +423,7 @@ function drawMouthAndTongue(
   tongueFill = '#ff7696',
   tongueStroke = '#c84b6b'
 ): void {
-  if (isSleeping) return;
+  if (isSleeping && activePoseEyesAsleep) return;
 
   if (isDrinking) {
     // Open drinking mouth with rhythmic animated lapping tongue dipping into the water
@@ -450,6 +541,52 @@ function withDrinkingHeadPose(
   opts: DrinkHeadPoseOpts = {}
 ): void {
   if (!isDrinking) {
+    if (activePoseSitting) {
+      const pivotX = headX - 1.8;
+      const pivotY = headY + 3.4;
+      const curiousTilt = Math.sin(animPhase * 0.55) * 0.04;
+      fillShadedEllipse(
+        c,
+        headX - 2.2,
+        headY + 3.6,
+        opts.neckRx ?? 5.0,
+        opts.neckRy ?? 3.8,
+        -0.25,
+        neckTopCol,
+        neckBotCol,
+        opts.outlineColor ?? SOFT_OUTLINE
+      );
+      c.save();
+      c.translate(pivotX + 0.7, pivotY + 0.35);
+      c.rotate(-SIT_TORSO_TILT * 0.92 + curiousTilt);
+      c.translate(-pivotX, -pivotY);
+      drawHead();
+      c.restore();
+      return;
+    }
+    if (activePoseLayingAwake) {
+      const pivotX = headX - 1.6;
+      const pivotY = headY + 3.2;
+      const alertLift = -0.07 + Math.sin(animPhase * 0.65) * 0.025;
+      fillShadedEllipse(
+        c,
+        headX - 1.8,
+        headY + 2.4,
+        opts.neckRx ?? 5.0,
+        opts.neckRy ?? 3.9,
+        0.18,
+        neckTopCol,
+        neckBotCol,
+        opts.outlineColor ?? SOFT_OUTLINE
+      );
+      c.save();
+      c.translate(pivotX + 0.35, pivotY - 1.9);
+      c.rotate(alertLift);
+      c.translate(-pivotX, -pivotY);
+      drawHead();
+      c.restore();
+      return;
+    }
     drawHead();
     return;
   }
@@ -491,7 +628,6 @@ export function drawIllustratedDog(c: CanvasRenderingContext2D, p: DogRenderPara
     breed,
     isShiny,
     shinyColor,
-    isSleeping,
     isBlinking,
     isJoyful,
     showTongue,
@@ -502,8 +638,18 @@ export function drawIllustratedDog(c: CanvasRenderingContext2D, p: DogRenderPara
     moodWagAmp,
     tailWag,
     earBounce,
-    isDrinking = false
+    isDrinking = false,
+    isLayingDown = false,
+    isSitting = false
   } = p;
+
+  const isSleeping = p.isSleeping || isLayingDown;
+  const prevEyesAsleep = activePoseEyesAsleep;
+  const prevLayingAwake = activePoseLayingAwake;
+  const prevSitting = activePoseSitting;
+  activePoseEyesAsleep = p.isSleeping;
+  activePoseLayingAwake = isLayingDown && !p.isSleeping;
+  activePoseSitting = isSitting && !isSleeping && !isDrinking;
 
   const legH = 10.0;
   const pawH = 3.0;
@@ -511,6 +657,14 @@ export function drawIllustratedDog(c: CanvasRenderingContext2D, p: DogRenderPara
   // Helper to build harmonious shiny palettes that preserve breed markings
   const sc = (normalHex: string, shinyShift: number): string =>
     isShiny ? shadeHex(shinyColor, shinyShift) : normalHex;
+
+  if (activePoseSitting) {
+    c.save();
+    c.translate(5.0, -1.5);
+    c.rotate(SIT_TORSO_TILT);
+    c.translate(-5.0, 1.5);
+  }
+  try {
 
   if (breed === 'aussie') {
     const tanPoints = sc('#cf824b', 0.12);
@@ -4686,5 +4840,13 @@ export function drawIllustratedDog(c: CanvasRenderingContext2D, p: DogRenderPara
         radius: 1.6
       });
     }, { dipAngle: 0.42, dipTx: 1.6, dipTy: 2.8, outlineColor: 'rgba(92, 74, 54, 0.28)' });
+  }
+  } finally {
+    if (activePoseSitting) {
+      c.restore();
+    }
+    activePoseEyesAsleep = prevEyesAsleep;
+    activePoseLayingAwake = prevLayingAwake;
+    activePoseSitting = prevSitting;
   }
 }

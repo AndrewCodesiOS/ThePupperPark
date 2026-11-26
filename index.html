@@ -93,6 +93,7 @@
     }
     html.splash-booting #gameCanvas,
     html.splash-booting #hudHeader,
+    html.splash-booting #weatherTopBar,
     html.splash-booting #bottomBar,
     html.splash-booting .drawer-overlay,
     html.splash-booting .modal,
@@ -301,55 +302,14 @@
     <!-- Top Left Currency HUD -->
     <div id="topHud">
       <div class="hud-counters">
-        <div class="currency-pill">
+        <div id="boneCurrencyPill" class="currency-pill">
           <span class="bone-icon" aria-hidden="true">🦴</span>
           <span id="boneCount" class="hud-value">0</span>
           <span class="hud-rate" id="bpsCount">avg 1/dig</span>
         </div>
-        <div class="currency-pill">
+        <div id="magicCurrencyPill" class="currency-pill">
           <span class="bone-icon" aria-hidden="true">✨</span>
           <span id="magicBoneCount" class="hud-value">0</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Weather & Pack Mood Bar -->
-    <div id="weatherTopBar" class="weather-top-bar">
-      <div class="top-center-chips">
-        <button type="button" id="moodBadge" class="mood-chip-btn mood-cozy" aria-expanded="false" aria-controls="moodPopover" title="Pack Happiness">
-          <span id="moodBadgeIcon" aria-hidden="true">😌</span>
-          <span id="moodBadgeText">Cozy | 35%</span>
-        </button>
-        <button type="button" id="weatherBadge" class="weather-chip-btn" aria-expanded="false" aria-controls="weatherPopover" title="Current park weather">
-          <span id="weatherBadgeIcon" aria-hidden="true">☀️</span>
-          <span id="weatherBadgeText">Sunny | +12% Speed</span>
-        </button>
-      </div>
-      <div id="weatherPopover" class="weather-popover" style="display: none;" role="region" aria-label="Park Weather Forecast">
-        <div class="weather-popover-head">
-          <strong id="weatherPopoverTitle">☀️ Sunny</strong>
-          <span id="weatherPopoverMod" class="weather-popover-mod">+12% Dig Speed</span>
-        </div>
-        <p id="weatherPopoverDesc" class="weather-popover-desc">Warm sunbeams energize the pack to dig 12% faster.</p>
-        <div id="weatherSkyStatus" class="weather-sky-status">🌅 Sunrise | 🌕 Full Moon</div>
-        <div class="weather-popover-foot">
-          <span id="weatherCountdown">Next change in --m</span>
-          <span id="weatherNextPreview">Next: 🍃 Windy</span>
-        </div>
-      </div>
-      <div id="moodPopover" class="weather-popover mood-popover" style="display: none;" role="region" aria-label="Pack Happiness Details">
-        <div class="weather-popover-head">
-          <strong id="moodPopoverTitle">😌 Cozy (30%)</strong>
-          <span id="moodPopoverBonus" class="weather-popover-mod">Baseline</span>
-        </div>
-        <div class="mood-meter-track mood-meter-track-sm">
-          <div id="moodPopoverFill" class="mood-meter-fill" style="width: 30%;"></div>
-          <div id="moodPopoverFloor" class="mood-floor-marker" style="left: 30%;" title="Cozy Floor"></div>
-        </div>
-        <p id="moodPopoverDesc" class="weather-popover-desc">Pet pups, feed treats, and refresh toys to lift morale into Ecstatic (90%+). Mood gently cools down to your Cozy Floor (up to 75% permanent, or 84% with Fresh Toys).</p>
-        <div class="weather-popover-foot">
-          <span id="moodPopoverFloorLabel">Cozy floor: 30%</span>
-          <button type="button" id="btnOpenMoodBreakdown" class="mood-popover-link">View Breakdown</button>
         </div>
       </div>
     </div>
@@ -411,6 +371,47 @@
     <button type="button" id="btnDoneTilePaint" class="tile-paint-done-btn">Done</button>
   </div>
 
+  <!-- Bottom Weather & Pack Happiness Bar (keeps upper sky clear for Sun & Moon) -->
+  <div id="weatherTopBar" class="weather-top-bar">
+    <div id="weatherPopover" class="weather-popover" style="display: none;" role="region" aria-label="Park Weather Forecast">
+      <div class="weather-popover-head">
+        <strong id="weatherPopoverTitle">☀️ Sunny</strong>
+        <span id="weatherPopoverMod" class="weather-popover-mod">+12% Dig Speed</span>
+      </div>
+      <p id="weatherPopoverDesc" class="weather-popover-desc">Warm sunbeams energize the pack to dig 12% faster.</p>
+      <div id="weatherSkyStatus" class="weather-sky-status">🌅 Sunrise | 🌕 Full Moon</div>
+      <div class="weather-popover-foot">
+        <span id="weatherCountdown">Next change in --m</span>
+        <span id="weatherNextPreview">Next: 🍃 Windy</span>
+      </div>
+    </div>
+    <div id="moodPopover" class="weather-popover mood-popover" style="display: none;" role="region" aria-label="Pack Happiness Details">
+      <div class="weather-popover-head">
+        <strong id="moodPopoverTitle">😌 Cozy (30%)</strong>
+        <span id="moodPopoverBonus" class="weather-popover-mod">Baseline</span>
+      </div>
+      <div class="mood-meter-track mood-meter-track-sm">
+        <div id="moodPopoverFill" class="mood-meter-fill" style="width: 30%;"></div>
+        <div id="moodPopoverFloor" class="mood-floor-marker" style="left: 30%;" title="Cozy Floor"></div>
+      </div>
+      <p id="moodPopoverDesc" class="weather-popover-desc">Pet pups, feed treats, and refresh toys to lift morale into Ecstatic (90%+). Mood gently cools down to your Cozy Floor (up to 75% permanent, or 84% with Fresh Toys).</p>
+      <div class="weather-popover-foot">
+        <span id="moodPopoverFloorLabel">Cozy floor: 30%</span>
+        <button type="button" id="btnOpenMoodBreakdown" class="mood-popover-link">View Breakdown</button>
+      </div>
+    </div>
+    <div class="top-center-chips">
+      <button type="button" id="moodBadge" class="mood-chip-btn mood-cozy" aria-expanded="false" aria-controls="moodPopover" title="Pack Happiness">
+        <span id="moodBadgeIcon" aria-hidden="true">😌</span>
+        <span id="moodBadgeText">Cozy | 35%</span>
+      </button>
+      <button type="button" id="weatherBadge" class="weather-chip-btn" aria-expanded="false" aria-controls="weatherPopover" title="Current park weather">
+        <span id="weatherBadgeIcon" aria-hidden="true">☀️</span>
+        <span id="weatherBadgeText">Sunny | +12% Speed</span>
+      </button>
+    </div>
+  </div>
+
   <!-- Bottom Right Mini Bar -->
   <div id="bottomBar">
     <div class="mini-stat" title="Active pups in park">🐕 <span id="miniDogs">1/6</span></div>
@@ -428,7 +429,7 @@
       <div class="modal-header">
         <div class="modal-tabs" role="tablist">
           <button type="button" class="tab-btn active" data-tab="tab-roster">Roster</button>
-          <button type="button" class="tab-btn" data-tab="tab-dogs">Dogs</button>
+          <button type="button" class="tab-btn" data-tab="tab-dogs">Puppers</button>
           <button type="button" class="tab-btn" data-tab="tab-toys">Toys</button>
           <button type="button" class="tab-btn" data-tab="tab-treats">Treats</button>
           <button type="button" class="tab-btn" data-tab="tab-perks">Treasures</button>
