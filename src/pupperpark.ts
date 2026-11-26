@@ -5499,6 +5499,16 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     if (e.target === helpModal) closeHelpModal();
   });
 
+  document.getElementById('btnTestBoost')?.addEventListener('click', () => {
+    initAudio();
+    state.bones = MAX_BONES;
+    state.magicBones = (Number(state.magicBones) || 0) + 30000;
+    state.boneCapReachedNotified = true;
+    sfx.shiny();
+    updateUI();
+    saveGame();
+  });
+
   const resetConfirmModal = document.getElementById('resetConfirmModal');
   document.getElementById('btnResetProgress')?.addEventListener('click', () => {
     initAudio();

@@ -90,15 +90,15 @@ export const BREED_TIER_TABS: ReadonlyArray<{
   label: string;
 }> = [
   { id: 'all', label: 'All' },
-  { id: 'small', label: 'Small' },
-  { id: 'working', label: 'Working' },
-  { id: 'athletic', label: 'Athletic' },
-  { id: 'giant', label: 'Giants' }
+  { id: 'small', label: 'Companions' },
+  { id: 'working', label: 'Field' },
+  { id: 'athletic', label: 'Noble' },
+  { id: 'giant', label: 'Legends' }
 ];
 
 export const BREED_LIST: readonly BreedDefinition[] = [
   // =========================================================================
-  // TIER 1 — SMALL COMPANIONS (10 breeds)
+  // TIER 1 — COMPANIONS (10 breeds)
   // =========================================================================
   {
     key: 'chihuahua',
@@ -899,14 +899,11 @@ export const BREED_LIST: readonly BreedDefinition[] = [
     }
   },
 
-  // =========================================================================
-  // TIER 4 — GENTLE GIANTS & LEGENDS (10 breeds)
-  // =========================================================================
   {
     key: 'borzoi',
     name: 'Borzoi',
     shortLabel: 'Borzoi',
-    tier: 'giant',
+    tier: 'athletic',
     rank: 30,
     role: 'Aristocratic sighthound with unmatched stride speed and mystic grace.',
     cost: 360000,
@@ -933,6 +930,10 @@ export const BREED_LIST: readonly BreedDefinition[] = [
       }
     }
   },
+
+  // =========================================================================
+  // TIER 4 — LEGENDS (10 breeds)
+  // =========================================================================
   {
     key: 'akita',
     name: 'Akita',
@@ -1192,6 +1193,38 @@ export const BREED_LIST: readonly BreedDefinition[] = [
       packMagicAura: 0.02,
       extraMagicChance: 0.35,
       offlineMagicPerDay: 25
+    }
+  },
+  {
+    key: 'komondor',
+    name: 'Komondor',
+    shortLabel: 'Komondor',
+    tier: 'giant',
+    rank: 40,
+    role: 'Iconic corded-coat apex guardian uniting pack wealth, magic, relics, and serene morale.',
+    cost: 2200000,
+    costMult: 1.36,
+    priceCap: 4600000,
+    walkMult: 1.12,
+    digSec: 1.38,
+    payoutMult: 3.25,
+    scalingMult: 1.82,
+    xpMult: 1.32,
+    magicBonus: 0.085,
+    treasureChance: 0.00046,
+    barkPitch: 210,
+    sizeClass: 'giant',
+    highlights: ['boneYield', 'packGrowth', 'magic', 'treasure'],
+    trait: {
+      name: 'Corded Crown',
+      summary: 'Pack Aura: +12% Bone Yield, +2.5% ✨ Magic, +35% Treasure, +6 Cozy Floor & 22% slower Mood decay, plus 40% chance for +1 extra ✨ on digs.\n+Offline ✨',
+      packBoneAura: 0.12,
+      packMagicAura: 0.025,
+      packTreasureAura: 0.35,
+      cozyFloorAdd: 6,
+      moodDecayMult: 0.78,
+      extraMagicChance: 0.40,
+      offlineMagicPerDay: 50
     }
   }
 ];

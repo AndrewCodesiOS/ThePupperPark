@@ -5429,6 +5429,169 @@ export function drawIllustratedDog(c: CanvasRenderingContext2D, p: DogRenderPara
         radius: 1.65
       });
     }, { dipAngle: 0.56, dipTx: 2.2, dipTy: 6.4, neckRx: 7.4, neckRy: 5.8 });
+  } else if (breed === 'komondor') {
+    // Komondor (iconic giant Hungarian guardian draped in swaying ivory-white corded "mop" locks)
+    const cordBright = isShiny ? shadeHex(shinyColor, 0.54) : '#fffef9';
+    const cordMid = isShiny ? shadeHex(shinyColor, 0.24) : '#f0e9da';
+    const cordShade = isShiny ? shadeHex(shinyColor, -0.06) : '#d5cab4';
+    const cordDeep = isShiny ? shadeHex(shinyColor, -0.22) : '#b8ac94';
+    const outline = 'rgba(92, 84, 68, 0.36)';
+
+    const drawCord = (
+      xTop: number,
+      yTop: number,
+      len: number,
+      w: number,
+      swayDx: number,
+      fillCol: string,
+      strokeCol = outline
+    ): void => {
+      const r = w * 0.5;
+      const xBot = xTop + swayDx;
+      const yBot = yTop + len;
+      c.save();
+      c.strokeStyle = strokeCol;
+      c.lineWidth = w + 1.4;
+      c.lineCap = 'round';
+      c.beginPath();
+      c.moveTo(xTop, yTop);
+      c.quadraticCurveTo(xTop + swayDx * 0.35, yTop + len * 0.55, xBot, yBot);
+      c.stroke();
+
+      c.strokeStyle = fillCol;
+      c.lineWidth = w;
+      c.beginPath();
+      c.moveTo(xTop, yTop);
+      c.quadraticCurveTo(xTop + swayDx * 0.35, yTop + len * 0.55, xBot, yBot);
+      c.stroke();
+
+      // Subtle highlight rib along cord
+      c.strokeStyle = cordBright;
+      c.lineWidth = Math.max(0.7, r * 0.48);
+      c.beginPath();
+      c.moveTo(xTop - r * 0.2, yTop + 0.8);
+      c.quadraticCurveTo(xTop - r * 0.2 + swayDx * 0.35, yTop + len * 0.52, xBot - r * 0.15, yBot - 0.9);
+      c.stroke();
+      c.restore();
+    };
+
+    const legs: FourLegsConfig = {
+      backX: -10.2,
+      frontX: 8.4,
+      yTop: -3.4,
+      w: 5.0,
+      h: 11.6,
+      swing: legSwing * 0.85,
+      legCol: cordMid,
+      pawCol: cordBright,
+      pawH: 2.8,
+      isSleeping,
+      farLegCol: cordShade,
+      farPawCol: cordShade,
+      opts: { featherColor: cordBright, outlineColor: outline }
+    };
+
+    drawFarPairLegs(c, legs);
+
+    // Heavy low-sweeping corded Komondor brush tail
+    const wag = isSleeping ? tailWag * 0.35 : Math.sin(wagPhase * 1.6) * 2.2 * moodWagAmp;
+    c.save();
+    c.lineCap = 'round';
+    c.strokeStyle = outline;
+    c.lineWidth = 8.4;
+    c.beginPath();
+    c.moveTo(-15.0, isSleeping ? -7.2 : -11.4);
+    c.quadraticCurveTo(-20.4, (isSleeping ? -5.0 : -8.2) + wag * 0.5, -23.6, (isSleeping ? -7.4 : -10.2) + wag);
+    c.stroke();
+    c.strokeStyle = cordMid;
+    c.lineWidth = 6.8;
+    c.stroke();
+    // Hanging tail cords
+    const tailDrop = isSleeping ? 4.4 : 6.4;
+    drawCord(-18.2, (isSleeping ? -6.0 : -9.4) + wag * 0.35, tailDrop, 2.3, wag * 0.25, cordShade);
+    drawCord(-20.8, (isSleeping ? -6.2 : -9.4) + wag * 0.65, tailDrop * 0.92, 2.3, wag * 0.35, cordMid);
+    drawCord(-23.2, (isSleeping ? -7.2 : -10.0) + wag, tailDrop * 0.78, 2.2, wag * 0.4, cordBright);
+    c.restore();
+
+    // Massive ivory-white base body beneath cords
+    fillShadedEllipse(
+      c,
+      -1.2,
+      (isSleeping ? -7.8 : -12.4) + sleepBreath * 0.16,
+      isSleeping ? 16.4 : 17.0,
+      (isSleeping ? 8.4 : 9.8) + sleepBreath * 0.22,
+      -0.02,
+      cordBright,
+      cordShade,
+      outline
+    );
+
+    drawNearPairLegs(c, legs);
+
+    // Iconic layered hanging Komondor rope cords draping over torso & flanks!
+    const tuck = isSleeping || activePoseSitting;
+    const cordSway = tuck ? 0 : legSwing * 0.62;
+    const bodyBaseY = isSleeping ? -12.4 : -18.8;
+    const backRowXs = [-14.2, -11.4, -8.4, -5.2, -2.0, 1.2, 4.4, 7.6, 10.4];
+    for (let i = 0; i < backRowXs.length; i++) {
+      const cx = backRowXs[i];
+      const arch = Math.cos(((cx + 1.5) / 16) * Math.PI * 0.5) * 2.2;
+      const topY = bodyBaseY + (2.2 - arch) + 2.4;
+      const cordLen = tuck ? 10.2 + (i % 2) * 1.4 : 16.6 + (i % 3) * 1.6;
+      const swayDir = i < 4 ? cordSway * 0.85 : -cordSway * 0.7;
+      drawCord(cx, topY, cordLen, 2.9, swayDir, i % 2 === 0 ? cordShade : cordMid);
+    }
+
+    // Foreground brighter overlapping upper-layer cords for rich 3D mop texture
+    const frontRowXs = [-12.8, -9.6, -6.4, -3.2, 0.0, 3.2, 6.2, 9.2];
+    for (let i = 0; i < frontRowXs.length; i++) {
+      const cx = frontRowXs[i];
+      const arch = Math.cos(((cx + 1.5) / 15) * Math.PI * 0.5) * 2.4;
+      const topY = bodyBaseY + (2.2 - arch);
+      const cordLen = tuck ? 9.4 + (i % 2) * 1.2 : 14.8 + ((i + 1) % 3) * 1.5;
+      const swayDir = i < 4 ? cordSway : -cordSway * 0.8;
+      drawCord(cx, topY, cordLen, 2.8, swayDir, i % 2 === 0 ? cordBright : cordMid);
+    }
+
+    const headX = isSleeping ? 10.6 : 12.2;
+    const headY = isSleeping ? -12.4 : -20.2;
+
+    withDrinkingHeadPose(c, headX, headY, isDrinking, animPhase, cordBright, cordShade, () => {
+      // Far corded floppy ear peeking behind head
+      drawCord(headX + 4.4, headY - 3.6 + earBounce * 0.3, 9.4, 2.5, 0.6, cordDeep);
+      drawCord(headX + 2.6, headY - 3.8 + earBounce * 0.3, 9.8, 2.5, 0.4, cordShade);
+
+      // Broad shaggy Komondor skull & plush corded muzzle base
+      fillShadedEllipse(c, headX, headY, 7.8, 7.2, 0, cordBright, cordShade, outline);
+      fillShadedEllipse(c, headX + 6.0, headY + 1.6, 4.8, 3.8, 0.04, cordBright, cordMid, outline);
+
+      // Corded shaggy beard tufts beneath chin
+      drawCord(headX + 3.6, headY + 3.4, 4.2, 2.2, 0.3, cordMid);
+      drawCord(headX + 6.2, headY + 3.6, 3.8, 2.1, 0.4, cordBright);
+
+      // Iconic cascading corded crown & ear mop draping over brow and cheeks
+      drawCord(headX - 6.0, headY - 4.4 + earBounce * 0.3, 11.4, 2.6, -0.8, cordShade);
+      drawCord(headX - 3.8, headY - 6.0 + earBounce * 0.35, 12.2, 2.7, -0.5, cordBright);
+      drawCord(headX - 1.4, headY - 6.6 + earBounce * 0.3, 11.2, 2.7, -0.2, cordMid);
+      // Forehead mop bangs sweeping softly just above the eyes
+      drawCord(headX + 1.0, headY - 6.6, 5.2, 2.5, 0.3, cordBright);
+      drawCord(headX + 3.2, headY - 6.0, 4.6, 2.4, 0.6, cordMid);
+      drawCord(headX + 5.0, headY - 4.8, 3.8, 2.2, 0.8, cordBright);
+
+      drawMouthAndTongue(c, headX + 6.6, headY + 3.8, isSleeping, isJoyful, showTongue, animPhase, '#231f1b', isDrinking);
+      // Prominent glossy jet-black nose peeking proudly out of the ivory cords!
+      drawGlossyNose(c, headX + 10.4, headY + 1.0, 2.15, 1.55, '#111216');
+      // Expressive dark eye peeking warmly from beneath the corded bangs
+      drawDogEye(c, headX + 3.0, headY - 0.5, {
+        isSleeping,
+        isBlinking,
+        isJoyful,
+        irisColor: '#2d1c12',
+        lidColor: '#2a241e',
+        almond: true,
+        radius: 1.6
+      });
+    }, { dipAngle: 0.56, dipTx: 2.2, dipTy: 6.4, neckRx: 7.0, neckRy: 5.4, outlineColor: outline });
   } else {
     // Borzoi (graceful sighthound with long aristocratic snout & silky feathered coat)
     const coatTop = isShiny ? shadeHex(shinyColor, 0.36) : '#fffbf3';
