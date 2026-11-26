@@ -1307,6 +1307,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     lastFreeTreatAt: number;
     costs: Record<string, number>;
     breedEconomyVersion: number;
+    startDate: number;
+    activePlaySeconds: number;
     lastSaveTime: number;
     [key: string]: unknown;
   }
@@ -1370,6 +1372,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     lastFreeTreatAt: 0,
     costs: {},
     breedEconomyVersion: BREED_ECONOMY_VERSION,
+    startDate: Date.now(),
+    activePlaySeconds: 0,
     lastSaveTime: Date.now()
   };
 
@@ -1615,6 +1619,24 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     const secs = totalSec % 60;
     if (mins > 0) {
       return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+    }
+    return `${secs}s`;
+  }
+
+  function formatActivePlayTime(rawSeconds: number): string {
+    const totalSec = Math.max(0, Math.floor(Number(rawSeconds) || 0));
+    const days = Math.floor(totalSec / 86400);
+    const hours = Math.floor((totalSec % 86400) / 3600);
+    const mins = Math.floor((totalSec % 3600) / 60);
+    const secs = totalSec % 60;
+    if (days > 0) {
+      return `${days}d ${hours}h ${mins}m`;
+    }
+    if (hours > 0) {
+      return `${hours}h ${mins}m`;
+    }
+    if (mins > 0) {
+      return `${mins}m ${secs}s`;
     }
     return `${secs}s`;
   }
@@ -3347,6 +3369,18 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         }
         if (typeof state.lastFreeTreatAt !== 'number' || Number.isNaN(state.lastFreeTreatAt)) {
           state.lastFreeTreatAt = 0;
+        }
+        if (typeof parsed.startDate !== 'number' || !Number.isFinite(parsed.startDate) || parsed.startDate <= 0) {
+          state.startDate = typeof parsed.lastSaveTime === 'number' && Number.isFinite(parsed.lastSaveTime) && parsed.lastSaveTime > 0
+            ? parsed.lastSaveTime
+            : Date.now();
+        } else {
+          state.startDate = parsed.startDate;
+        }
+        if (typeof parsed.activePlaySeconds !== 'number' || !Number.isFinite(parsed.activePlaySeconds) || parsed.activePlaySeconds < 0) {
+          state.activePlaySeconds = 0;
+        } else {
+          state.activePlaySeconds = parsed.activePlaySeconds;
         }
         if (!state.dogs) state.dogs = {};
         if (!state.costs) state.costs = {};
@@ -5599,6 +5633,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       lastFreeTreatAt: 0,
       costs: {},
       breedEconomyVersion: BREED_ECONOMY_VERSION,
+      startDate: resetNow,
+      activePlaySeconds: 0,
       lastSaveTime: resetNow
     };
 
@@ -12832,6 +12868,21 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       if (packTraits.offlineBonus > 0) auraParts.push(`+${formatPctStat(packTraits.offlineBonus)}% Offline`);
       packAurasEl.textContent = auraParts.length > 0 ? auraParts.join(' | ') : 'None active';
     }
+    const startDateEl = document.getElementById('statStartDate');
+    if (startDateEl) {
+      const startTs = typeof state.startDate === 'number' && Number.isFinite(state.startDate) && state.startDate > 0
+        ? state.startDate
+        : Date.now();
+      startDateEl.textContent = new Date(startTs).toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+    }
+    const activeTimeEl = document.getElementById('statActiveTime');
+    if (activeTimeEl) {
+      activeTimeEl.textContent = formatActivePlayTime(state.activePlaySeconds);
+    }
 
     refreshWeatherHUD();
     refreshMoodHUD();
@@ -13233,6 +13284,18 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       const rawDt = (now - lastTime) / 1000;
       lastTime = now;
       const dt = rawDt > 1 ? 0.016 : Math.min(0.05, Math.max(0, rawDt));
+
+      if (!document.hidden && dt > 0) {
+        const prevActiveSec = Math.floor(Math.max(0, Number(state.activePlaySeconds) || 0));
+        state.activePlaySeconds = Math.max(0, Number(state.activePlaySeconds) || 0) + dt;
+        const nextActiveSec = Math.floor(state.activePlaySeconds);
+        if (nextActiveSec !== prevActiveSec) {
+          const activeTimeEl = document.getElementById('statActiveTime');
+          if (activeTimeEl) {
+            activeTimeEl.textContent = formatActivePlayTime(state.activePlaySeconds);
+          }
+        }
+      }
 
       // Smooth rotational inertia after flicking the park (hard-clamped against NaN/runaway velocity)
       if (!Number.isFinite(cameraAngle)) {
