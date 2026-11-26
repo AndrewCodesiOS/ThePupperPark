@@ -45,6 +45,7 @@ import {
   getLocalDateKey,
   getMsUntilLocalMidnight
 } from './goals';
+import { MAGIC_SPARK_INLINE_SVG, getGoalIconDataUrl } from './goalIcons';
 
 export interface RosterEntry {
   id: string;
@@ -13325,6 +13326,14 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     const dailyGoals = getDailyGoalsForDate(dg.dateKey);
     refreshDailyResetTimer();
 
+    const renderRewardBadge = (amount: number): string =>
+      `<span class="goal-reward-val">+${amount.toLocaleString()}${MAGIC_SPARK_INLINE_SVG}</span>`;
+
+    const bonusIconEl = document.getElementById('dailyBonusIcon');
+    if (bonusIconEl && !bonusIconEl.firstChild) {
+      bonusIconEl.innerHTML = `<img class="goal-icon-img" src="${getGoalIconDataUrl('giftChest')}" alt="" />`;
+    }
+
     let completedDailyCount = 0;
     dailyListEl.innerHTML = '';
 
@@ -13339,7 +13348,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       card.className = `goal-card${isClaimed ? ' is-claimed' : isComplete ? ' is-claimable' : ''}`;
       card.innerHTML = `
         <div class="goal-card-left">
-          <div class="goal-icon" aria-hidden="true">${goal.icon}</div>
+          <div class="goal-icon" aria-hidden="true"><img class="goal-icon-img" src="${getGoalIconDataUrl(goal.icon)}" alt="" /></div>
           <div class="goal-body">
             <div class="goal-title-row">
               <span class="goal-title">${goal.title}</span>
@@ -13352,8 +13361,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
           </div>
         </div>
         <button type="button" class="goal-claim-btn${isClaimed ? ' is-done' : isComplete ? ' is-ready' : ''}" ${isClaimed || !isComplete ? 'disabled' : ''}>
-          <span>${isClaimed ? '✓ Claimed' : isComplete ? 'Claim' : `+${goal.rewardMagic} ✨`}</span>
-          ${!isClaimed && isComplete ? `<span class="goal-claim-sub">+${goal.rewardMagic} ✨</span>` : ''}
+          ${isClaimed ? '<span>✓ Claimed</span>' : isComplete ? `<span>Claim</span><span class="goal-claim-sub">${renderRewardBadge(goal.rewardMagic)}</span>` : renderRewardBadge(goal.rewardMagic)}
         </button>
       `;
       if (isComplete && !isClaimed) {
@@ -13385,8 +13393,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       btnBonus.innerHTML = bonusClaimed
         ? '<span>✓ Claimed</span>'
         : allDailyComplete
-          ? `<span>Claim</span><span class="goal-claim-sub">+${DAILY_BONUS_MAGIC} ✨</span>`
-          : `<span>+${DAILY_BONUS_MAGIC} ✨</span>`;
+          ? `<span>Claim</span><span class="goal-claim-sub">${renderRewardBadge(DAILY_BONUS_MAGIC)}</span>`
+          : renderRewardBadge(DAILY_BONUS_MAGIC);
     }
 
     const snap = buildGoalSnapshot();
@@ -13432,7 +13440,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       card.className = `goal-card${isClaimed ? ' is-claimed' : isComplete ? ' is-claimable' : ''}`;
       card.innerHTML = `
         <div class="goal-card-left">
-          <div class="goal-icon" aria-hidden="true">${ach.icon}</div>
+          <div class="goal-icon" aria-hidden="true"><img class="goal-icon-img" src="${getGoalIconDataUrl(ach.icon)}" alt="" /></div>
           <div class="goal-body">
             <div class="goal-title-row">
               <span class="goal-title">${ach.title}</span>
@@ -13445,8 +13453,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
           </div>
         </div>
         <button type="button" class="goal-claim-btn${isClaimed ? ' is-done' : isComplete ? ' is-ready' : ''}" ${isClaimed || !isComplete ? 'disabled' : ''}>
-          <span>${isClaimed ? '✓ Claimed' : isComplete ? 'Claim' : `+${ach.rewardMagic} ✨`}</span>
-          ${!isClaimed && isComplete ? `<span class="goal-claim-sub">+${ach.rewardMagic} ✨</span>` : ''}
+          ${isClaimed ? '<span>✓ Claimed</span>' : isComplete ? `<span>Claim</span><span class="goal-claim-sub">${renderRewardBadge(ach.rewardMagic)}</span>` : renderRewardBadge(ach.rewardMagic)}
         </button>
       `;
       if (isComplete && !isClaimed) {

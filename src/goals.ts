@@ -1,3 +1,5 @@
+import type { GoalIconId } from './goalIcons';
+
 export type AchievementCategory = 'bones' | 'pack' | 'park' | 'relics';
 
 export type AchievementFilter = 'all' | AchievementCategory;
@@ -36,7 +38,7 @@ export interface GoalSnapshot {
 export interface AchievementDef {
   id: string;
   category: AchievementCategory;
-  icon: string;
+  icon: GoalIconId;
   title: string;
   desc: string;
   target: number;
@@ -59,7 +61,7 @@ export type DailyGoalMetric =
 export interface DailyGoalDef {
   id: string;
   metric: DailyGoalMetric;
-  icon: string;
+  icon: GoalIconId;
   title: string;
   desc: string;
   target: number;
@@ -89,7 +91,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'ach_bones_1k',
     category: 'bones',
-    icon: '🦴',
+    icon: 'bone',
     title: 'First Stash',
     desc: 'Earn 1,000 lifetime bones across digs, taps, and adventures.',
     target: 1000,
@@ -99,7 +101,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'ach_bones_100k',
     category: 'bones',
-    icon: '💰',
+    icon: 'bonePile',
     title: 'Bone Tycoon',
     desc: 'Earn 100,000 lifetime bones.',
     target: 100000,
@@ -109,7 +111,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'ach_bones_1m',
     category: 'bones',
-    icon: '🏆',
+    icon: 'trophy',
     title: 'Millionaire Mutt',
     desc: 'Earn 1,000,000 lifetime bones.',
     target: 1000000,
@@ -119,7 +121,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'ach_bones_5m',
     category: 'bones',
-    icon: '👑',
+    icon: 'crown',
     title: 'Five-Million Legend',
     desc: 'Earn 5,000,000 lifetime bones.',
     target: 5000000,
@@ -129,7 +131,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'ach_bone_cap',
     category: 'bones',
-    icon: '🏦',
+    icon: 'vault',
     title: 'Vault Overflow',
     desc: 'Fill your bone stash all the way to the 5,000,000 Bone Cap.',
     target: 1,
@@ -139,9 +141,9 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'ach_magic_1k',
     category: 'bones',
-    icon: '✨',
+    icon: 'magicBone',
     title: 'Magic Collector',
-    desc: 'Collect 1,000 lifetime ✨ Magic Bones.',
+    desc: 'Collect 1,000 lifetime Magic Bones.',
     target: 1000,
     rewardMagic: 35,
     getValue: s => Math.floor(s.lifetimeMagicBones)
@@ -149,9 +151,9 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'ach_magic_25k',
     category: 'bones',
-    icon: '🌟',
+    icon: 'arcaneStar',
     title: 'Arcane Hoarder',
-    desc: 'Collect 25,000 lifetime ✨ Magic Bones.',
+    desc: 'Collect 25,000 lifetime Magic Bones.',
     target: 25000,
     rewardMagic: 150,
     getValue: s => Math.floor(s.lifetimeMagicBones)
@@ -161,7 +163,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'ach_full_pack',
     category: 'pack',
-    icon: '🐾',
+    icon: 'pawPack',
     title: 'First Full Pack',
     desc: 'Recruit a full park of 6 active pups at once.',
     target: 6,
@@ -171,7 +173,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'ach_shiny_1',
     category: 'pack',
-    icon: '💫',
+    icon: 'shinyPup',
     title: 'Sparkling Pup',
     desc: 'Discover your very first rare Shiny pup.',
     target: 1,
@@ -181,7 +183,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'ach_shiny_3',
     category: 'pack',
-    icon: '🌈',
+    icon: 'shinyPack',
     title: 'Glittering Pack',
     desc: 'Discover 3 Shiny pups across recruiting or rerolls.',
     target: 3,
@@ -191,7 +193,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'ach_lvl_10',
     category: 'pack',
-    icon: '⭐',
+    icon: 'starMedal',
     title: 'Rising Star',
     desc: 'Level any pup up to Level 10.',
     target: 10,
@@ -201,7 +203,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'ach_lvl_50',
     category: 'pack',
-    icon: '🏅',
+    icon: 'ribbonMedal',
     title: 'Seasoned Digger',
     desc: 'Level any pup up to Level 50.',
     target: 50,
@@ -211,7 +213,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'ach_lvl_100',
     category: 'pack',
-    icon: '🎖️',
+    icon: 'centurionCrest',
     title: 'Centurion Pup',
     desc: 'Train a pup all the way to the max Level 100.',
     target: 100,
@@ -221,7 +223,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'ach_legend_breed',
     category: 'pack',
-    icon: '🦁',
+    icon: 'legendShield',
     title: 'Legend in the Park',
     desc: 'Recruit any breed from the Legends tier.',
     target: 1,
@@ -231,7 +233,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'ach_komondor',
     category: 'pack',
-    icon: '👑',
+    icon: 'komondor',
     title: 'Crown of Cords',
     desc: 'Recruit the legendary Komondor to lead your park.',
     target: 1,
@@ -241,7 +243,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'ach_pets_25',
     category: 'pack',
-    icon: '💗',
+    icon: 'heart',
     title: 'Belly Rub Champion',
     desc: 'Pet your pups 25 times.',
     target: 25,
@@ -253,7 +255,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'ach_toys_all',
     category: 'park',
-    icon: '🎾',
+    icon: 'tennisBall',
     title: 'Toy Box Complete',
     desc: 'Own the Tennis Ball, Rubber Duck, and Frisbee.',
     target: 3,
@@ -263,7 +265,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'ach_toy_max',
     category: 'park',
-    icon: '⚡',
+    icon: 'freshToy',
     title: 'Maxed-Out Gear',
     desc: 'Upgrade any park toy to max level to unlock Fresh Toy boosts.',
     target: 1,
@@ -273,7 +275,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'ach_treats_15',
     category: 'park',
-    icon: '🍖',
+    icon: 'treat',
     title: 'Treat Dispenser',
     desc: 'Give 15 treats (Happy Snaps or shop treats) to your pack.',
     target: 15,
@@ -283,7 +285,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'ach_mood_joyful',
     category: 'park',
-    icon: '😄',
+    icon: 'happyMood',
     title: 'Joyful Pack',
     desc: 'Raise Pack Happiness to Joyful (70%+).',
     target: 1,
@@ -293,7 +295,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'ach_mood_ecstatic',
     category: 'park',
-    icon: '🤩',
+    icon: 'ecstaticMood',
     title: 'Pure Ecstasy',
     desc: 'Decorate your park and reach Ecstatic (90%+) Pack Happiness.',
     target: 1,
@@ -303,7 +305,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'ach_decor_1',
     category: 'park',
-    icon: '🌸',
+    icon: 'flowerPatch',
     title: 'First Touch',
     desc: 'Place your first Park Decoration.',
     target: 1,
@@ -313,7 +315,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'ach_decor_5',
     category: 'park',
-    icon: '🌳',
+    icon: 'parkTree',
     title: 'Park Designer',
     desc: 'Have 5 Park Decorations placed at once.',
     target: 5,
@@ -323,7 +325,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'ach_decor_slide',
     category: 'park',
-    icon: '🛝',
+    icon: 'dogSlide',
     title: 'Playground Fun',
     desc: 'Place the Dog Slide in your park.',
     target: 1,
@@ -333,7 +335,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'ach_decor_ecstatic_unlock',
     category: 'park',
-    icon: '🏡',
+    icon: 'gardenArch',
     title: 'Garden Architect',
     desc: 'Reach +10% Decor Floor to unlock 90% Max Happiness (Ecstatic).',
     target: 10,
@@ -344,7 +346,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'ach_expand_park',
     category: 'park',
-    icon: '🗺️',
+    icon: 'parkMap',
     title: 'Wide Open Pastures',
     desc: 'Expand your park from 7×7 to the grand 8×8 layout.',
     target: 1,
@@ -354,7 +356,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'ach_manor',
     category: 'park',
-    icon: '🏰',
+    icon: 'manor',
     title: 'Grand Estate',
     desc: 'Build the Grand Doghouse Manor in your park.',
     target: 1,
@@ -364,7 +366,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'ach_decor_sanctuary',
     category: 'park',
-    icon: '✨',
+    icon: 'sanctuary',
     title: 'Dream Sanctuary',
     desc: 'Reach 100% Max Happiness (+20% Decor Floor from placed decor).',
     target: 20,
@@ -377,7 +379,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'ach_relic_1',
     category: 'relics',
-    icon: '🏺',
+    icon: 'relicUrn',
     title: 'Relic Hunter',
     desc: 'Uncover your first park Treasure relic.',
     target: 1,
@@ -387,7 +389,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'ach_relic_10',
     category: 'relics',
-    icon: '💎',
+    icon: 'relicGem',
     title: 'Curator',
     desc: 'Discover 10 unique Treasure relics.',
     target: 10,
@@ -397,7 +399,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'ach_relic_set',
     category: 'relics',
-    icon: '📜',
+    icon: 'relicScroll',
     title: 'Master Archaeologist',
     desc: 'Complete any 4-piece Treasure Set to activate its Set Bonus.',
     target: 1,
@@ -407,7 +409,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'ach_diamond_bowl',
     category: 'relics',
-    icon: '💠',
+    icon: 'diamondBowl',
     title: 'Diamond Bowl',
     desc: 'Uncover the mythic Diamond Bowl relic.',
     target: 1,
@@ -417,7 +419,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'ach_relic_max_rank',
     category: 'relics',
-    icon: '🔥',
+    icon: 'relicFlame',
     title: 'Relic Perfection',
     desc: 'Upgrade any Treasure relic to Rank V (MAX).',
     target: 1,
@@ -427,7 +429,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'ach_active_60m',
     category: 'relics',
-    icon: '⏱️',
+    icon: 'clock',
     title: 'Dedicated Caretaker',
     desc: 'Spend 60 active minutes hanging out with your pack.',
     target: 60,
@@ -443,7 +445,7 @@ const DAILY_GOAL_POOLS: DailyGoalDef[][] = [
     {
       id: 'daily_digs_15',
       metric: 'digs',
-      icon: '🐾',
+      icon: 'pawPack',
       title: 'Busy Paws',
       desc: 'Complete 15 digs (pups or grass taps).',
       target: 15,
@@ -452,7 +454,7 @@ const DAILY_GOAL_POOLS: DailyGoalDef[][] = [
     {
       id: 'daily_digs_30',
       metric: 'digs',
-      icon: '⛏️',
+      icon: 'shovel',
       title: 'Digging Spree',
       desc: 'Complete 30 digs (pups or grass taps).',
       target: 30,
@@ -461,18 +463,18 @@ const DAILY_GOAL_POOLS: DailyGoalDef[][] = [
     {
       id: 'daily_magic_4',
       metric: 'magicDigs',
-      icon: '✨',
+      icon: 'magicBone',
       title: 'Sparkle Sniffer',
-      desc: 'Collect 4 ✨ Magic Bones from digs or taps.',
+      desc: 'Collect 4 Magic Bones from digs or taps.',
       target: 4,
       rewardMagic: 15
     },
     {
       id: 'daily_magic_8',
       metric: 'magicDigs',
-      icon: '🌟',
+      icon: 'arcaneStar',
       title: 'Arcane Trail',
-      desc: 'Collect 8 ✨ Magic Bones from digs or taps.',
+      desc: 'Collect 8 Magic Bones from digs or taps.',
       target: 8,
       rewardMagic: 20
     }
@@ -482,7 +484,7 @@ const DAILY_GOAL_POOLS: DailyGoalDef[][] = [
     {
       id: 'daily_pets_5',
       metric: 'pets',
-      icon: '💗',
+      icon: 'heart',
       title: 'Belly Rub Time',
       desc: 'Pet your pups 5 times.',
       target: 5,
@@ -491,7 +493,7 @@ const DAILY_GOAL_POOLS: DailyGoalDef[][] = [
     {
       id: 'daily_pets_10',
       metric: 'pets',
-      icon: '🥰',
+      icon: 'heart',
       title: 'Best Friends',
       desc: 'Pet your pups 10 times.',
       target: 10,
@@ -500,7 +502,7 @@ const DAILY_GOAL_POOLS: DailyGoalDef[][] = [
     {
       id: 'daily_treats_2',
       metric: 'treats',
-      icon: '🍖',
+      icon: 'treat',
       title: "Snack O'Clock",
       desc: 'Give 2 treats (Happy Snaps or shop treats).',
       target: 2,
@@ -509,7 +511,7 @@ const DAILY_GOAL_POOLS: DailyGoalDef[][] = [
     {
       id: 'daily_joyful',
       metric: 'joyfulReached',
-      icon: '😄',
+      icon: 'happyMood',
       title: 'Happy Tails',
       desc: 'Reach Joyful mood (70%+) with your pack today.',
       target: 1,
@@ -521,7 +523,7 @@ const DAILY_GOAL_POOLS: DailyGoalDef[][] = [
     {
       id: 'daily_taps_10',
       metric: 'taps',
-      icon: '🌿',
+      icon: 'grassTap',
       title: 'Helping Hand',
       desc: 'Tap the park grass 10 times to dig up bones.',
       target: 10,
@@ -530,7 +532,7 @@ const DAILY_GOAL_POOLS: DailyGoalDef[][] = [
     {
       id: 'daily_taps_20',
       metric: 'taps',
-      icon: '🪴',
+      icon: 'grassTap',
       title: 'Green Thumb',
       desc: 'Tap the park grass 20 times to dig up bones.',
       target: 20,
@@ -539,7 +541,7 @@ const DAILY_GOAL_POOLS: DailyGoalDef[][] = [
     {
       id: 'daily_whistles_3',
       metric: 'whistles',
-      icon: '📣',
+      icon: 'whistle',
       title: 'Pack Leader',
       desc: 'Call your pack together 3 times with the Whistle.',
       target: 3,
@@ -548,7 +550,7 @@ const DAILY_GOAL_POOLS: DailyGoalDef[][] = [
     {
       id: 'daily_whistles_5',
       metric: 'whistles',
-      icon: '🎵',
+      icon: 'whistle',
       title: 'Park Rally',
       desc: 'Call your pack together 5 times with the Whistle.',
       target: 5,
@@ -560,7 +562,7 @@ const DAILY_GOAL_POOLS: DailyGoalDef[][] = [
     {
       id: 'daily_active_3',
       metric: 'activeMinutes',
-      icon: '⏱️',
+      icon: 'clock',
       title: 'Quick Visit',
       desc: 'Spend 3 active minutes in PupperPark today.',
       target: 3,
@@ -570,7 +572,7 @@ const DAILY_GOAL_POOLS: DailyGoalDef[][] = [
     {
       id: 'daily_active_8',
       metric: 'activeMinutes',
-      icon: '☀️',
+      icon: 'clock',
       title: 'Park Stroll',
       desc: 'Spend 8 active minutes in PupperPark today.',
       target: 8,
@@ -580,18 +582,18 @@ const DAILY_GOAL_POOLS: DailyGoalDef[][] = [
     {
       id: 'daily_bones_250',
       metric: 'bonesEarned',
-      icon: '🦴',
+      icon: 'bone',
       title: 'Morning Haul',
-      desc: 'Earn 250 🦴 Bones in the park today.',
+      desc: 'Earn 250 Bones in the park today.',
       target: 250,
       rewardMagic: 12
     },
     {
       id: 'daily_bones_1500',
       metric: 'bonesEarned',
-      icon: '💰',
+      icon: 'bonePile',
       title: 'Bone Harvest',
-      desc: 'Earn 1,500 🦴 Bones in the park today.',
+      desc: 'Earn 1,500 Bones in the park today.',
       target: 1500,
       rewardMagic: 18
     }
