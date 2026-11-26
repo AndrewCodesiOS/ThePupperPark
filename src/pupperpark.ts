@@ -31,6 +31,20 @@ import {
   rollSingleWeightedTreasure,
   rollWeightedTreasureOptions
 } from './treasures';
+import {
+  ACHIEVEMENTS,
+  AchievementFilter,
+  DAILY_BONUS_MAGIC,
+  DailyGoalMetric,
+  DailyGoalsState,
+  GoalSnapshot,
+  createEmptyDailyGoalsState,
+  formatCountdownToMidnight,
+  formatGoalProgress,
+  getDailyGoalsForDate,
+  getLocalDateKey,
+  getMsUntilLocalMidnight
+} from './goals';
 
 export interface RosterEntry {
   id: string;
@@ -1309,6 +1323,17 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     breedEconomyVersion: number;
     startDate: number;
     activePlaySeconds: number;
+    lifetimeMagicBones: number;
+    totalDigsCount: number;
+    totalPetsCount: number;
+    totalTreatsCount: number;
+    totalWhistlesCount: number;
+    totalShiniesFound: number;
+    everFullPack: boolean;
+    everJoyful: boolean;
+    everEcstatic: boolean;
+    claimedAchievements: Record<string, boolean>;
+    dailyGoals: DailyGoalsState;
     lastSaveTime: number;
     [key: string]: unknown;
   }
@@ -1374,6 +1399,17 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     breedEconomyVersion: BREED_ECONOMY_VERSION,
     startDate: Date.now(),
     activePlaySeconds: 0,
+    lifetimeMagicBones: 0,
+    totalDigsCount: 0,
+    totalPetsCount: 0,
+    totalTreatsCount: 0,
+    totalWhistlesCount: 0,
+    totalShiniesFound: 0,
+    everFullPack: false,
+    everJoyful: false,
+    everEcstatic: false,
+    claimedAchievements: {},
+    dailyGoals: createEmptyDailyGoalsState(),
     lastSaveTime: Date.now()
   };
 
@@ -2126,6 +2162,14 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     const next = Math.max(floor, Math.min(cap, prev + delta));
     state.packHappiness = next;
 
+    if (next >= 70) {
+      state.everJoyful = true;
+      recordDailyProgress('joyfulReached', 1, true);
+    }
+    if (next >= 90 && isEcstaticUnlocked()) {
+      state.everEcstatic = true;
+    }
+
     const nextTier = getHappinessTierIndex(next);
     if (nextTier !== prevTier) {
       updateUI();
@@ -2479,7 +2523,33 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     return safeRefund;
   }
 
-  function addRegularBones(rawAmount: number): number {
+  function ensureCurrentDailyGoals(nowMs: number = Date.now()): DailyGoalsState {
+    const todayKey = getLocalDateKey(nowMs);
+    if (!state.dailyGoals || typeof state.dailyGoals !== 'object' || state.dailyGoals.dateKey !== todayKey) {
+      state.dailyGoals = createEmptyDailyGoalsState(todayKey);
+      if (state.packHappiness >= 70) {
+        state.dailyGoals.progress.joyfulReached = 1;
+      }
+    } else {
+      if (!state.dailyGoals.progress || typeof state.dailyGoals.progress !== 'object') {
+        state.dailyGoals.progress = {};
+      }
+      if (!state.dailyGoals.claimed || typeof state.dailyGoals.claimed !== 'object') {
+        state.dailyGoals.claimed = {};
+      }
+      state.dailyGoals.bonusClaimed = Boolean(state.dailyGoals.bonusClaimed);
+    }
+    return state.dailyGoals;
+  }
+
+  function recordDailyProgress(metric: DailyGoalMetric, amount: number, isMaxValue = false): void {
+    if (!Number.isFinite(amount) || amount <= 0) return;
+    const dg = ensureCurrentDailyGoals();
+    const prev = Number(dg.progress[metric]) || 0;
+    dg.progress[metric] = isMaxValue ? Math.max(prev, amount) : prev + amount;
+  }
+
+  function addRegularBones(rawAmount: number, countForDaily = true): number {
     const amount = Math.max(0, Number(rawAmount) || 0);
     if (amount <= 0) return 0;
 
@@ -2497,6 +2567,9 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     const added = Math.min(amount, spaceLeft);
     state.bones = currentBones + added;
     state.lifetimeBones += added;
+    if (countForDaily && added > 0) {
+      recordDailyProgress('bonesEarned', added);
+    }
 
     if (state.bones >= MAX_BONES) {
       state.bones = MAX_BONES;
@@ -2506,14 +2579,21 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     return added;
   }
 
-  function addMagicBones(rawAmount: number): number {
+  function addMagicBones(rawAmount: number, fromDigOrTap = false): number {
     const amount = Math.max(0, Number(rawAmount) || 0);
     if (amount <= 0) return 0;
     if (typeof state.lifetimeBones !== 'number' || Number.isNaN(state.lifetimeBones)) {
       state.lifetimeBones = 0;
     }
+    if (typeof state.lifetimeMagicBones !== 'number' || Number.isNaN(state.lifetimeMagicBones)) {
+      state.lifetimeMagicBones = 0;
+    }
     state.magicBones = (Number(state.magicBones) || 0) + amount;
     state.lifetimeBones += amount;
+    state.lifetimeMagicBones += amount;
+    if (fromDigOrTap) {
+      recordDailyProgress('magicDigs', amount);
+    }
     return amount;
   }
 
@@ -2891,11 +2971,11 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       const foundTreasure = Math.random() < offlineTreasureChance ? rollOfflineTreasure() : null;
 
       const displayedBonesBefore = Math.floor(Math.max(0, Number(state.bones) || 0));
-      const rawBonesAdded = earned > 0 ? addRegularBones(earned) : 0;
+      const rawBonesAdded = earned > 0 ? addRegularBones(earned, false) : 0;
       const actualEarned = rawBonesAdded > 0
         ? Math.max(1, Math.floor(Math.max(0, Number(state.bones) || 0)) - displayedBonesBefore)
         : 0;
-      const actualMagicEarned = rawMagicEarned > 0 ? addMagicBones(rawMagicEarned) : 0;
+      const actualMagicEarned = rawMagicEarned > 0 ? addMagicBones(rawMagicEarned, false) : 0;
       const moodBeforeRounded = Math.round(currentMood);
       const moodAfterRounded = Math.round(nextMood);
 
@@ -3381,6 +3461,72 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
           state.activePlaySeconds = 0;
         } else {
           state.activePlaySeconds = parsed.activePlaySeconds;
+        }
+        const currentShinyCount = Array.isArray(state.roster) ? state.roster.filter(e => e && e.isShiny).length : 0;
+        const rosterDigSum = Array.isArray(state.roster)
+          ? state.roster.reduce((sum, e) => sum + (Number(e?.digsCompleted) || 0), 0)
+          : 0;
+        state.lifetimeMagicBones =
+          typeof parsed.lifetimeMagicBones === 'number' && Number.isFinite(parsed.lifetimeMagicBones) && parsed.lifetimeMagicBones >= 0
+            ? Math.max(parsed.lifetimeMagicBones, Math.max(0, Number(state.magicBones) || 0))
+            : Math.max(0, Number(state.magicBones) || 0);
+        state.totalDigsCount =
+          typeof parsed.totalDigsCount === 'number' && Number.isFinite(parsed.totalDigsCount) && parsed.totalDigsCount >= 0
+            ? Math.max(parsed.totalDigsCount, rosterDigSum)
+            : rosterDigSum;
+        state.totalPetsCount =
+          typeof parsed.totalPetsCount === 'number' && Number.isFinite(parsed.totalPetsCount) && parsed.totalPetsCount >= 0
+            ? parsed.totalPetsCount
+            : 0;
+        state.totalTreatsCount =
+          typeof parsed.totalTreatsCount === 'number' && Number.isFinite(parsed.totalTreatsCount) && parsed.totalTreatsCount >= 0
+            ? parsed.totalTreatsCount
+            : 0;
+        state.totalWhistlesCount =
+          typeof parsed.totalWhistlesCount === 'number' && Number.isFinite(parsed.totalWhistlesCount) && parsed.totalWhistlesCount >= 0
+            ? parsed.totalWhistlesCount
+            : 0;
+        state.totalShiniesFound =
+          typeof parsed.totalShiniesFound === 'number' && Number.isFinite(parsed.totalShiniesFound) && parsed.totalShiniesFound >= 0
+            ? Math.max(parsed.totalShiniesFound, currentShinyCount)
+            : currentShinyCount;
+        state.everFullPack = Boolean(parsed.everFullPack) || (Array.isArray(state.roster) && state.roster.length >= MAX_DOGS);
+        state.everJoyful = Boolean(parsed.everJoyful) || state.packHappiness >= 70;
+        state.everEcstatic = Boolean(parsed.everEcstatic) || (state.packHappiness >= 90 && isEcstaticUnlocked());
+        const cleanClaimedAch: Record<string, boolean> = {};
+        if (parsed.claimedAchievements && typeof parsed.claimedAchievements === 'object') {
+          Object.entries(parsed.claimedAchievements as Record<string, unknown>).forEach(([k, v]) => {
+            if (v === true) cleanClaimedAch[k] = true;
+          });
+        }
+        state.claimedAchievements = cleanClaimedAch;
+        const rawDaily = parsed.dailyGoals as Partial<DailyGoalsState> | undefined;
+        const todayKey = getLocalDateKey();
+        if (rawDaily && typeof rawDaily === 'object' && rawDaily.dateKey === todayKey) {
+          const cleanProgress: Record<string, number> = {};
+          if (rawDaily.progress && typeof rawDaily.progress === 'object') {
+            Object.entries(rawDaily.progress).forEach(([k, v]) => {
+              const num = Number(v);
+              if (Number.isFinite(num) && num > 0) cleanProgress[k] = num;
+            });
+          }
+          const cleanDailyClaimed: Record<string, boolean> = {};
+          if (rawDaily.claimed && typeof rawDaily.claimed === 'object') {
+            Object.entries(rawDaily.claimed).forEach(([k, v]) => {
+              if (v === true) cleanDailyClaimed[k] = true;
+            });
+          }
+          state.dailyGoals = {
+            dateKey: todayKey,
+            progress: cleanProgress,
+            claimed: cleanDailyClaimed,
+            bonusClaimed: Boolean(rawDaily.bonusClaimed)
+          };
+        } else {
+          state.dailyGoals = createEmptyDailyGoalsState(todayKey);
+        }
+        if (state.packHappiness >= 70) {
+          state.dailyGoals.progress.joyfulReached = 1;
         }
         if (!state.dogs) state.dogs = {};
         if (!state.costs) state.costs = {};
@@ -4249,6 +4395,9 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       } else {
         hideRetireNotice();
       }
+      if (tabId === 'tab-goals') {
+        renderGoalsTab(true);
+      }
     });
   });
 
@@ -4463,6 +4612,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         entry.shinyColor = SHINY_PALETTES[Math.floor(Math.random() * SHINY_PALETTES.length)];
       }
       becameShiny = true;
+      state.totalShiniesFound = (Number(state.totalShiniesFound) || 0) + 1;
 
       const canvasDog = dogs.find(d => d.rosterId === entry.id);
       if (canvasDog) {
@@ -5635,6 +5785,17 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       breedEconomyVersion: BREED_ECONOMY_VERSION,
       startDate: resetNow,
       activePlaySeconds: 0,
+      lifetimeMagicBones: clampedMagic,
+      totalDigsCount: 0,
+      totalPetsCount: 0,
+      totalTreatsCount: 0,
+      totalWhistlesCount: 0,
+      totalShiniesFound: starterShinyRoll.isShiny ? 1 : 0,
+      everFullPack: false,
+      everJoyful: false,
+      everEcstatic: false,
+      claimedAchievements: {},
+      dailyGoals: createEmptyDailyGoalsState(getLocalDateKey(resetNow)),
       lastSaveTime: resetNow
     };
 
@@ -5958,6 +6119,10 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       size: 5,
       isRing: true
     });
+
+    state.totalWhistlesCount = (Number(state.totalWhistlesCount) || 0) + 1;
+    recordDailyProgress('whistles', 1);
+    refreshGoalBadges();
   }
 
   document.getElementById('btnWhistle')?.addEventListener('click', () => {
@@ -6538,6 +6703,10 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
             value: naturalMagic ? 1 : tapBones
           });
         }
+        state.totalDigsCount = (Number(state.totalDigsCount) || 0) + 1;
+        recordDailyProgress('taps', 1);
+        recordDailyProgress('digs', 1);
+        refreshGoalBadges();
       }
     }
   });
@@ -7821,6 +7990,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
       if (this.petCooldown <= 0) {
         this.petCooldown = 3.0;
+        state.totalPetsCount = (Number(state.totalPetsCount) || 0) + 1;
+        recordDailyProgress('pets', 1);
         if (entry && entry.level < MAX_DOG_LEVEL) {
           const stats = getEffectiveBreedStats(entry, this.breed);
           const xpGain = Math.max(2, Math.round(BASE_PET_XP * stats.quickLearner * getActiveXpBoostMult() * (trait.petXpMult ?? 1)));
@@ -8656,6 +8827,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       const magicYield = 1 + (this.isShiny ? SHINY_MAGIC_BONE_BONUS : 0);
       const boneValue = this.isMagicDig ? magicYield : Math.round((amount + breakEvenBonus) * 10) / 10;
 
+      state.totalDigsCount = (Number(state.totalDigsCount) || 0) + 1;
+      recordDailyProgress('digs', 1);
       if (entry) {
         entry.digsCompleted = (entry.digsCompleted || 0) + 1;
         if (!this.isMagicDig) {
@@ -8881,6 +9054,41 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       });
 
       c.restore();
+
+      if (this.isShiny) {
+        const t = performance.now() * 0.0044 + (this.rosterId.charCodeAt(this.rosterId.length - 1) || 0) * 0.9;
+        const sp1 = 0.5 + 0.5 * Math.sin(t);
+        const sp2 = 0.5 + 0.5 * Math.sin(t + 2.1);
+        const sp3 = 0.5 + 0.5 * Math.sin(t * 0.92 + 4.2);
+        const spreadX = isToyBreed ? 12.5 : isGiantBreed ? 19.5 : 15.5;
+        const heightMult = isToyBreed ? 0.85 : isGiantBreed ? 1.15 : 1.0;
+        const baseSparkleY = (isGroundedRest ? -10 : isSitting ? -20 : -18) * heightMult - this.slideElevation;
+
+        drawMiniSparkle(
+          -spreadX * 0.85,
+          baseSparkleY - 4.5 - sp1 * 3.0,
+          1.9 + sp1 * 2.0,
+          '#fff9c4',
+          0.38 + sp1 * 0.58,
+          c
+        );
+        drawMiniSparkle(
+          spreadX * 0.88,
+          baseSparkleY - 1.2 - sp2 * 2.6,
+          1.6 + sp2 * 1.9,
+          '#ffffff',
+          0.35 + sp2 * 0.6,
+          c
+        );
+        drawMiniSparkle(
+          spreadX * 0.1 + Math.sin(t * 0.5) * 2.8,
+          baseSparkleY - 9.8 - sp3 * 2.4,
+          1.4 + sp3 * 1.6,
+          this.shinyColor || '#ffeaa7',
+          0.32 + sp3 * 0.58,
+          c
+        );
+      }
 
       if (state.showNameTags) {
         const entry = this.getRosterEntry();
@@ -10028,20 +10236,27 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     return state.perks.some(p => p && (p.id === 'bp_6' || p.name === 'Diamond Bowl'));
   }
 
-  function drawMiniSparkle(x: number, y: number, r: number, color: string, alpha: number): void {
+  function drawMiniSparkle(
+    x: number,
+    y: number,
+    r: number,
+    color: string,
+    alpha: number,
+    targetCtx: CanvasRenderingContext2D = ctx
+  ): void {
     if (r <= 0.2 || alpha <= 0.02) return;
-    ctx.save();
-    ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.moveTo(x, y - r);
-    ctx.quadraticCurveTo(x + r * 0.18, y - r * 0.18, x + r, y);
-    ctx.quadraticCurveTo(x + r * 0.18, y + r * 0.18, x, y + r);
-    ctx.quadraticCurveTo(x - r * 0.18, y + r * 0.18, x - r, y);
-    ctx.quadraticCurveTo(x - r * 0.18, y - r * 0.18, x, y - r);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
+    targetCtx.save();
+    targetCtx.globalAlpha = Math.max(0, Math.min(1, alpha));
+    targetCtx.fillStyle = color;
+    targetCtx.beginPath();
+    targetCtx.moveTo(x, y - r);
+    targetCtx.quadraticCurveTo(x + r * 0.18, y - r * 0.18, x + r, y);
+    targetCtx.quadraticCurveTo(x + r * 0.18, y + r * 0.18, x, y + r);
+    targetCtx.quadraticCurveTo(x - r * 0.18, y + r * 0.18, x - r, y);
+    targetCtx.quadraticCurveTo(x - r * 0.18, y - r * 0.18, x, y - r);
+    targetCtx.closePath();
+    targetCtx.fill();
+    targetCtx.restore();
   }
 
   function drawDogWaterBowl(): void {
@@ -11774,9 +11989,13 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       dogs.push(new Dog(spawnPos.gx, spawnPos.gy, entry.id, normBreed, isShiny, chosenColor));
 
       if (isShiny) {
+        state.totalShiniesFound = (Number(state.totalShiniesFound) || 0) + 1;
         sfx.shiny();
       } else {
         sfx.upgrade();
+      }
+      if (state.roster.length >= MAX_DOGS) {
+        state.everFullPack = true;
       }
 
       updateUI();
@@ -11897,6 +12116,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         state.feastAnimTimer = 1.5;
       }
       addPackHappiness(8);
+      state.totalTreatsCount = (Number(state.totalTreatsCount) || 0) + 1;
+      recordDailyProgress('treats', 1);
       sfx.treat();
       updateUI();
       saveGame();
@@ -11912,6 +12133,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     addPackHappiness(FREE_TREAT_HAPPINESS_GAIN);
     const nextMood = Math.round(state.packHappiness || getCozyFloor());
     const gainedMood = Math.max(0, nextMood - prevMood);
+    state.totalTreatsCount = (Number(state.totalTreatsCount) || 0) + 1;
+    recordDailyProgress('treats', 1);
     sfx.treat();
     const s = getScale();
     dogs.forEach(d => {
@@ -12902,7 +13125,356 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         btnConfirmReroll.disabled = (state.magicBones || 0) < nextCost;
       }
     }
+
+    refreshGoalBadges();
+    const goalsTabEl = document.getElementById('tab-goals');
+    if (goalsTabEl && goalsTabEl.classList.contains('active') && gameModal && gameModal.style.display === 'flex') {
+      renderGoalsTab(false);
+    }
   }
+
+  let activeAchFilter: AchievementFilter = 'all';
+
+  function buildGoalSnapshot(): GoalSnapshot {
+    const relicCounts = getTreasureCounts(state.perks);
+    const completedSetsCount = TREASURE_SETS.filter(set => isSetCompleted(relicCounts, set.id)).length;
+    const hasMaxRankRelic = Array.from(relicCounts.values()).some(c => c >= MAX_RELIC_RANK);
+    const shinyCountNow = state.roster.filter(e => e && e.isShiny).length;
+    const maxDogLevel = state.roster.reduce((max, e) => Math.max(max, Number(e?.level) || 1), 1);
+    const toysOwnedCount = (state.hasTennisBall ? 1 : 0) + (state.hasDuck ? 1 : 0) + (state.hasFrisbee ? 1 : 0);
+    const hasMaxedToy =
+      state.digPower >= MAX_DIG_POWER ||
+      state.idleMultiplier >= MAX_IDLE_MULTIPLIER ||
+      state.speedMultiplier >= MAX_SPEED_MULTIPLIER;
+
+    return {
+      lifetimeBones: Math.max(0, Number(state.lifetimeBones) || 0),
+      lifetimeMagicBones: Math.max(0, Number(state.lifetimeMagicBones) || 0),
+      bones: Math.max(0, Number(state.bones) || 0),
+      boneCapReached: Boolean(state.boneCapEverShown) || (Number(state.bones) || 0) >= MAX_BONES,
+      rosterCount: state.roster.length,
+      everFullPack: Boolean(state.everFullPack) || state.roster.length >= MAX_DOGS,
+      maxDogLevel,
+      shinyCountNow,
+      totalShiniesFound: Math.max(shinyCountNow, Number(state.totalShiniesFound) || 0),
+      hasLegendBreed: state.roster.some(e => BREED_BY_KEY[e.breed]?.tier === 'giant'),
+      hasKomondor: state.roster.some(e => e.breed === 'komondor'),
+      totalPets: Math.max(0, Number(state.totalPetsCount) || 0),
+      totalTreats: Math.max(0, Number(state.totalTreatsCount) || 0),
+      toysOwnedCount,
+      hasMaxedToy,
+      everJoyful: Boolean(state.everJoyful) || (Number(state.packHappiness) || 0) >= 70,
+      everEcstatic: Boolean(state.everEcstatic) || ((Number(state.packHappiness) || 0) >= 90 && isEcstaticUnlocked()),
+      placedDecorCount: state.placedDecorations.length,
+      decorFloorBonus: getDecorFloorBonus(),
+      maxHappinessCap: getPackHappinessCap(),
+      hasManor: state.placedDecorations.some(d => d.type === 'doghouseManor') || (state.decorInventory?.doghouseManor || 0) > 0,
+      hasSlide: state.placedDecorations.some(d => d.type === 'slide'),
+      parkExpanded: Boolean(state.parkExpanded),
+      uniqueRelicsCount: relicCounts.size,
+      completedSetsCount,
+      hasDiamondBowl: hasDiamondBowl(),
+      hasMaxRankRelic,
+      activePlaySeconds: Math.max(0, Number(state.activePlaySeconds) || 0)
+    };
+  }
+
+  function getUnclaimedGoalsSummary(): { dailyReady: number; bonusReady: boolean; achReady: number; total: number } {
+    const dg = ensureCurrentDailyGoals();
+    const dailyList = getDailyGoalsForDate(dg.dateKey);
+    let dailyReady = 0;
+    let dailyCompletedCount = 0;
+    dailyList.forEach(goal => {
+      const val = Number(dg.progress[goal.metric]) || 0;
+      const done = val >= goal.target;
+      if (done) dailyCompletedCount += 1;
+      if (done && !dg.claimed[goal.id]) {
+        dailyReady += 1;
+      }
+    });
+    const bonusReady = dailyCompletedCount >= dailyList.length && !dg.bonusClaimed;
+
+    const snap = buildGoalSnapshot();
+    const claimedAch = state.claimedAchievements || {};
+    let achReady = 0;
+    ACHIEVEMENTS.forEach(ach => {
+      if (!claimedAch[ach.id] && ach.getValue(snap) >= ach.target) {
+        achReady += 1;
+      }
+    });
+    const total = dailyReady + (bonusReady ? 1 : 0) + achReady;
+    return { dailyReady, bonusReady, achReady, total };
+  }
+
+  function refreshGoalBadges(): void {
+    const summary = getUnclaimedGoalsSummary();
+    const hasUnclaimed = summary.total > 0;
+    const menuBadge = document.getElementById('menuBtnBadge');
+    if (menuBadge) menuBadge.style.display = hasUnclaimed ? 'block' : 'none';
+    const tabBadge = document.getElementById('goalsTabBadge');
+    if (tabBadge) tabBadge.style.display = hasUnclaimed ? 'block' : 'none';
+  }
+
+  function refreshDailyResetTimer(): void {
+    const timerEl = document.getElementById('dailyResetTimer');
+    if (timerEl) {
+      timerEl.textContent = `Resets in ${formatCountdownToMidnight(getMsUntilLocalMidnight())}`;
+    }
+  }
+
+  function awardGoalMagicPopup(magicAmount: number, label: string): void {
+    if (magicAmount <= 0) return;
+    addMagicBones(magicAmount, false);
+    sfx.shiny();
+    const anchor = getCurrencyPillAnchor(true);
+    addFloatingText(anchor.textX, anchor.textY, `+${magicAmount.toLocaleString()} ✨ ${label}`, '#ffeaa7', 'left');
+  }
+
+  function claimDailyGoal(goalId: string): void {
+    initAudio();
+    const dg = ensureCurrentDailyGoals();
+    const goal = getDailyGoalsForDate(dg.dateKey).find(g => g.id === goalId);
+    if (!goal || dg.claimed[goal.id]) return;
+    const cur = Number(dg.progress[goal.metric]) || 0;
+    if (cur < goal.target) return;
+    dg.claimed[goal.id] = true;
+    awardGoalMagicPopup(goal.rewardMagic, 'Daily!');
+    updateUI();
+    renderGoalsTab(true);
+    saveGame();
+  }
+
+  function claimDailyBonus(): void {
+    initAudio();
+    const dg = ensureCurrentDailyGoals();
+    if (dg.bonusClaimed) return;
+    const dailyList = getDailyGoalsForDate(dg.dateKey);
+    const allDone = dailyList.every(g => (Number(dg.progress[g.metric]) || 0) >= g.target);
+    if (!allDone) return;
+    dg.bonusClaimed = true;
+    awardGoalMagicPopup(DAILY_BONUS_MAGIC, 'Daily Bonus!');
+    updateUI();
+    renderGoalsTab(true);
+    saveGame();
+  }
+
+  function claimAchievement(achId: string): void {
+    initAudio();
+    if (!state.claimedAchievements) state.claimedAchievements = {};
+    if (state.claimedAchievements[achId]) return;
+    const ach = ACHIEVEMENTS.find(a => a.id === achId);
+    if (!ach) return;
+    const snap = buildGoalSnapshot();
+    if (ach.getValue(snap) < ach.target) return;
+    state.claimedAchievements[ach.id] = true;
+    awardGoalMagicPopup(ach.rewardMagic, 'Achievement!');
+    updateUI();
+    renderGoalsTab(true);
+    saveGame();
+  }
+
+  function claimAllGoals(): void {
+    initAudio();
+    const dg = ensureCurrentDailyGoals();
+    const dailyList = getDailyGoalsForDate(dg.dateKey);
+    let totalMagic = 0;
+    let completedCount = 0;
+
+    dailyList.forEach(goal => {
+      const val = Number(dg.progress[goal.metric]) || 0;
+      if (val >= goal.target) {
+        completedCount += 1;
+        if (!dg.claimed[goal.id]) {
+          dg.claimed[goal.id] = true;
+          totalMagic += goal.rewardMagic;
+        }
+      }
+    });
+
+    if (completedCount >= dailyList.length && !dg.bonusClaimed) {
+      dg.bonusClaimed = true;
+      totalMagic += DAILY_BONUS_MAGIC;
+    }
+
+    if (!state.claimedAchievements) state.claimedAchievements = {};
+    const snap = buildGoalSnapshot();
+    ACHIEVEMENTS.forEach(ach => {
+      if (!state.claimedAchievements[ach.id] && ach.getValue(snap) >= ach.target) {
+        state.claimedAchievements[ach.id] = true;
+        totalMagic += ach.rewardMagic;
+      }
+    });
+
+    if (totalMagic > 0) {
+      awardGoalMagicPopup(totalMagic, 'Claimed!');
+      updateUI();
+      renderGoalsTab(true);
+      saveGame();
+    }
+  }
+
+  function renderGoalsTab(force = false): void {
+    const dailyListEl = document.getElementById('dailyGoalsList');
+    const achListEl = document.getElementById('achievementsList');
+    if (!dailyListEl || !achListEl) return;
+    if (!force && (containerHasActivePointer(dailyListEl) || containerHasActivePointer(achListEl))) {
+      return;
+    }
+
+    const dg = ensureCurrentDailyGoals();
+    const dailyGoals = getDailyGoalsForDate(dg.dateKey);
+    refreshDailyResetTimer();
+
+    let completedDailyCount = 0;
+    dailyListEl.innerHTML = '';
+
+    dailyGoals.forEach(goal => {
+      const rawVal = Number(dg.progress[goal.metric]) || 0;
+      const pct = Math.max(0, Math.min(100, (rawVal / goal.target) * 100));
+      const isComplete = rawVal >= goal.target;
+      const isClaimed = Boolean(dg.claimed[goal.id]);
+      if (isComplete) completedDailyCount += 1;
+
+      const card = document.createElement('div');
+      card.className = `goal-card${isClaimed ? ' is-claimed' : isComplete ? ' is-claimable' : ''}`;
+      card.innerHTML = `
+        <div class="goal-card-left">
+          <div class="goal-icon" aria-hidden="true">${goal.icon}</div>
+          <div class="goal-body">
+            <div class="goal-title-row">
+              <span class="goal-title">${goal.title}</span>
+              <span class="goal-progress-text">${formatGoalProgress(rawVal, goal.target, goal.format)}</span>
+            </div>
+            <div class="goal-desc">${goal.desc}</div>
+            <div class="goal-progress-track">
+              <div class="goal-progress-fill" style="width: ${pct.toFixed(1)}%;"></div>
+            </div>
+          </div>
+        </div>
+        <button type="button" class="goal-claim-btn${isClaimed ? ' is-done' : isComplete ? ' is-ready' : ''}" ${isClaimed || !isComplete ? 'disabled' : ''}>
+          <span>${isClaimed ? '✓ Claimed' : isComplete ? 'Claim' : `+${goal.rewardMagic} ✨`}</span>
+          ${!isClaimed && isComplete ? `<span class="goal-claim-sub">+${goal.rewardMagic} ✨</span>` : ''}
+        </button>
+      `;
+      if (isComplete && !isClaimed) {
+        const btn = card.querySelector<HTMLButtonElement>('.goal-claim-btn');
+        btn?.addEventListener('click', () => claimDailyGoal(goal.id));
+      }
+      dailyListEl.appendChild(card);
+    });
+
+    const bonusCard = document.getElementById('dailyBonusCard');
+    const bonusSub = document.getElementById('dailyBonusSub');
+    const btnBonus = document.getElementById('btnClaimDailyBonus') as HTMLButtonElement | null;
+    const allDailyComplete = completedDailyCount >= dailyGoals.length;
+    const bonusClaimed = Boolean(dg.bonusClaimed);
+    if (bonusCard) {
+      bonusCard.classList.toggle('is-claimable', allDailyComplete && !bonusClaimed);
+      bonusCard.classList.toggle('is-claimed', bonusClaimed);
+    }
+    if (bonusSub) {
+      bonusSub.textContent = bonusClaimed
+        ? 'All 4 Daily Goals complete — bonus claimed!'
+        : allDailyComplete
+          ? 'All 4 Daily Goals complete — ready to claim!'
+          : `Complete all 4 Daily Goals today (${completedDailyCount} / ${dailyGoals.length})`;
+    }
+    if (btnBonus) {
+      btnBonus.disabled = bonusClaimed || !allDailyComplete;
+      btnBonus.className = `goal-claim-btn${bonusClaimed ? ' is-done' : allDailyComplete ? ' is-ready' : ''}`;
+      btnBonus.innerHTML = bonusClaimed
+        ? '<span>✓ Claimed</span>'
+        : allDailyComplete
+          ? `<span>Claim</span><span class="goal-claim-sub">+${DAILY_BONUS_MAGIC} ✨</span>`
+          : `<span>+${DAILY_BONUS_MAGIC} ✨</span>`;
+    }
+
+    const snap = buildGoalSnapshot();
+    const claimedAch = state.claimedAchievements || {};
+    let totalCompletedAch = 0;
+    ACHIEVEMENTS.forEach(ach => {
+      if (claimedAch[ach.id] || ach.getValue(snap) >= ach.target) {
+        totalCompletedAch += 1;
+      }
+    });
+
+    const achCountEl = document.getElementById('achCompletedCount');
+    if (achCountEl) {
+      achCountEl.textContent = `${totalCompletedAch} / ${ACHIEVEMENTS.length}`;
+    }
+
+    const unclaimedSummary = getUnclaimedGoalsSummary();
+    const claimAllBtn = document.getElementById('btnClaimAllGoals') as HTMLButtonElement | null;
+    if (claimAllBtn) {
+      claimAllBtn.style.display = unclaimedSummary.total >= 2 ? 'inline-flex' : 'none';
+      claimAllBtn.textContent = `Claim All (${unclaimedSummary.total})`;
+    }
+
+    const filteredAch = ACHIEVEMENTS.filter(a => activeAchFilter === 'all' || a.category === activeAchFilter);
+    // Sort: claimable first, then in-progress, then claimed
+    const sortedAch = [...filteredAch].sort((a, b) => {
+      const aClaimed = Boolean(claimedAch[a.id]);
+      const bClaimed = Boolean(claimedAch[b.id]);
+      const aDone = aClaimed || a.getValue(snap) >= a.target;
+      const bDone = bClaimed || b.getValue(snap) >= b.target;
+      const rank = (done: boolean, claimed: boolean): number => (done && !claimed ? 0 : !done ? 1 : 2);
+      return rank(aDone, aClaimed) - rank(bDone, bClaimed);
+    });
+
+    achListEl.innerHTML = '';
+    sortedAch.forEach(ach => {
+      const isClaimed = Boolean(claimedAch[ach.id]);
+      const rawVal = isClaimed ? ach.target : ach.getValue(snap);
+      const pct = Math.max(0, Math.min(100, (rawVal / ach.target) * 100));
+      const isComplete = isClaimed || rawVal >= ach.target;
+
+      const card = document.createElement('div');
+      card.className = `goal-card${isClaimed ? ' is-claimed' : isComplete ? ' is-claimable' : ''}`;
+      card.innerHTML = `
+        <div class="goal-card-left">
+          <div class="goal-icon" aria-hidden="true">${ach.icon}</div>
+          <div class="goal-body">
+            <div class="goal-title-row">
+              <span class="goal-title">${ach.title}</span>
+              <span class="goal-progress-text">${formatGoalProgress(rawVal, ach.target, ach.format)}</span>
+            </div>
+            <div class="goal-desc">${ach.desc}</div>
+            <div class="goal-progress-track">
+              <div class="goal-progress-fill" style="width: ${pct.toFixed(1)}%;"></div>
+            </div>
+          </div>
+        </div>
+        <button type="button" class="goal-claim-btn${isClaimed ? ' is-done' : isComplete ? ' is-ready' : ''}" ${isClaimed || !isComplete ? 'disabled' : ''}>
+          <span>${isClaimed ? '✓ Claimed' : isComplete ? 'Claim' : `+${ach.rewardMagic} ✨`}</span>
+          ${!isClaimed && isComplete ? `<span class="goal-claim-sub">+${ach.rewardMagic} ✨</span>` : ''}
+        </button>
+      `;
+      if (isComplete && !isClaimed) {
+        const btn = card.querySelector<HTMLButtonElement>('.goal-claim-btn');
+        btn?.addEventListener('click', () => claimAchievement(ach.id));
+      }
+      achListEl.appendChild(card);
+    });
+  }
+
+  document.getElementById('btnClaimDailyBonus')?.addEventListener('click', claimDailyBonus);
+  document.getElementById('btnClaimAllGoals')?.addEventListener('click', claimAllGoals);
+  document.querySelectorAll<HTMLButtonElement>('#achCategoryFilters .dogs-tier-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      initAudio();
+      const rawCat = btn.dataset.achCat || 'all';
+      activeAchFilter =
+        rawCat === 'bones' || rawCat === 'pack' || rawCat === 'park' || rawCat === 'relics'
+          ? rawCat
+          : 'all';
+      document.querySelectorAll<HTMLButtonElement>('#achCategoryFilters .dogs-tier-btn').forEach(b => {
+        const isAct = b.dataset.achCat === activeAchFilter;
+        b.classList.toggle('active', isAct);
+        b.setAttribute('aria-selected', String(isAct));
+      });
+      renderGoalsTab(true);
+    });
+  });
 
   function containerHasActivePointer(container: HTMLElement | null): boolean {
     if (!container) return false;
@@ -13288,11 +13860,23 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       if (!document.hidden && dt > 0) {
         const prevActiveSec = Math.floor(Math.max(0, Number(state.activePlaySeconds) || 0));
         state.activePlaySeconds = Math.max(0, Number(state.activePlaySeconds) || 0) + dt;
+        const dgBefore = ensureCurrentDailyGoals();
+        const prevDailyMin = Math.floor(Number(dgBefore.progress.activeMinutes) || 0);
+        dgBefore.progress.activeMinutes = (Number(dgBefore.progress.activeMinutes) || 0) + dt / 60;
+        const nextDailyMin = Math.floor(dgBefore.progress.activeMinutes);
         const nextActiveSec = Math.floor(state.activePlaySeconds);
         if (nextActiveSec !== prevActiveSec) {
           const activeTimeEl = document.getElementById('statActiveTime');
           if (activeTimeEl) {
             activeTimeEl.textContent = formatActivePlayTime(state.activePlaySeconds);
+          }
+          if (nextActiveSec % 15 === 0 || nextDailyMin !== prevDailyMin) {
+            refreshDailyResetTimer();
+            refreshGoalBadges();
+            const goalsTabEl = document.getElementById('tab-goals');
+            if (goalsTabEl && goalsTabEl.classList.contains('active') && gameModal && gameModal.style.display === 'flex') {
+              renderGoalsTab(false);
+            }
           }
         }
       }
@@ -14610,7 +15194,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
           if (Math.hypot(anchor.flyX - b.x, anchor.flyY - b.y) < 18) {
             if (b.isMagic) {
               const magicAmt = Math.max(1, Math.round(b.value || 1));
-              addMagicBones(magicAmt);
+              addMagicBones(magicAmt, true);
               sfx.magicCollect();
               updateUI();
               const freshAnchor = getCurrencyPillAnchor(true);

@@ -420,7 +420,7 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
       <span>Call</span>
     </button>
-    <button type="button" id="btnOpenMenu" class="menu-toggle-btn">▲ Menu</button>
+    <button type="button" id="btnOpenMenu" class="menu-toggle-btn">▲ Menu<span id="menuBtnBadge" class="menu-notify-dot" style="display: none;" aria-hidden="true"></span></button>
   </div>
 
   <!-- Bottom Slide-Up & Draggable Menu Drawer -->
@@ -435,6 +435,7 @@
           <button type="button" class="tab-btn" data-tab="tab-treats">Treats</button>
           <button type="button" class="tab-btn" data-tab="tab-perks">Treasures</button>
           <button type="button" class="tab-btn" data-tab="tab-decor">Decor</button>
+          <button type="button" class="tab-btn" data-tab="tab-goals">Goals<span id="goalsTabBadge" class="tab-notify-dot" style="display: none;" aria-hidden="true"></span></button>
           <button type="button" class="tab-btn" data-tab="tab-stats">Stats</button>
           <button type="button" class="tab-btn" data-tab="tab-settings">Settings</button>
         </div>
@@ -921,6 +922,52 @@
                 <span class="btn-name">Reset All Tiles</span>
               </button>
             </div>
+          </div>
+        </div>
+
+        <!-- Goals Tab (Daily Goals & Achievements) -->
+        <div class="tab-content" id="tab-goals">
+          <div class="goals-section">
+            <div class="goals-section-head">
+              <div>
+                <h3 class="goals-section-title">Daily Goals</h3>
+                <div class="goals-section-sub">Complete daily tasks for ✨ Magic Bones</div>
+              </div>
+              <div class="goals-head-right">
+                <span id="dailyResetTimer" class="goals-reset-timer">Resets in --</span>
+                <button type="button" id="btnClaimAllGoals" class="goals-claim-all-btn" style="display: none;">Claim All</button>
+              </div>
+            </div>
+
+            <div id="dailyBonusCard" class="daily-bonus-card">
+              <div class="daily-bonus-info">
+                <div class="daily-bonus-title">🎁 Daily Completion Bonus</div>
+                <div id="dailyBonusSub" class="daily-bonus-sub">Complete all 4 Daily Goals today (0 / 4)</div>
+              </div>
+              <button type="button" id="btnClaimDailyBonus" class="goal-claim-btn" disabled>+50 ✨</button>
+            </div>
+
+            <div id="dailyGoalsList" class="goals-list"></div>
+          </div>
+
+          <div class="goals-section goals-section-ach">
+            <div class="goals-section-head">
+              <div>
+                <h3 class="goals-section-title">Achievements</h3>
+                <div class="goals-section-sub">Permanent park milestones &amp; rewards</div>
+              </div>
+              <span id="achCompletedCount" class="goals-ach-count">0 / 34</span>
+            </div>
+
+            <div class="dogs-tier-filters ach-category-filters" id="achCategoryFilters" role="tablist" aria-label="Filter achievements by category">
+              <button type="button" class="dogs-tier-btn active" role="tab" aria-selected="true" data-ach-cat="all">All</button>
+              <button type="button" class="dogs-tier-btn" role="tab" aria-selected="false" data-ach-cat="bones">Bones</button>
+              <button type="button" class="dogs-tier-btn" role="tab" aria-selected="false" data-ach-cat="pack">Pack</button>
+              <button type="button" class="dogs-tier-btn" role="tab" aria-selected="false" data-ach-cat="park">Park</button>
+              <button type="button" class="dogs-tier-btn" role="tab" aria-selected="false" data-ach-cat="relics">Relics</button>
+            </div>
+
+            <div id="achievementsList" class="goals-list"></div>
           </div>
         </div>
 
