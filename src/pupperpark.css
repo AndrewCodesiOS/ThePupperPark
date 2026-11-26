@@ -1249,14 +1249,35 @@ html.pwa-standalone.ios-device .ios-top-edge-cap {
 }
 
 .mood-meter-fill {
+  position: relative;
+  z-index: 1;
   height: 100%;
   border-radius: 999px;
   background: linear-gradient(90deg, #a29bfe 0%, #55efc4 55%, #ffeaa7 85%, #ff9ff3 100%);
   transition: width 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.mood-cap-locked {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 0 999px 999px 0;
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(255, 255, 255, 0.08),
+    rgba(255, 255, 255, 0.08) 3px,
+    rgba(0, 0, 0, 0.24) 3px,
+    rgba(0, 0, 0, 0.24) 6px
+  );
+  border-left: 2px solid rgba(255, 234, 167, 0.85);
+  pointer-events: none;
+  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 .mood-floor-marker {
   position: absolute;
+  z-index: 2;
   top: -2px;
   bottom: -2px;
   width: 2px;

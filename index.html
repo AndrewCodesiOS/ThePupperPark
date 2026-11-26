@@ -391,10 +391,11 @@
         <span id="moodPopoverBonus" class="weather-popover-mod">Baseline</span>
       </div>
       <div class="mood-meter-track mood-meter-track-sm">
+        <div id="moodPopoverCap" class="mood-cap-locked" style="width: 20%;" title="Decorate park to raise Max Happiness"></div>
         <div id="moodPopoverFill" class="mood-meter-fill" style="width: 30%;"></div>
         <div id="moodPopoverFloor" class="mood-floor-marker" style="left: 30%;" title="Cozy Floor"></div>
       </div>
-      <p id="moodPopoverDesc" class="weather-popover-desc">Pet pups, feed treats, and refresh toys to lift morale into Ecstatic (90%+). Mood gently cools down to your Cozy Floor (up to 75% permanent, or 84% with Fresh Toys).</p>
+      <p id="moodPopoverDesc" class="weather-popover-desc">Your park's Max Happiness is 80%. Place Park Decorations to raise the cap to 90%+ and unlock Ecstatic!</p>
       <div class="weather-popover-foot">
         <span id="moodPopoverFloorLabel">Cozy floor: 30%</span>
         <button type="button" id="btnOpenMoodBreakdown" class="mood-popover-link">View Breakdown</button>
@@ -452,6 +453,7 @@
               <div id="rosterMoodTier" class="mood-summary-value">😌 Cozy | 35%</div>
             </div>
             <div class="mood-meter-track">
+              <div id="rosterMoodCap" class="mood-cap-locked" style="width: 20%;" title="Decorate park to raise Max Happiness"></div>
               <div id="rosterMoodFill" class="mood-meter-fill" style="width: 35%;"></div>
               <div id="rosterMoodFloorMark" class="mood-floor-marker" style="left: 35%;" title="Cozy Floor"></div>
             </div>
@@ -466,14 +468,14 @@
           <div id="rosterListContainer" class="roster-list"></div>
         </div>
 
-        <!-- Dogs Tab (34 Breeds with Tier Filters) -->
+        <!-- Puppers Tab (39 Breeds with Tier Filters) -->
         <div class="tab-content" id="tab-dogs">
           <div class="dogs-tier-filters" id="dogsTierFilters" role="tablist" aria-label="Filter dog breeds by tier">
-            <button type="button" class="dogs-tier-btn active" role="tab" aria-selected="true" data-dog-tier="all">All (34)</button>
-            <button type="button" class="dogs-tier-btn" role="tab" aria-selected="false" data-dog-tier="small">Small (9)</button>
-            <button type="button" class="dogs-tier-btn" role="tab" aria-selected="false" data-dog-tier="working">Working (9)</button>
-            <button type="button" class="dogs-tier-btn" role="tab" aria-selected="false" data-dog-tier="athletic">Athletic (8)</button>
-            <button type="button" class="dogs-tier-btn" role="tab" aria-selected="false" data-dog-tier="giant">Giants (8)</button>
+            <button type="button" class="dogs-tier-btn active" role="tab" aria-selected="true" data-dog-tier="all">All (39)</button>
+            <button type="button" class="dogs-tier-btn" role="tab" aria-selected="false" data-dog-tier="small">Small (10)</button>
+            <button type="button" class="dogs-tier-btn" role="tab" aria-selected="false" data-dog-tier="working">Working (10)</button>
+            <button type="button" class="dogs-tier-btn" role="tab" aria-selected="false" data-dog-tier="athletic">Athletic (9)</button>
+            <button type="button" class="dogs-tier-btn" role="tab" aria-selected="false" data-dog-tier="giant">Giants (10)</button>
           </div>
           <div id="dogsShopList" class="dogs-shop-list"></div>
         </div>
@@ -1012,7 +1014,7 @@
         <div class="help-row"><strong>Decor &amp; Toys</strong><span>Placed decor grants permanent XP, Magic, and Bone bonuses; toys boost digs &amp; offline yield.</span></div>
         <div class="help-row"><strong>Hourly Weather</strong><span>Weather shifts every hour with atmospheric effects and perks (tap the weather badge for details).</span></div>
         <div class="help-row"><strong>Pack Growth &amp; Levels</strong><span>Every pup's bones dug boost the whole pack's Dig Multiplier (scaled by Pack Growth), and each dog level adds +1% to its own bone yield.</span></div>
-        <div class="help-row"><strong>Pack Happiness</strong><span>Decor, toys, breeds &amp; treasures raise your permanent Cozy Floor up to 75% (Joyful), and Fresh Toys lift it +3% each while active. Pet pups, feed treats, and refresh toys to reach Ecstatic (90%+); mood gently cools back toward your Cozy Floor over 2h live or 24h away.</span></div>
+        <div class="help-row"><strong>Pack Happiness</strong><span>Petting, Happy Snaps, treats, and toy play easily lift your pack to Happy (50%) and Joyful (70%). Your park starts at 80% Max Happiness — placing Park Decorations smoothly raises the cap toward 100%, unlocking Ecstatic at 90%+ and giving you more cushion to maintain it!</span></div>
       </div>
       <button type="button" id="btnConfirmHelp" class="action-btn" style="width: 100%; padding: 11px;">Got It</button>
     </div>

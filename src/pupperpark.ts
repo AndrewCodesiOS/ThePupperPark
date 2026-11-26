@@ -639,11 +639,16 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
   const HAPPINESS_BASE_FLOOR = 30;
   const HAPPINESS_MAX = 100;
+  const HAPPINESS_BASE_CAP = 80; // Starting Max Happiness with 0 decor (smoothly climbs to 100% as you place decorations)
+  const HAPPINESS_ECSTATIC_DECOR_REQ = 10; // +10% Decor Floor lifts Max Happiness to 90% and unlocks Ecstatic
+  const HAPPINESS_PASSIVE_PLAY_CAP = 78; // Autonomous toy/slide play lifts pack into Joyful, never passively into Ecstatic
   const HAPPINESS_MAX_FLOOR = 75;
   const HAPPINESS_TREAT_TRICKLE_PER_SEC = 0.12;
   const HAPPINESS_AWAY_CHECKIN_HOURS = 8; // Lose 1/3 of decayable happiness per 8h away (3 check-ins/day)
   const HAPPINESS_AWAY_FULL_DECAY_HOURS = HAPPINESS_AWAY_CHECKIN_HOURS * 3; // 24h to settle to Cozy Floor
-  const HAPPINESS_LIVE_FULL_DECAY_HOURS = 2; // 2h of idle in-park play to cool from 100 down to Cozy Floor
+  const HAPPINESS_LIVE_FULL_DECAY_HOURS = 2; // 2h of idle in-park play to cool below Ecstatic down to Cozy Floor
+  const HAPPINESS_ECSTATIC_LIVE_COOL_PER_MIN = 1.2; // Base Ecstatic cooling (~8.3m 100->90, slowed up to 50% by extra decor)
+  const HAPPINESS_ECSTATIC_AWAY_FULL_HOURS = 2; // Ecstatic buffer (100->90) cools over ~2h away (slowed by decor & traits)
   const WHISTLE_HAPPINESS_COOLDOWN_MS = 2 * 60 * 1000; // 2 minutes between Whistle mood boosts
   const PLAY_MOOD_COOLDOWN_MS = 15000; // 15s park-wide cooldown for autonomous toy chase & slide mood bumps
   const PET_HAPPINESS_COOLDOWN_MS = 20 * 60 * 1000; // 20 minutes per dog
@@ -1974,6 +1979,20 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     return getDecorBonuses().cozyFloorBonus;
   }
 
+  function getPackHappinessCap(): number {
+    const rawCap = HAPPINESS_BASE_CAP + getDecorFloorBonus();
+    return Math.min(HAPPINESS_MAX, Math.round(rawCap * 10) / 10);
+  }
+
+  function isEcstaticUnlocked(): boolean {
+    return getPackHappinessCap() >= 90;
+  }
+
+  function getEcstaticDecorDecayMult(): number {
+    const extraDecor = Math.max(0, getDecorFloorBonus() - HAPPINESS_ECSTATIC_DECOR_REQ);
+    return Math.max(0.50, 1 - extraDecor * 0.025);
+  }
+
   function getCozyFloor(now = Date.now()): number {
     const toyInfo = getToyFloorBreakdown(now);
     const decorFloor = getDecorFloorBonus();
@@ -1984,13 +2003,13 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       HAPPINESS_BASE_FLOOR + toyInfo.floorBonus + decorFloor + treasureFloor + packTraitFloor
     );
     return Math.min(
-      HAPPINESS_MAX,
+      getPackHappinessCap(),
       Math.round((permanentFloor + toyInfo.freshFloorBonus) * 10) / 10
     );
   }
 
   function getHappinessTierIndex(value: number): number {
-    if (value >= 90) return 3;
+    if (Math.round(value) >= 90 && isEcstaticUnlocked()) return 3;
     if (value >= 70) return 2;
     if (value >= 50) return 1;
     return 0;
@@ -1998,13 +2017,14 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
   function getPackHappinessInfo(): HappinessInfo {
     const floor = getCozyFloor();
+    const cap = getPackHappinessCap();
     const raw = typeof state.packHappiness === 'number' && !Number.isNaN(state.packHappiness)
       ? state.packHappiness
       : floor;
-    const value = Math.max(floor, Math.min(HAPPINESS_MAX, raw));
+    const value = Math.max(floor, Math.min(cap, raw));
     const roundedPct = Math.round(value);
 
-    if (value >= 90) {
+    if (roundedPct >= 90 && isEcstaticUnlocked()) {
       return {
         value,
         roundedPct,
@@ -2078,9 +2098,10 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
   function addPackHappiness(delta: number, _announceTierUp = true): void {
     const floor = getCozyFloor();
-    const prev = Math.max(floor, Math.min(HAPPINESS_MAX, Number(state.packHappiness) || floor));
+    const cap = getPackHappinessCap();
+    const prev = Math.max(floor, Math.min(cap, Number(state.packHappiness) || floor));
     const prevTier = getHappinessTierIndex(prev);
-    const next = Math.max(floor, Math.min(HAPPINESS_MAX, prev + delta));
+    const next = Math.max(floor, Math.min(cap, prev + delta));
     state.packHappiness = next;
 
     const nextTier = getHappinessTierIndex(next);
@@ -2096,7 +2117,14 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     const nowMs = Date.now();
     if (nowMs - lastPlayMoodAt < PLAY_MOOD_COOLDOWN_MS) return;
     lastPlayMoodAt = nowMs;
-    addPackHappiness(baseAmount + traitBonus);
+    const floor = getCozyFloor(nowMs);
+    const playCap = Math.min(HAPPINESS_PASSIVE_PLAY_CAP, getPackHappinessCap());
+    const cur = Math.max(floor, Number(state.packHappiness) || floor);
+    if (cur >= playCap) return;
+    const gain = Math.min(baseAmount + traitBonus, playCap - cur);
+    if (gain > 0) {
+      addPackHappiness(gain);
+    }
   }
 
   function getActiveXpBoostMult(): number {
@@ -2785,15 +2813,36 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
       const packTraits = getPackTraitBonuses();
       const cozyFloor = getCozyFloor();
+      const moodCap = getPackHappinessCap();
       const currentMood = typeof state.packHappiness === 'number' && !Number.isNaN(state.packHappiness)
-        ? Math.max(cozyFloor, Math.min(HAPPINESS_MAX, state.packHappiness))
+        ? Math.max(cozyFloor, Math.min(moodCap, state.packHappiness))
         : cozyFloor;
-      // Lose 1/3 of the decayable happiness span above Cozy Floor every 8 hours away (full cool over 24h)
-      const decayableSpan = Math.max(0, HAPPINESS_MAX - cozyFloor);
-      const awayFraction = Math.min(1, rawElapsedSeconds / (HAPPINESS_AWAY_FULL_DECAY_HOURS * 3600));
-      const awayDrop = decayableSpan * awayFraction * packTraits.moodDecayMult;
-      const nextMood = Math.max(cozyFloor, currentMood - awayDrop);
-      state.packHappiness = nextMood;
+      let nextMood = currentMood;
+      let remAwaySec = rawElapsedSeconds;
+      // Ecstatic zone (90-100) cools faster while away so maintaining Ecstatic feels earned
+      if (nextMood > 90 && remAwaySec > 0) {
+        const ecstaticCoolPerSec =
+          (10 / (HAPPINESS_ECSTATIC_AWAY_FULL_HOURS * 3600)) *
+          getEcstaticDecorDecayMult() *
+          packTraits.moodDecayMult;
+        const above90 = nextMood - 90;
+        const secToReach90 = ecstaticCoolPerSec > 0 ? above90 / ecstaticCoolPerSec : Infinity;
+        if (remAwaySec >= secToReach90) {
+          nextMood = 90;
+          remAwaySec -= secToReach90;
+        } else {
+          nextMood = Math.max(90, nextMood - ecstaticCoolPerSec * remAwaySec);
+          remAwaySec = 0;
+        }
+      }
+      // Below Ecstatic: gentle 24h away settle toward Cozy Floor
+      if (nextMood > cozyFloor && remAwaySec > 0) {
+        const decayableSpan = Math.max(0, 90 - cozyFloor);
+        const awayFraction = Math.min(1, remAwaySec / (HAPPINESS_AWAY_FULL_DECAY_HOURS * 3600));
+        const awayDrop = decayableSpan * awayFraction * packTraits.moodDecayMult;
+        nextMood = Math.max(cozyFloor, nextMood - awayDrop);
+      }
+      state.packHappiness = Math.max(cozyFloor, Math.min(moodCap, nextMood));
 
       const estimatedDigs = estimateOfflineDigs(effectiveSeconds);
       const awayDigPower = state.digPower + FRESH_BALL_POWER_BONUS * freshBallFrac;
@@ -3291,7 +3340,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         if (typeof parsed.packHappiness !== 'number' || Number.isNaN(parsed.packHappiness)) {
           state.packHappiness = getCozyFloor();
         } else {
-          state.packHappiness = Math.max(getCozyFloor(), Math.min(HAPPINESS_MAX, parsed.packHappiness));
+          state.packHappiness = Math.max(getCozyFloor(), Math.min(getPackHappinessCap(), parsed.packHappiness));
         }
         if (typeof state.lastWhistleBoostAt !== 'number' || Number.isNaN(state.lastWhistleBoostAt)) {
           state.lastWhistleBoostAt = 0;
@@ -4814,7 +4863,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         nudgeEntitiesOutsideObstacles();
       }
       showLandmarkToggleNote(null);
-      state.packHappiness = Math.max(getCozyFloor(), Math.min(HAPPINESS_MAX, state.packHappiness || getCozyFloor()));
+      state.packHappiness = Math.max(getCozyFloor(), Math.min(getPackHappinessCap(), state.packHappiness || getCozyFloor()));
 
       footprint.forEach(t => {
         tileRipples.push({
@@ -5349,7 +5398,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       d.clearNavPath();
     });
     showLandmarkToggleNote(null);
-    state.packHappiness = Math.max(getCozyFloor(), Math.min(HAPPINESS_MAX, state.packHappiness || getCozyFloor()));
+    state.packHappiness = Math.max(getCozyFloor(), Math.min(getPackHappinessCap(), state.packHappiness || getCozyFloor()));
     sfx.thud();
     if (clearDecorConfirmModal) clearDecorConfirmModal.style.display = 'none';
     updateUI();
@@ -7150,7 +7199,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
   function getBreedDrinkReachPx(breed: string): number {
     if (breed === 'borzoi') return 23.5;
-    if (breed === 'wolfhound') return 22.5;
+    if (breed === 'irishWolfhound' || breed === 'wolfhound') return 22.5;
+    if (breed === 'afghanHound') return 22.4;
     if (breed === 'chihuahua' || breed === 'pug') return 15.8;
     const sizeClass = BREED_BY_KEY[breed]?.sizeClass || 'standard';
     if (sizeClass === 'toy') return 17.2;
@@ -12864,6 +12914,42 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     const nowMs = Date.now();
     const toyInfo = getToyFloorBreakdown(nowMs);
     const decorFloor = getDecorFloorBonus();
+    const maxCap = getPackHappinessCap();
+    const ecstaticOpen = isEcstaticUnlocked();
+    const decorFmt = formatCleanDecimal(decorFloor);
+    const capFmt = formatCleanDecimal(maxCap);
+    const lockedPct = Math.max(0, Math.min(100, HAPPINESS_MAX - maxCap));
+
+    const popCapEl = document.getElementById('moodPopoverCap');
+    if (popCapEl) {
+      popCapEl.style.width = `${lockedPct}%`;
+      popCapEl.style.display = lockedPct > 0 ? 'block' : 'none';
+    }
+    const rosterCapEl = document.getElementById('rosterMoodCap');
+    if (rosterCapEl) {
+      rosterCapEl.style.width = `${lockedPct}%`;
+      rosterCapEl.style.display = lockedPct > 0 ? 'block' : 'none';
+    }
+
+    if (rosterEffectsEl) {
+      rosterEffectsEl.textContent = maxCap < HAPPINESS_MAX
+        ? `${info.bonusSummary} | Floor ${floorPct}% • Max ${capFmt}%`
+        : `${info.bonusSummary} | Cozy Floor ${floorPct}%`;
+    }
+
+    const popDescEl = document.getElementById('moodPopoverDesc');
+    if (popDescEl) {
+      if (!ecstaticOpen) {
+        popDescEl.textContent =
+          `Your park's Max Happiness is ${capFmt}%. Place Park Decorations to raise the cap to 90%+ and unlock Ecstatic!`;
+      } else if (maxCap < HAPPINESS_MAX) {
+        popDescEl.textContent =
+          `Ecstatic unlocked (Max ${capFmt}%)! Pet pups, give treats, and keep decorating to push Max Happiness to 100%.`;
+      } else {
+        popDescEl.textContent =
+          'Max Happiness reached (100%)! Pet pups, toss Happy Snaps, and give treats to keep your pack Ecstatic.';
+      }
+    }
 
     if (popFloorLabelEl) {
       popFloorLabelEl.textContent = toyInfo.freshFloorBonus > 0
@@ -12889,7 +12975,14 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     }
     const treatSourceEl = document.getElementById('moodSourceTreats');
     if (treatSourceEl) {
-      treatSourceEl.textContent = activeTreats > 0 ? `${activeTreats} active` : 'Ready (+8 each)';
+      const freeRemMs = getFreeTreatCooldownMs(nowMs);
+      if (activeTreats > 0) {
+        treatSourceEl.textContent = `${activeTreats} active`;
+      } else if (freeRemMs <= 0) {
+        treatSourceEl.textContent = 'Happy Snaps Ready';
+      } else {
+        treatSourceEl.textContent = `Snaps ${formatPetCooldownShort(freeRemMs)}`;
+      }
     }
     const toySourceEl = document.getElementById('moodSourceToys');
     if (toySourceEl) {
@@ -12901,7 +12994,9 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     }
     const decorSourceEl = document.getElementById('moodSourceDecor');
     if (decorSourceEl) {
-      decorSourceEl.textContent = decorFloor > 0 ? `+${decorFloor}% floor` : 'None placed';
+      decorSourceEl.textContent = decorFloor <= 0
+        ? `None (Max ${capFmt}%)`
+        : `+${decorFmt}% (Max ${capFmt}%)`;
     }
   }
 
@@ -13264,24 +13359,36 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
       if (state.feastAnimTimer > 0) state.feastAnimTimer = Math.max(0, state.feastAnimTimer - dt);
 
-      // Update Pack Happiness gentle trickle (treats) or cooldown (idle toward Cozy Floor)
+      // Update Pack Happiness gentle trickle (treats) or cooldown (Ecstatic active cooling / gentle below 90%)
       const prevMoodRounded = Math.round(state.packHappiness || getCozyFloor());
       const prevMoodTier = getPackHappinessInfo().tier;
       const activeTreats = getActiveTreatTypeCount();
+      const moodCap = getPackHappinessCap();
       if (activeTreats > 0) {
         const trickle = Math.min(0.45, activeTreats * HAPPINESS_TREAT_TRICKLE_PER_SEC) * dt;
         addPackHappiness(trickle, true);
       } else {
         const floor = getCozyFloor();
-        const cur = Number(state.packHappiness) || floor;
-        if (cur > floor) {
-          // Gentle live-park cooldown (2h full cool to Cozy Floor, slowed by Samoyed)
-          const decayableSpan = Math.max(0, HAPPINESS_MAX - floor);
-          const liveCoolPerSec = (decayableSpan / (HAPPINESS_LIVE_FULL_DECAY_HOURS * 3600)) * getPackTraitBonuses().moodDecayMult;
-          state.packHappiness = Math.max(floor, cur - liveCoolPerSec * dt);
-        } else if (cur < floor) {
-          state.packHappiness = floor;
+        let cur = Number(state.packHappiness) || floor;
+        if (cur > moodCap) {
+          cur = moodCap;
         }
+        if (cur >= 90) {
+          // Ecstatic zone requires active care; extra decor & Samoyed/Pyrenees traits slow cooling
+          const ecstaticCoolPerSec =
+            (HAPPINESS_ECSTATIC_LIVE_COOL_PER_MIN / 60) *
+            getEcstaticDecorDecayMult() *
+            getPackTraitBonuses().moodDecayMult;
+          cur = Math.max(floor, cur - ecstaticCoolPerSec * dt);
+        } else if (cur > floor) {
+          // Gentle live-park cooldown below Ecstatic (2h full cool to Cozy Floor)
+          const decayableSpan = Math.max(0, 90 - floor);
+          const liveCoolPerSec = (decayableSpan / (HAPPINESS_LIVE_FULL_DECAY_HOURS * 3600)) * getPackTraitBonuses().moodDecayMult;
+          cur = Math.max(floor, cur - liveCoolPerSec * dt);
+        } else if (cur < floor) {
+          cur = floor;
+        }
+        state.packHappiness = Math.max(floor, Math.min(moodCap, cur));
       }
       const nextMoodInfo = getPackHappinessInfo();
       if (nextMoodInfo.tier !== prevMoodTier) {
