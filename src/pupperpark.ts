@@ -39,6 +39,7 @@ export interface RosterEntry {
   level: number;
   xp: number;
   bonesEarned: number;
+  digsCompleted?: number;
   isFavorite: boolean;
   isShiny: boolean;
   shinyColor: string | null;
@@ -128,7 +129,13 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
   const BASE_TILE_W = 96;
   const BASE_TILE_H = 48;
   const MAX_DOGS = 6;
-  const MAX_DOG_LEVEL = 100;
+  const MAX_DOG_LEVEL = 1000;
+  // Dig-count-based XP scale (independent of bone payout size so petting & play always stay meaningful)
+  const BASE_DIG_XP = 10;
+  const BASE_MAGIC_DIG_XP = 15;
+  const BASE_PET_XP = 8;
+  const BASE_SLIDE_XP = 12;
+  const BASE_TOY_PLAY_XP = 6;
   const MAX_BONES = 5000000;
   const PACK_GROWTH_DUG_CAP = 250000;
   const MAX_OFFLINE_SECONDS = 604800; // 7 days
@@ -144,23 +151,23 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
   const MAX_TOTAL_OFFLINE_RATE = 0.75;
 
   const BASE_DIG_POWER = 1;
-  const MAX_DIG_POWER = 25;
-  const TENNIS_BALL_FLAT_GAIN = 1;
+  const MAX_DIG_POWER = 15;
+  const TENNIS_BALL_FLAT_GAIN = 0.5;
 
   const BASE_SPEED_MULTIPLIER = 1;
   const FRISBEE_SPEED_STEP = 1.03;
   const MAX_SPEED_MULTIPLIER = 1.80;
 
-  const FRESH_BALL_COST = 20000;
+  const FRESH_BALL_COST = 45000;
   const FRESH_BALL_DURATION_MS = 30 * 60 * 1000;
-  const FRESH_BALL_POWER_BONUS = 10;
+  const FRESH_BALL_POWER_BONUS = 5;
 
-  const FRESH_DUCK_COST = 30000;
+  const FRESH_DUCK_COST = 60000;
   const FRESH_DUCK_DURATION_MS = 12 * 60 * 60 * 1000;
   const FRESH_DUCK_OFFLINE_BONUS = 0.10;
   const FRESH_DUCK_TREASURE_BONUS = 0.25;
 
-  const FRESH_FRISBEE_COST = 25000;
+  const FRESH_FRISBEE_COST = 55000;
   const FRESH_FRISBEE_DURATION_MS = 30 * 60 * 1000;
   const FRESH_FRISBEE_SPEED_BONUS = 0.25;
 
@@ -640,11 +647,13 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
   const WHISTLE_HAPPINESS_COOLDOWN_MS = 2 * 60 * 1000; // 2 minutes between Whistle mood boosts
   const PLAY_MOOD_COOLDOWN_MS = 15000; // 15s park-wide cooldown for autonomous toy chase & slide mood bumps
   const PET_HAPPINESS_COOLDOWN_MS = 20 * 60 * 1000; // 20 minutes per dog
+  const FREE_TREAT_HAPPINESS_GAIN = 10;
+  const FREE_TREAT_COOLDOWN_MS = 10 * 60 * 1000; // 10 minutes between free Happy Snaps
 
   const TOY_CONFIG: Record<string, { baseCost: number; costMult: number; priceCap: number }> = {
-    toyBones: { baseCost: 35, costMult: 1.26, priceCap: 10000 },
-    toyIdle: { baseCost: 250, costMult: 1.30, priceCap: 15000 },
-    toySpeed: { baseCost: 500, costMult: 1.32, priceCap: 20000 }
+    toyBones: { baseCost: 150, costMult: 1.32, priceCap: 25000 },
+    toyIdle: { baseCost: 600, costMult: 1.34, priceCap: 35000 },
+    toySpeed: { baseCost: 1200, costMult: 1.35, priceCap: 50000 }
   };
 
   const TREAT_CONFIG: Record<string, {
@@ -656,11 +665,11 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     paceBonus?: number;
     xpBonus?: number;
   }> = {
-    treatCup:   { baseCost: 350,  costMult: 1, priceCap: 350,  duration: 90, payoutBonus: 0.35 },
-    treatXp:    { baseCost: 400,  costMult: 1, priceCap: 400,  duration: 60, payoutBonus: 0, xpBonus: 1.00 },
-    treatKong:  { baseCost: 1200, costMult: 1, priceCap: 1200, duration: 20, payoutBonus: 0 },
-    treatFeast: { baseCost: 1500, costMult: 1, priceCap: 1500, duration: 90, payoutBonus: 0.50 },
-    treatBacon: { baseCost: 3500, costMult: 1, priceCap: 3500, duration: 60, payoutBonus: 0.35, paceBonus: 0.35 }
+    treatCup:   { baseCost: 1000, costMult: 1, priceCap: 1000, duration: 90, payoutBonus: 0.35 },
+    treatXp:    { baseCost: 1200, costMult: 1, priceCap: 1200, duration: 60, payoutBonus: 0, xpBonus: 1.00 },
+    treatKong:  { baseCost: 3000, costMult: 1, priceCap: 3000, duration: 20, payoutBonus: 0 },
+    treatFeast: { baseCost: 4000, costMult: 1, priceCap: 4000, duration: 90, payoutBonus: 0.50 },
+    treatBacon: { baseCost: 8500, costMult: 1, priceCap: 8500, duration: 60, payoutBonus: 0.35, paceBonus: 0.35 }
   };
 
   const STARTER_SHINY_ODDS = 1 / 325;
@@ -1290,6 +1299,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     isDraftingPerk: boolean;
     packHappiness: number;
     lastWhistleBoostAt: number;
+    lastFreeTreatAt: number;
     costs: Record<string, number>;
     breedEconomyVersion: number;
     lastSaveTime: number;
@@ -1352,6 +1362,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     isDraftingPerk: false,
     packHappiness: HAPPINESS_BASE_FLOOR,
     lastWhistleBoostAt: 0,
+    lastFreeTreatAt: 0,
     costs: {},
     breedEconomyVersion: BREED_ECONOMY_VERSION,
     lastSaveTime: Date.now()
@@ -1563,6 +1574,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       level: 1,
       xp: 0,
       bonesEarned: 0,
+      digsCompleted: 0,
       isFavorite: false,
       isShiny,
       shinyColor: shinyColor || null,
@@ -1584,6 +1596,14 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     return Math.max(0, PET_HAPPINESS_COOLDOWN_MS - (nowMs - last));
   }
 
+  function getFreeTreatCooldownMs(nowMs = Date.now()): number {
+    const last = typeof state.lastFreeTreatAt === 'number' && !Number.isNaN(state.lastFreeTreatAt)
+      ? state.lastFreeTreatAt
+      : 0;
+    if (last <= 0) return 0;
+    return Math.max(0, FREE_TREAT_COOLDOWN_MS - (nowMs - last));
+  }
+
   function formatPetCooldownShort(ms: number): string {
     const totalSec = Math.max(1, Math.ceil(ms / 1000));
     const mins = Math.floor(totalSec / 60);
@@ -1595,7 +1615,31 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
   }
 
   function getXpNeededForLevel(level: number): number {
-    return Math.floor(25 * Math.pow(1.2, Math.max(0, level - 1)));
+    const l = Math.max(1, Math.floor(level));
+    // Smooth dig-based progression curve (at 10 base XP per dig):
+    // Lv 1: 30 XP (3 digs), Lv 10: 209 XP (~21 digs), Lv 25: 662 XP (~66 digs), Lv 50: 1,763 XP, Lv 99: 4,932 XP
+    return Math.floor(30 + (l - 1) * 14 + Math.pow(l - 1, 1.75) * 1.15);
+  }
+
+  function grantDogXp(entry: RosterEntry, xpGain: number): boolean {
+    if (entry.level >= MAX_DOG_LEVEL) {
+      entry.level = MAX_DOG_LEVEL;
+      entry.xp = 0;
+      return false;
+    }
+    const safeGain = Math.max(1, Math.round(xpGain));
+    entry.xp = (entry.xp || 0) + safeGain;
+    let leveledUp = false;
+    while (entry.level < MAX_DOG_LEVEL && entry.xp >= getXpNeededForLevel(entry.level)) {
+      entry.xp -= getXpNeededForLevel(entry.level);
+      entry.level += 1;
+      leveledUp = true;
+    }
+    if (entry.level >= MAX_DOG_LEVEL) {
+      entry.level = MAX_DOG_LEVEL;
+      entry.xp = 0;
+    }
+    return leveledUp;
   }
 
   function getDogLevelBonusMult(entry: RosterEntry | null | undefined): number {
@@ -1905,7 +1949,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     let freshCount = 0;
     if (state.hasTennisBall) {
       ownedCount += 1;
-      floorBonus += 1 + Math.min(2, Math.floor(Math.max(0, state.digPower - BASE_DIG_POWER) / 10));
+      floorBonus += 1 + Math.min(2, Math.floor(Math.max(0, state.digPower - BASE_DIG_POWER) / 7));
       if (isFreshBallActive(now)) freshCount += 1;
     }
     if (state.hasDuck) {
@@ -2775,7 +2819,11 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       );
       const foundTreasure = Math.random() < offlineTreasureChance ? rollOfflineTreasure() : null;
 
-      const actualEarned = earned > 0 ? addRegularBones(earned) : 0;
+      const displayedBonesBefore = Math.floor(Math.max(0, Number(state.bones) || 0));
+      const rawBonesAdded = earned > 0 ? addRegularBones(earned) : 0;
+      const actualEarned = rawBonesAdded > 0
+        ? Math.max(1, Math.floor(Math.max(0, Number(state.bones) || 0)) - displayedBonesBefore)
+        : 0;
       const actualMagicEarned = rawMagicEarned > 0 ? addMagicBones(rawMagicEarned) : 0;
       const moodBeforeRounded = Math.round(currentMood);
       const moodAfterRounded = Math.round(nextMood);
@@ -3248,6 +3296,9 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         if (typeof state.lastWhistleBoostAt !== 'number' || Number.isNaN(state.lastWhistleBoostAt)) {
           state.lastWhistleBoostAt = 0;
         }
+        if (typeof state.lastFreeTreatAt !== 'number' || Number.isNaN(state.lastFreeTreatAt)) {
+          state.lastFreeTreatAt = 0;
+        }
         if (!state.dogs) state.dogs = {};
         if (!state.costs) state.costs = {};
         const rawEconomyVersion = typeof parsed.breedEconomyVersion === 'number' && !Number.isNaN(parsed.breedEconomyVersion)
@@ -3272,7 +3323,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         });
         Object.keys(TOY_CONFIG).forEach(t => {
           if (!state.costs[t]) state.costs[t] = TOY_CONFIG[t].baseCost;
-          else state.costs[t] = Math.min(TOY_CONFIG[t].priceCap, state.costs[t]);
+          else state.costs[t] = Math.max(TOY_CONFIG[t].baseCost, Math.min(TOY_CONFIG[t].priceCap, state.costs[t]));
         });
         Object.keys(TREAT_CONFIG).forEach(tr => {
           state.costs[tr] = TREAT_CONFIG[tr].baseCost;
@@ -3334,8 +3385,16 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       if (!entry.id) entry.id = `dog_${idx}_${Math.random().toString(36).slice(2, 6)}`;
       if (!entry.name) entry.name = generateDefaultName(entry.breed, idx + 1);
       if (typeof entry.level !== 'number' || entry.level < 1) entry.level = 1;
-      if (typeof entry.xp !== 'number' || entry.xp < 0) entry.xp = 0;
-      if (typeof entry.bonesEarned !== 'number' || entry.bonesEarned < 0) entry.bonesEarned = 0;
+      if (entry.level >= MAX_DOG_LEVEL) {
+        entry.level = MAX_DOG_LEVEL;
+        entry.xp = 0;
+      } else {
+        if (typeof entry.xp !== 'number' || Number.isNaN(entry.xp) || entry.xp < 0) entry.xp = 0;
+        const maxCarryXp = Math.max(0, getXpNeededForLevel(entry.level) - 1);
+        if (entry.xp > maxCarryXp) entry.xp = maxCarryXp;
+      }
+      if (typeof entry.bonesEarned !== 'number' || Number.isNaN(entry.bonesEarned) || entry.bonesEarned < 0) entry.bonesEarned = 0;
+      if (typeof entry.digsCompleted !== 'number' || Number.isNaN(entry.digsCompleted) || entry.digsCompleted < 0) entry.digsCompleted = 0;
       if (typeof entry.isFavorite !== 'boolean') entry.isFavorite = false;
       if (
         typeof entry.bonusPayout !== 'number' ||
@@ -3597,10 +3656,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
   function formatAwardedBones(amount: number): string {
     const safe = Math.max(0, Number(amount) || 0);
-    const roundedTenth = Math.round(safe * 10) / 10;
-    return Number.isInteger(roundedTenth)
-      ? roundedTenth.toLocaleString()
-      : roundedTenth.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    return Math.round(safe).toLocaleString();
   }
 
   function showOfflineModal(summary: AwayProgressSummary): void {
@@ -4592,7 +4648,9 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         <span class="roster-meta-sep" aria-hidden="true">|</span>
         <strong class="${gradeClass}">${stats.rollGrade}</strong>
         <span class="roster-meta-sep" aria-hidden="true">|</span>
-        <span>Dug <strong>${Math.floor(entry.bonesEarned).toLocaleString()}</strong> 🦴</span>
+        <span><strong>${Math.floor(entry.digsCompleted || 0).toLocaleString()}</strong> Digs</span>
+        <span class="roster-meta-sep" aria-hidden="true">|</span>
+        <span><strong>${Math.floor(entry.bonesEarned).toLocaleString()}</strong> 🦴</span>
       `;
 
       const bonusRow = document.createElement('div');
@@ -4602,7 +4660,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         <span>Pack Growth <strong>${stats.packGrowth.toFixed(2)}x</strong> <em>(+${stats.bonusScaling.toFixed(2)})</em></span>
         <span>XP <strong>${stats.quickLearner.toFixed(2)}x</strong> <em>(+${stats.bonusXp.toFixed(2)})</em></span>
         ${entry.isShiny ? `<span class="lvl-bonus">Shiny <strong>+${SHINY_MAGIC_BONE_BONUS} ✨</strong></span>` : ''}
-        <span>${isMaxLevel ? `<strong>Max Lv.</strong>` : `Next Lv. <strong>${Math.floor(entry.xp)}/${xpNeeded}</strong>`}</span>
+        <span>${isMaxLevel ? `<strong>Max Lv.</strong>` : `Next Lv. <strong>${Math.floor(entry.xp).toLocaleString()}/${xpNeeded.toLocaleString()}</strong>`}</span>
       `;
 
       mainCol.appendChild(topRow);
@@ -5479,6 +5537,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       isDraftingPerk: false,
       packHappiness: HAPPINESS_BASE_FLOOR,
       lastWhistleBoostAt: 0,
+      lastFreeTreatAt: 0,
       costs: {},
       breedEconomyVersion: BREED_ECONOMY_VERSION,
       lastSaveTime: resetNow
@@ -7503,18 +7562,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       const entry = this.getRosterEntry();
       if (entry && entry.level < MAX_DOG_LEVEL) {
         const stats = getEffectiveBreedStats(entry, this.breed);
-        const xpGain = Math.max(2, Math.round(4 * (trait.playXpMult ?? 1) * stats.quickLearner * getActiveXpBoostMult()));
-        entry.xp = (entry.xp || 0) + xpGain;
-        let leveledUp = false;
-        while (entry.level < MAX_DOG_LEVEL && entry.xp >= getXpNeededForLevel(entry.level)) {
-          entry.xp -= getXpNeededForLevel(entry.level);
-          entry.level += 1;
-          leveledUp = true;
-        }
-        if (entry.level >= MAX_DOG_LEVEL) {
-          entry.level = MAX_DOG_LEVEL;
-          entry.xp = 0;
-        }
+        const xpGain = Math.max(4, Math.round(BASE_SLIDE_XP * (trait.playXpMult ?? 1) * stats.quickLearner * getActiveXpBoostMult()));
+        const leveledUp = grantDogXp(entry, xpGain);
         addFloatingText(pos.x, pos.y - 34 * scale, leveledUp ? 'Level Up!' : `Wheee! +${xpGain} XP`, '#ffeaa7');
         if (leveledUp) {
           sfx.upgrade();
@@ -7678,18 +7727,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         this.petCooldown = 3.0;
         if (entry && entry.level < MAX_DOG_LEVEL) {
           const stats = getEffectiveBreedStats(entry, this.breed);
-          const xpGain = Math.max(1, Math.round(stats.quickLearner * getActiveXpBoostMult() * (trait.petXpMult ?? 1)));
-          entry.xp = (entry.xp || 0) + xpGain;
-          let leveledUp = false;
-          while (entry.level < MAX_DOG_LEVEL && entry.xp >= getXpNeededForLevel(entry.level)) {
-            entry.xp -= getXpNeededForLevel(entry.level);
-            entry.level += 1;
-            leveledUp = true;
-          }
-          if (entry.level >= MAX_DOG_LEVEL) {
-            entry.level = MAX_DOG_LEVEL;
-            entry.xp = 0;
-          }
+          const xpGain = Math.max(2, Math.round(BASE_PET_XP * stats.quickLearner * getActiveXpBoostMult() * (trait.petXpMult ?? 1)));
+          const leveledUp = grantDogXp(entry, xpGain);
           const petMsg = leveledUp
             ? 'Level Up!'
             : gaveHappiness
@@ -8522,29 +8561,17 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       const boneValue = this.isMagicDig ? magicYield : Math.round((amount + breakEvenBonus) * 10) / 10;
 
       if (entry) {
+        entry.digsCompleted = (entry.digsCompleted || 0) + 1;
         if (!this.isMagicDig) {
           entry.bonesEarned = (entry.bonesEarned || 0) + amount;
         }
         if (entry.level < MAX_DOG_LEVEL) {
-          const baseXp = this.isMagicDig ? 2 : Math.max(1, Math.floor(amount));
+          // Flat dig-count-based XP (independent of bone payout amount)
+          const baseXp = this.isMagicDig ? BASE_MAGIC_DIG_XP : BASE_DIG_XP;
           const xpTreatMult = getActiveXpBoostMult();
           const weatherXpMult = weatherMatch?.xpBonus ? 1 + weatherMatch.xpBonus : 1;
-          const xpGain = Math.max(
-            1,
-            Math.round(baseXp * stats.quickLearner * xpTreatMult * weatherXpMult * (this.isMagicDig ? 2 : 1))
-          );
-          entry.xp = (entry.xp || 0) + xpGain;
-
-          let leveledUp = false;
-          while (entry.level < MAX_DOG_LEVEL && entry.xp >= getXpNeededForLevel(entry.level)) {
-            entry.xp -= getXpNeededForLevel(entry.level);
-            entry.level += 1;
-            leveledUp = true;
-          }
-          if (entry.level >= MAX_DOG_LEVEL) {
-            entry.level = MAX_DOG_LEVEL;
-            entry.xp = 0;
-          }
+          const xpGain = Math.max(1, Math.round(baseXp * stats.quickLearner * xpTreatMult * weatherXpMult));
+          const leveledUp = grantDogXp(entry, xpGain);
           if (leveledUp) {
             sfx.upgrade();
             addFloatingText(pos.x, pos.y - 38 * scale, 'Level Up!', '#ffeaa7');
@@ -11768,16 +11795,6 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       const maxDur = getTreatMaxDuration(treatKey);
       const prevTimer = Number(state[cfg.timerKey]) || 0;
       const nextTimer = Math.min(maxDur, prevTimer + cfg.duration);
-      const addedDuration = Math.max(0, nextTimer - prevTimer);
-      if (isBreakEvenTreatKey(treatKey) && addedDuration > 0) {
-        if (!state.treatBreakEven) {
-          state.treatBreakEven = createEmptyTreatBreakEven();
-        }
-        const naturalExtra = getTreatNaturalExtraForDuration(treatKey, addedDuration);
-        if (naturalExtra < cost) {
-          state.treatBreakEven[treatKey] = (state.treatBreakEven[treatKey] || 0) + cost;
-        }
-      }
       state[cfg.timerKey] = nextTimer;
       state[cfg.stackKey] = Math.min(TIMED_TREAT_MAX_STACKS, Math.max(1, Math.ceil(nextTimer / cfg.duration)));
       if (treatKey === 'feast') {
@@ -11789,6 +11806,41 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       saveGame();
     }
   }
+
+  document.getElementById('btnTreatFree')?.addEventListener('click', () => {
+    initAudio();
+    const now = Date.now();
+    if (getFreeTreatCooldownMs(now) > 0) return;
+    state.lastFreeTreatAt = now;
+    const prevMood = Math.round(state.packHappiness || getCozyFloor());
+    addPackHappiness(FREE_TREAT_HAPPINESS_GAIN);
+    const nextMood = Math.round(state.packHappiness || getCozyFloor());
+    const gainedMood = Math.max(0, nextMood - prevMood);
+    sfx.treat();
+    const s = getScale();
+    dogs.forEach(d => {
+      if (d.state === 'SLEEP') return;
+      d.petBounce = Math.max(d.petBounce, 0.35);
+      const p = gridToScreen(d.gx, d.gy);
+      for (let i = 0; i < 3; i++) {
+        particles.push({
+          x: p.x + (Math.random() - 0.5) * 18 * s,
+          y: p.y - (20 + d.slideElevation) * s,
+          vx: (Math.random() - 0.5) * 28,
+          vy: -40 - Math.random() * 20,
+          life: 0.75,
+          maxLife: 0.75,
+          color: '#ff9ff3',
+          size: 5,
+          isHeart: true
+        });
+      }
+    });
+    const moodText = gainedMood > 0 ? `♥ +${gainedMood} Mood!` : '♥ Happy Pack!';
+    addFloatingText(viewportW / 2, Math.max(110, viewportH * 0.24), moodText, '#ff9ff3');
+    updateUI();
+    saveGame();
+  });
 
   document.getElementById('btnToyBones')?.addEventListener('click', () => {
     initAudio();
@@ -11809,7 +11861,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     const econ = TOY_CONFIG.toyBones;
     if (state.bones >= state.costs.toyBones) {
       spendRegularBones(state.costs.toyBones);
-      state.digPower = Math.min(MAX_DIG_POWER, Math.round(state.digPower + TENNIS_BALL_FLAT_GAIN));
+      state.digPower = Math.min(MAX_DIG_POWER, Math.round((state.digPower + TENNIS_BALL_FLAT_GAIN) * 10) / 10);
       state.costs.toyBones = computeNextCappedCost(state.costs.toyBones, econ.costMult, econ.priceCap);
       state.hasTennisBall = true;
       addPackHappiness(4);
@@ -12210,7 +12262,14 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     return baseStr;
   }
 
-  function refreshTreatButtonStates(): void {
+  function refreshTreatButtonStates(nowMs = Date.now()): void {
+    const freeRemMs = getFreeTreatCooldownMs(nowMs);
+    const btnTreatFree = document.getElementById('btnTreatFree') as HTMLButtonElement | null;
+    if (btnTreatFree) btnTreatFree.disabled = freeRemMs > 0;
+    const costTreatFreeEl = document.getElementById('costTreatFree');
+    if (costTreatFreeEl) {
+      costTreatFreeEl.textContent = freeRemMs > 0 ? formatPetCooldownShort(freeRemMs) : 'Free';
+    }
     const btnTreatKong = document.getElementById('btnTreatKong') as HTMLButtonElement | null;
     if (btnTreatKong) btnTreatKong.disabled = state.bones < TREAT_CONFIG.treatKong.baseCost || isTreatAtMaxDuration('kong');
     const btnTreatBacon = document.getElementById('btnTreatBacon') as HTMLButtonElement | null;
@@ -12223,49 +12282,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     if (btnTreatXpEl) btnTreatXpEl.disabled = state.bones < TREAT_CONFIG.treatXp.baseCost || isTreatAtMaxDuration('xp');
   }
 
-  function refreshTreatRoiHints(): void {
-    const setRoiLine = (elId: string, text: string, tone: 'positive' | 'caution' | 'utility') => {
-      const el = document.getElementById(elId);
-      if (!el) return;
-      el.textContent = text;
-      el.className = `treat-roi ${tone}`;
-    };
-
-    const cupBase = getEstimatedPackRates({ cupActive: false }).bonesPerMin;
-    const cupBuffed = getEstimatedPackRates({ cupActive: true }).bonesPerMin;
-    const cupNet = Math.round((cupBuffed - cupBase) * (TREAT_CONFIG.treatCup.duration / 60) - TREAT_CONFIG.treatCup.baseCost);
-    if (cupNet > 0) {
-      setRoiLine('roiTreatCup', `Est. +${cupNet.toLocaleString()} 🦴 profit per 90s`, 'positive');
-    } else {
-      setRoiLine('roiTreatCup', `Breaks even now | Profits at 667+ 🦴/min (${Math.round(cupBase).toLocaleString()}/m)`, 'caution');
-    }
-
-    const feastBase = getEstimatedPackRates({ feastActive: false }).bonesPerMin;
-    const feastBuffed = getEstimatedPackRates({ feastActive: true }).bonesPerMin;
-    const feastNet = Math.round((feastBuffed - feastBase) * (TREAT_CONFIG.treatFeast.duration / 60) - TREAT_CONFIG.treatFeast.baseCost);
-    if (feastNet > 0) {
-      setRoiLine('roiTreatFeast', `Est. +${feastNet.toLocaleString()} 🦴 profit per 90s`, 'positive');
-    } else {
-      setRoiLine('roiTreatFeast', `Breaks even now | Profits at 2,000+ 🦴/min (${Math.round(feastBase).toLocaleString()}/m)`, 'caution');
-    }
-
-    const baconBase = getEstimatedPackRates({ baconActive: false }).bonesPerMin;
-    const baconBuffed = getEstimatedPackRates({ baconActive: true }).bonesPerMin;
-    const baconNet = Math.round((baconBuffed - baconBase) * (TREAT_CONFIG.treatBacon.duration / 60) - TREAT_CONFIG.treatBacon.baseCost);
-    if (baconNet > 0) {
-      setRoiLine('roiTreatBacon', `Est. +${baconNet.toLocaleString()} 🦴 profit per 60s | +35% pace & drops`, 'positive');
-    } else {
-      setRoiLine('roiTreatBacon', `Breaks even now (+35% pace) | Profits at 4,255+ 🦴/min (${Math.round(baconBase).toLocaleString()}/m)`, 'caution');
-    }
-
-    const kongRates = getEstimatedPackRates({ kongActive: true });
-    const estKongPackMagic = Math.max(1, Math.round((kongRates.magicPerHour / 3600) * TREAT_CONFIG.treatKong.duration));
-    setRoiLine('roiTreatKong', `Est. ~${estKongPackMagic} ✨ from pack | +1 ✨ per tap`, 'utility');
-
-    setRoiLine('roiTreatXp', '2.0x XP on all digs & pets | Best for leveling pups', 'utility');
-  }
-
-  function refreshTreatButtonTimers(): void {
+  function refreshTreatButtonTimers(nowMs = Date.now()): void {
     const costTreatXpEl = document.getElementById('costTreatXp');
     if (costTreatXpEl) {
       costTreatXpEl.textContent = formatTimedTreatCostLabel(TREAT_CONFIG.treatXp.baseCost, state.xpTreatTimer, 'xp', 'treatXp');
@@ -12291,7 +12308,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       costTreatBaconEl.textContent = formatTimedTreatCostLabel(TREAT_CONFIG.treatBacon.baseCost, state.baconTimer, 'bacon', 'treatBacon');
     }
 
-    refreshTreatButtonStates();
+    refreshTreatButtonStates(nowMs);
 
     const activeBuffsBar = document.getElementById('activeBuffsBar');
     if (activeBuffsBar) {
@@ -12306,10 +12323,13 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     }
   }
 
+  function formatCleanDecimal(val: number): string {
+    const rounded = Math.round(Math.max(0, Number(val) || 0) * 10) / 10;
+    return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  }
+
   function formatToyFlatBadge(bonusVal: number, totalVal: number): string {
-    const safeBonus = Math.max(0, Math.round(Number(bonusVal) || 0));
-    const safeTotal = Math.max(0, Math.round(Number(totalVal) || 0));
-    return `+${safeBonus} | ${safeTotal}`;
+    return `+${formatCleanDecimal(bonusVal)} | ${formatCleanDecimal(totalVal)}`;
   }
 
   function formatToyBoostBadge(bonusRatio: number, totalRatio: number): string {
@@ -12384,19 +12404,19 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     if (descToyBones) {
       descToyBones.textContent = atDigPowerCap
         ? `Maxed (${MAX_DIG_POWER})! Grab a Fresh Ball for +${FRESH_BALL_POWER_BONUS} Dig Power (${MAX_DIG_POWER + FRESH_BALL_POWER_BONUS} total) for 30m, +${FRESH_TOY_HAPPINESS_GAIN} Mood & +${FRESH_TOY_COZY_FLOOR_BONUS}% Cozy Floor. Counts toward offline digs too.`
-        : '+1 Dig Power per buy, up to max 25 (price caps at 10,000 🦴). Unlocks Fresh Ball boosts at max!';
+        : `+${TENNIS_BALL_FLAT_GAIN} Dig Power per buy, up to max ${MAX_DIG_POWER} (price caps at ${TOY_CONFIG.toyBones.priceCap.toLocaleString()} 🦴). Unlocks Fresh Ball boosts at max!`;
     }
     const descToyIdle = document.getElementById('descToyIdle');
     if (descToyIdle) {
       descToyIdle.textContent = atDuckCap
         ? `Maxed (+20%)! Grab a Fresh Duck for +10% Offline Yield (up to 75% cap) & +25% Offline Treasure odds for 12h, +${FRESH_TOY_HAPPINESS_GAIN} Mood & +${FRESH_TOY_COZY_FLOOR_BONUS}% Cozy Floor.`
-        : 'Boosts base offline bone yield by +1% per buy, from 10% up to 30% (+20% max from toy; price caps at 15,000 🦴). Dog abilities lift total offline yield up to 75%. Unlocks Fresh Duck boosts at max!';
+        : `Boosts base offline bone yield by +1% per buy, from 10% up to 30% (+20% max from toy; price caps at ${TOY_CONFIG.toyIdle.priceCap.toLocaleString()} 🦴). Dog abilities lift total offline yield up to 75%. Unlocks Fresh Duck boosts at max!`;
     }
     const descToySpeed = document.getElementById('descToySpeed');
     if (descToySpeed) {
       descToySpeed.textContent = atSpeedCap
         ? `Maxed (${MAX_SPEED_MULTIPLIER.toFixed(2)}x)! Grab a Fresh Frisbee for +${FRESH_FRISBEE_SPEED_BONUS.toFixed(2)}x Pack Dig Multiplier (${(MAX_SPEED_MULTIPLIER + FRESH_FRISBEE_SPEED_BONUS).toFixed(2)}x total) for 30m, +${FRESH_TOY_HAPPINESS_GAIN} Mood & +${FRESH_TOY_COZY_FLOOR_BONUS}% Cozy Floor. Counts toward offline digs too.`
-        : "Boosts the pack's dig multiplier by +3% per buy, up to 1.80x (price caps at 20,000 🦴). Unlocks Fresh Frisbee boosts at max!";
+        : `Boosts the pack's dig multiplier by +3% per buy, up to ${MAX_SPEED_MULTIPLIER.toFixed(2)}x (price caps at ${TOY_CONFIG.toySpeed.priceCap.toLocaleString()} 🦴). Unlocks Fresh Frisbee boosts at max!`;
     }
 
     const nameToyBones = document.getElementById('nameToyBones');
@@ -12757,7 +12777,6 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     refreshMoodHUD();
 
     refreshTreatButtonStates();
-    refreshTreatRoiHints();
 
     if (pendingRerollDogId && rerollModal && rerollModal.style.display === 'flex') {
       const activeRerollDog = state.roster.find(d => d.id === pendingRerollDogId);
@@ -13102,6 +13121,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
   let lastRosterUiRefresh = 0;
   let lastMoodUiRefresh = 0;
   let lastFreshToyTickSec = 0;
+  let lastFreeTreatTickSec = -1;
 
   function loop(now: number): void {
     try {
@@ -13230,6 +13250,18 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         }
       }
 
+      const freeTreatRemMs = getFreeTreatCooldownMs(freshNowMs);
+      if (freeTreatRemMs > 0) {
+        const freeSec = Math.floor(freshNowMs / 1000);
+        if (freeSec !== lastFreeTreatTickSec) {
+          lastFreeTreatTickSec = freeSec;
+          refreshTreatButtonStates(freshNowMs);
+        }
+      } else if (lastFreeTreatTickSec !== -1) {
+        lastFreeTreatTickSec = -1;
+        refreshTreatButtonStates(freshNowMs);
+      }
+
       if (state.feastAnimTimer > 0) state.feastAnimTimer = Math.max(0, state.feastAnimTimer - dt);
 
       // Update Pack Happiness gentle trickle (treats) or cooldown (idle toward Cozy Floor)
@@ -13290,18 +13322,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
           const entry = walker.getRosterEntry();
           if (entry && entry.level < MAX_DOG_LEVEL) {
             const stats = getEffectiveBreedStats(entry, walker.breed);
-            const xpGain = Math.max(2, Math.round(2 * trait.playXpMult * stats.quickLearner * getActiveXpBoostMult()));
-            entry.xp = (entry.xp || 0) + xpGain;
-            let leveledUp = false;
-            while (entry.level < MAX_DOG_LEVEL && entry.xp >= getXpNeededForLevel(entry.level)) {
-              entry.xp -= getXpNeededForLevel(entry.level);
-              entry.level += 1;
-              leveledUp = true;
-            }
-            if (entry.level >= MAX_DOG_LEVEL) {
-              entry.level = MAX_DOG_LEVEL;
-              entry.xp = 0;
-            }
+            const xpGain = Math.max(4, Math.round(BASE_TOY_PLAY_XP * trait.playXpMult * stats.quickLearner * getActiveXpBoostMult()));
+            const leveledUp = grantDogXp(entry, xpGain);
             const pos = gridToScreen(walker.gx, walker.gy);
             addFloatingText(pos.x, pos.y - 34 * getScale(), leveledUp ? 'Level Up!' : `Bounce! +${xpGain} XP`, '#ffeaa7');
             if (leveledUp) {

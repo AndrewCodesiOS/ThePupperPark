@@ -483,33 +483,33 @@
           <div class="shop-card">
             <div class="shop-info">
               <h3>Tennis Ball <span id="ballCurrentBoost" class="toy-live-badge">+0 | 1</span></h3>
-              <p id="descToyBones">+1 Dig Power per buy, up to max 25 (price caps at 10,000 🦴). Unlocks Fresh Ball boosts at max!</p>
+              <p id="descToyBones">+0.5 Dig Power per buy, up to max 15 (price caps at 25,000 🦴). Unlocks Fresh Ball boosts at max!</p>
             </div>
             <button type="button" class="action-btn" id="btnToyBones">
               <span class="btn-name" id="nameToyBones">Get Toy</span>
-              <span class="btn-cost" id="costToyBones">35 🦴</span>
+              <span class="btn-cost" id="costToyBones">150 🦴</span>
             </button>
           </div>
 
           <div class="shop-card">
             <div class="shop-info">
               <h3>Rubber Duck <span id="duckCurrentBoost" class="toy-live-badge">+0% | 10%</span></h3>
-              <p id="descToyIdle">Boosts base offline bone yield by +1% per buy, from 10% up to 30% (+20% max from toy; price caps at 15,000 🦴). Dog abilities lift total offline yield up to 75%. Unlocks Fresh Duck boosts at max!</p>
+              <p id="descToyIdle">Boosts base offline bone yield by +1% per buy, from 10% up to 30% (+20% max from toy; price caps at 35,000 🦴). Dog abilities lift total offline yield up to 75%. Unlocks Fresh Duck boosts at max!</p>
             </div>
             <button type="button" class="action-btn" id="btnToyIdle">
               <span class="btn-name" id="nameToyIdle">Get Toy</span>
-              <span class="btn-cost" id="costToyIdle">250 🦴</span>
+              <span class="btn-cost" id="costToyIdle">600 🦴</span>
             </button>
           </div>
 
           <div class="shop-card">
             <div class="shop-info">
               <h3>Frisbee <span id="frisbeeCurrentBoost" class="toy-live-badge">+0% | 100%</span></h3>
-              <p id="descToySpeed">Boosts the pack's dig multiplier by +3% per buy, up to 1.80x (price caps at 20,000 🦴). Unlocks Fresh Frisbee boosts at max!</p>
+              <p id="descToySpeed">Boosts the pack's dig multiplier by +3% per buy, up to 1.80x (price caps at 50,000 🦴). Unlocks Fresh Frisbee boosts at max!</p>
             </div>
             <button type="button" class="action-btn" id="btnToySpeed">
               <span class="btn-name" id="nameToySpeed">Get Toy</span>
-              <span class="btn-cost" id="costToySpeed">500 🦴</span>
+              <span class="btn-cost" id="costToySpeed">1,200 🦴</span>
             </button>
           </div>
         </div>
@@ -518,13 +518,23 @@
         <div class="tab-content" id="tab-treats">
           <div class="shop-card">
             <div class="shop-info">
+              <h3>Happy Snaps</h3>
+              <p>Free pack snack (10m cooldown) | Grants +10 Pack Happiness to cheer up your pups.</p>
+            </div>
+            <button type="button" class="action-btn" id="btnTreatFree">
+              <span class="btn-name">Give Snaps</span>
+              <span class="btn-cost" id="costTreatFree">Free</span>
+            </button>
+          </div>
+
+          <div class="shop-card">
+            <div class="shop-info">
               <h3>Pup Cups</h3>
               <p>90s per use (max 7.5m) | +35% Bone Value (1.35x) on all digs &amp; grass taps.</p>
-              <div class="treat-roi" id="roiTreatCup">Needs 667+ 🦴/min to profit</div>
             </div>
             <button type="button" class="action-btn" id="btnTreatCup">
               <span class="btn-name">Feed Pup Cups</span>
-              <span class="btn-cost" id="costTreatCup">350 🦴</span>
+              <span class="btn-cost" id="costTreatCup">1,000 🦴</span>
             </button>
           </div>
 
@@ -532,11 +542,10 @@
             <div class="shop-info">
               <h3>XP Biscuits</h3>
               <p>60s per use (max 5m) | 2.0x XP (+100%) on all digs &amp; pets to level pups fast.</p>
-              <div class="treat-roi utility" id="roiTreatXp">2.0x XP on all digs &amp; pets | Best for leveling pups</div>
             </div>
             <button type="button" class="action-btn" id="btnTreatXp">
               <span class="btn-name">Give Biscuits</span>
-              <span class="btn-cost" id="costTreatXp">400 🦴</span>
+              <span class="btn-cost" id="costTreatXp">1,200 🦴</span>
             </button>
           </div>
 
@@ -544,11 +553,10 @@
             <div class="shop-info">
               <h3>Peanut Butter Kongs</h3>
               <p>20s per use (max 100s) | Bonus +1 ✨ Magic Bone on every dig &amp; tap alongside regular bones.</p>
-              <div class="treat-roi utility" id="roiTreatKong">Est. ~16 ✨ from pack | +1 ✨ per tap</div>
             </div>
             <button type="button" class="action-btn" id="btnTreatKong">
               <span class="btn-name">Toss Kongs</span>
-              <span class="btn-cost" id="costTreatKong">1,200 🦴</span>
+              <span class="btn-cost" id="costTreatKong">3,000 🦴</span>
             </button>
           </div>
 
@@ -556,11 +564,10 @@
             <div class="shop-info">
               <h3>Jumbo Meaty Bones</h3>
               <p>90s per use (max 7.5m) | +50% Dig Payout (1.50x) + pack jump celebration.</p>
-              <div class="treat-roi" id="roiTreatFeast">Needs 2,000+ 🦴/min to profit</div>
             </div>
             <button type="button" class="action-btn" id="btnTreatFeast">
               <span class="btn-name">Serve Feast</span>
-              <span class="btn-cost" id="costTreatFeast">1,500 🦴</span>
+              <span class="btn-cost" id="costTreatFeast">4,000 🦴</span>
             </button>
           </div>
 
@@ -568,11 +575,10 @@
             <div class="shop-info">
               <h3>Bacon Chew Stick</h3>
               <p>60s per use (max 5m) | Park Frenzy: +35% walk &amp; dig pace + 35% dig payout (1.82x rate).</p>
-              <div class="treat-roi" id="roiTreatBacon">Needs 4,255+ 🦴/min to profit</div>
             </div>
             <button type="button" class="action-btn" id="btnTreatBacon">
               <span class="btn-name">Give Bacon</span>
-              <span class="btn-cost" id="costTreatBacon">3,500 🦴</span>
+              <span class="btn-cost" id="costTreatBacon">8,500 🦴</span>
             </button>
           </div>
         </div>
