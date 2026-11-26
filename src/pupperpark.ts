@@ -170,8 +170,10 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
   const BASE_MAGIC_CHANCE = 0.15;
   const MAX_MAGIC_CHANCE = 0.75;
 
-  const MIN_USER_ZOOM = 0.65;
-  const MAX_USER_ZOOM = 2.40;
+  const MIN_USER_ZOOM = 0.70;
+  const MAX_USER_ZOOM = 1.95;
+  const MAX_CAMERA_VELOCITY = 4.2;
+  const MIN_PINCH_DIST = 26;
 
   const BONUS_PAYOUT_MAX = 0.25;
   const BONUS_SCALING_MAX = 0.16;
@@ -186,8 +188,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     { gx: 0, gy: 1 },
     { gx: 1, gy: 1 }
   ];
-  const WATER_BOWL_POS = { gx: 1.96, gy: 1.44 };
-  const GRAND_WATER_BOWL_POS = { gx: 1.96, gy: 1.42 };
+  const WATER_BOWL_POS = { gx: 2.10, gy: 1.46 };
+  const GRAND_WATER_BOWL_POS = { gx: 2.10, gy: 1.44 };
   const STARTER_TREE_TILE = { gx: 5, gy: 1 };
 
   const DECOR_TYPES: DecorType[] = [
@@ -4477,6 +4479,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       nameInput.className = 'roster-name-input';
       nameInput.value = entry.name;
       nameInput.maxLength = 24;
+      nameInput.enterKeyHint = 'done';
+      nameInput.autocomplete = 'off';
       nameInput.setAttribute('aria-label', `Name for ${breedName}`);
 
       const commitName = () => {
@@ -4485,8 +4489,29 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         nameInput.value = entry.name;
         requestSave();
       };
+      const recoverViewportAfterInput = () => {
+        resetPhantomScroll();
+        scheduleResize();
+        window.setTimeout(() => {
+          resetPhantomScroll();
+          resize(true);
+        }, 80);
+        window.setTimeout(() => {
+          resetPhantomScroll();
+          resize(true);
+        }, 260);
+      };
       nameInput.addEventListener('change', commitName);
-      nameInput.addEventListener('blur', commitName);
+      nameInput.addEventListener('keydown', (ev: KeyboardEvent) => {
+        if (ev.key === 'Enter') {
+          ev.preventDefault();
+          nameInput.blur();
+        }
+      });
+      nameInput.addEventListener('blur', () => {
+        commitName();
+        recoverViewportAfterInput();
+      });
 
       topRow.appendChild(nameInput);
 
@@ -5485,7 +5510,6 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
   function resetPhantomScroll(): void {
     const activeTag = document.activeElement?.tagName;
     if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') return;
-    if (window.visualViewport && window.visualViewport.scale > 1.02) return;
     if (window.scrollX !== 0 || window.scrollY !== 0) {
       window.scrollTo(0, 0);
     }
@@ -5717,33 +5741,138 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
   // Multi-touch pointer tracking for pinch-to-zoom + drag rotation + tap + hold whistle
   const activePointers = new Map<number, { x: number; y: number }>();
+  let pinchPointerIds: [number, number] | null = null;
   let pinchStartDist = 0;
   let pinchStartZoom = 1;
+  let hadMultiTouchInGesture = false;
 
   let isRotating = false;
+  let rotatingPointerId: number | null = null;
   let lastMouseX = 0;
   let lastMouseY = 0;
+  let lastRotateTime = 0;
   let dragTotalDist = 0;
   let holdTimer: ReturnType<typeof setTimeout> | null = null;
   let holdStartTime = 0;
   let holdPosition = { x: 0, y: 0 };
   const HOLD_DURATION = 900;
 
+  function clampUserZoom(z: number): number {
+    if (!Number.isFinite(z)) return 1;
+    return Math.max(MIN_USER_ZOOM, Math.min(MAX_USER_ZOOM, z));
+  }
+
+  function isEditableTarget(target: EventTarget | null): boolean {
+    if (!(target instanceof HTMLElement)) return false;
+    const tag = target.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable;
+  }
+
+  function clearHoldTimer(): void {
+    if (holdTimer) {
+      clearTimeout(holdTimer);
+      holdTimer = null;
+    }
+  }
+
+  function resetCanvasGestureState(zeroVelocity = true): void {
+    activePointers.clear();
+    pinchPointerIds = null;
+    pinchStartDist = 0;
+    hadMultiTouchInGesture = false;
+    isRotating = false;
+    rotatingPointerId = null;
+    isPaintingStroke = false;
+    lastPaintedTileKey = null;
+    clearHoldTimer();
+    if (zeroVelocity) {
+      cameraVelocity = 0;
+    }
+  }
+
+  function syncPinchAnchor(): boolean {
+    if (activePointers.size < 2) {
+      pinchPointerIds = null;
+      pinchStartDist = 0;
+      return false;
+    }
+    const entries = Array.from(activePointers.entries());
+    const [idA, ptA] = entries[0];
+    const [idB, ptB] = entries[1];
+    pinchPointerIds = [idA, idB];
+    const dist = Math.hypot(ptB.x - ptA.x, ptB.y - ptA.y);
+    pinchStartDist = dist >= MIN_PINCH_DIST ? dist : 0;
+    pinchStartZoom = userZoom;
+    return true;
+  }
+
   canvas.addEventListener('wheel', (e: WheelEvent) => {
     e.preventDefault();
-    const factor = e.deltaY > 0 ? 0.92 : 1.08;
-    userZoom = Math.max(MIN_USER_ZOOM, Math.min(MAX_USER_ZOOM, userZoom * factor));
+    const step = Math.max(-0.14, Math.min(0.14, -e.deltaY * 0.0012));
+    const factor = step === 0 ? (e.deltaY > 0 ? 0.92 : 1.08) : 1 + step;
+    userZoom = clampUserZoom(userZoom * factor);
+    state.zoomLevel = userZoom;
     dismissOnboardingHint();
     requestSave();
   }, { passive: false });
 
-  // Prevent iOS Safari native page-pinch from competing with in-park canvas pinch/rotation,
-  // while leaving menus, drawers, and modals freely zoomable for accessibility.
-  const preventCanvasSafariGesture = (e: Event): void => {
+  // Prevent iOS Safari native page-pinch / zoom gestures everywhere in the app
+  // so stray multi-touch near HUD chrome never gets the browser viewport stuck zoomed in.
+  const preventNativeSafariGesture = (e: Event): void => {
     e.preventDefault();
   };
-  canvas.addEventListener('gesturestart', preventCanvasSafariGesture, { passive: false });
-  canvas.addEventListener('gesturechange', preventCanvasSafariGesture, { passive: false });
+  document.addEventListener('gesturestart', preventNativeSafariGesture, { passive: false });
+  document.addEventListener('gesturechange', preventNativeSafariGesture, { passive: false });
+  document.addEventListener('gestureend', preventNativeSafariGesture, { passive: false });
+
+  // Suppress native long-press context menu and text-selection magnifier outside text inputs.
+  document.addEventListener('contextmenu', (e: MouseEvent) => {
+    if (!isEditableTarget(e.target)) {
+      e.preventDefault();
+    }
+  });
+  document.addEventListener('selectstart', (e: Event) => {
+    if (!isEditableTarget(e.target)) {
+      e.preventDefault();
+    }
+  });
+  document.addEventListener('touchstart', (e: TouchEvent) => {
+    if (e.touches.length >= 2) {
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  // Suppress iOS WebKit long-press magnifying loupe & native pinch/scroll directly on the park canvas.
+  canvas.addEventListener('touchstart', (e: TouchEvent) => {
+    e.preventDefault();
+    const activeEl = document.activeElement;
+    if (activeEl instanceof HTMLElement && isEditableTarget(activeEl)) {
+      activeEl.blur();
+    }
+  }, { passive: false });
+  canvas.addEventListener('touchmove', (e: TouchEvent) => {
+    e.preventDefault();
+  }, { passive: false });
+  let lastPointerDownAt = 0;
+  const syncTouchEndCleanup = (e: TouchEvent): void => {
+    if (e.touches.length === 0) {
+      const endedAt = performance.now();
+      window.setTimeout(() => {
+        if (activePointers.size > 0 && lastPointerDownAt <= endedAt) {
+          resetCanvasGestureState(true);
+        }
+      }, 60);
+    }
+  };
+  canvas.addEventListener('touchend', syncTouchEndCleanup, { passive: true });
+  canvas.addEventListener('touchcancel', syncTouchEndCleanup, { passive: true });
+
+  window.addEventListener('blur', () => resetCanvasGestureState(true));
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      resetCanvasGestureState(true);
+    }
+  });
 
   let isPaintingStroke = false;
   let lastPaintedTileKey: string | null = null;
@@ -5791,20 +5920,29 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
   canvas.addEventListener('pointerdown', (e: PointerEvent) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
+    lastPointerDownAt = performance.now();
+    if (e.pointerType === 'mouse' && activePointers.size > 0) {
+      resetCanvasGestureState(true);
+    }
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    try { canvas.setPointerCapture(e.pointerId); } catch { /* ignore */ }
 
-    if (activePointers.size === 2) {
-      if (holdTimer) {
-        clearTimeout(holdTimer);
-        holdTimer = null;
-      }
+    if (activePointers.size >= 2) {
+      hadMultiTouchInGesture = true;
+      clearHoldTimer();
       isRotating = false;
+      rotatingPointerId = null;
+      cameraVelocity = 0;
       isPaintingStroke = false;
       lastPaintedTileKey = null;
-      try { canvas.setPointerCapture(e.pointerId); } catch { /* ignore */ }
-      const pts = Array.from(activePointers.values());
-      pinchStartDist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
-      pinchStartZoom = userZoom;
+      if (activePointers.size === 2 || !pinchPointerIds) {
+        syncPinchAnchor();
+      }
+      return;
+    }
+
+    if (hadMultiTouchInGesture) {
+      cameraVelocity = 0;
       return;
     }
 
@@ -5812,51 +5950,107 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       initAudio();
       dismissOnboardingHint();
       isRotating = false;
+      rotatingPointerId = null;
       cameraVelocity = 0;
       isPaintingStroke = true;
       lastPaintedTileKey = null;
       didPaintDuringStroke = false;
-      try { canvas.setPointerCapture(e.pointerId); } catch { /* ignore */ }
       paintTileAtScreenPos(e.clientX, e.clientY);
       return;
     }
 
     isRotating = true;
+    rotatingPointerId = e.pointerId;
     cameraVelocity = 0;
     lastMouseX = e.clientX;
     lastMouseY = e.clientY;
+    lastRotateTime = performance.now();
     dragTotalDist = 0;
-    try { canvas.setPointerCapture(e.pointerId); } catch { /* ignore */ }
 
-    holdStartTime = performance.now();
+    holdStartTime = lastRotateTime;
     holdPosition = { x: e.clientX, y: e.clientY };
 
-    if (holdTimer) clearTimeout(holdTimer);
+    clearHoldTimer();
     if (!state.isClearingDecor && !state.isPlacingDecor) {
       holdTimer = setTimeout(() => {
         holdTimer = null;
+        if (activePointers.size !== 1 || hadMultiTouchInGesture || dragTotalDist >= 12) return;
         const rect = canvas.getBoundingClientRect();
         const clickX = holdPosition.x - rect.left;
         const clickY = holdPosition.y - rect.top;
         const targetGrid = screenToGrid(clickX, clickY);
         gatherPackAt(targetGrid.gx, targetGrid.gy, clickX, clickY);
         isRotating = false;
+        rotatingPointerId = null;
+        cameraVelocity = 0;
         dismissOnboardingHint();
       }, HOLD_DURATION);
     }
   });
 
   canvas.addEventListener('pointermove', (e: PointerEvent) => {
-    if (activePointers.has(e.pointerId)) {
-      activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (!activePointers.has(e.pointerId)) return;
+    activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (activePointers.size >= 2) {
+      hadMultiTouchInGesture = true;
+      isRotating = false;
+      rotatingPointerId = null;
+      cameraVelocity = 0;
+      clearHoldTimer();
+
+      if (
+        !pinchPointerIds ||
+        !activePointers.has(pinchPointerIds[0]) ||
+        !activePointers.has(pinchPointerIds[1])
+      ) {
+        syncPinchAnchor();
+        return;
+      }
+
+      const ptA = activePointers.get(pinchPointerIds[0])!;
+      const ptB = activePointers.get(pinchPointerIds[1])!;
+      const dist = Math.hypot(ptB.x - ptA.x, ptB.y - ptA.y);
+
+      if (pinchStartDist < MIN_PINCH_DIST) {
+        if (dist >= MIN_PINCH_DIST) {
+          pinchStartDist = dist;
+          pinchStartZoom = userZoom;
+        }
+        return;
+      }
+
+      if (dist >= MIN_PINCH_DIST * 0.65) {
+        const rawRatio = dist / pinchStartDist;
+        if (Number.isFinite(rawRatio) && rawRatio > 0) {
+          const desiredZoom = clampUserZoom(pinchStartZoom * rawRatio);
+          const maxStep = 0.16;
+          const nextZoom = clampUserZoom(
+            userZoom + Math.max(-maxStep, Math.min(maxStep, desiredZoom - userZoom))
+          );
+          userZoom = nextZoom;
+          state.zoomLevel = userZoom;
+
+          // Re-anchor at zoom limits so reversing pinch direction immediately zooms back out/in.
+          if (
+            (userZoom <= MIN_USER_ZOOM + 0.001 && rawRatio < 1) ||
+            (userZoom >= MAX_USER_ZOOM - 0.001 && rawRatio > 1)
+          ) {
+            pinchStartDist = Math.max(MIN_PINCH_DIST, dist);
+            pinchStartZoom = userZoom;
+          }
+          dismissOnboardingHint();
+          requestSave();
+        }
+      }
+      return;
     }
 
-    if (activePointers.size === 2 && pinchStartDist > 0) {
-      const pts = Array.from(activePointers.values());
-      const dist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
-      userZoom = Math.max(MIN_USER_ZOOM, Math.min(MAX_USER_ZOOM, pinchStartZoom * (dist / pinchStartDist)));
-      dismissOnboardingHint();
-      requestSave();
+    // Ignore residual single-finger movement after a multi-touch pinch until all fingers lift.
+    if (hadMultiTouchInGesture) {
+      isRotating = false;
+      rotatingPointerId = null;
+      cameraVelocity = 0;
       return;
     }
 
@@ -5865,47 +6059,70 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       return;
     }
 
+    if (!isRotating || e.pointerId !== rotatingPointerId) return;
+
     const moveDist = Math.hypot(e.clientX - lastMouseX, e.clientY - lastMouseY);
+    const distFromHold = Math.hypot(e.clientX - holdPosition.x, e.clientY - holdPosition.y);
     dragTotalDist += moveDist;
 
-    if (moveDist > 12 && holdTimer) {
-      clearTimeout(holdTimer);
-      holdTimer = null;
+    if ((moveDist > 10 || dragTotalDist > 12 || distFromHold > 14) && holdTimer) {
+      clearHoldTimer();
     }
 
-    if (!isRotating) return;
-    const deltaX = e.clientX - lastMouseX;
+    const rawDeltaX = e.clientX - lastMouseX;
     lastMouseX = e.clientX;
     lastMouseY = e.clientY;
-    if (dragTotalDist >= 12 && Math.abs(deltaX) > 0) {
-      const dAngle = deltaX * 0.008;
+    const now = performance.now();
+    const moveDt = Math.max(0.008, Math.min(0.1, (now - lastRotateTime) / 1000));
+    lastRotateTime = now;
+
+    if (dragTotalDist >= 12 && Math.abs(rawDeltaX) > 0) {
+      // Clamp per-event horizontal jump to eliminate multi-touch handoff or frame-spike spins.
+      const clampedDeltaX = Math.max(-64, Math.min(64, rawDeltaX));
+      const dAngle = clampedDeltaX * 0.0075;
       cameraAngle += dAngle;
-      cameraVelocity = dAngle * 42;
+      const instantVel = Math.max(
+        -MAX_CAMERA_VELOCITY,
+        Math.min(MAX_CAMERA_VELOCITY, dAngle / moveDt)
+      );
+      cameraVelocity = cameraVelocity * 0.45 + instantVel * 0.55;
       state.cameraAngle = cameraAngle;
       dismissOnboardingHint();
       requestSave();
     }
   });
 
-  function clearPointer(e: PointerEvent): void {
+  function clearPointer(e: PointerEvent): boolean {
+    const wasMultiTouch = hadMultiTouchInGesture;
     activePointers.delete(e.pointerId);
-    if (activePointers.size < 2) {
-      pinchStartDist = 0;
+    if (e.pointerId === rotatingPointerId) {
+      rotatingPointerId = null;
+      isRotating = false;
     }
+    if (activePointers.size < 2) {
+      pinchPointerIds = null;
+      pinchStartDist = 0;
+    } else if (
+      pinchPointerIds &&
+      (pinchPointerIds[0] === e.pointerId || pinchPointerIds[1] === e.pointerId)
+    ) {
+      syncPinchAnchor();
+    }
+    if (activePointers.size === 0) {
+      hadMultiTouchInGesture = false;
+    }
+    return wasMultiTouch;
   }
 
   canvas.addEventListener('pointerup', (e: PointerEvent) => {
-    clearPointer(e);
-
-    if (holdTimer) {
-      clearTimeout(holdTimer);
-      holdTimer = null;
-    }
+    const wasRotatingThisPointer = isRotating && e.pointerId === rotatingPointerId;
+    const wasMultiTouch = clearPointer(e);
+    clearHoldTimer();
+    try { canvas.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
 
     if (isPaintingStroke) {
       isPaintingStroke = false;
       lastPaintedTileKey = null;
-      try { canvas.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
       if (didPaintDuringStroke) {
         didPaintDuringStroke = false;
         updateUI();
@@ -5914,14 +6131,25 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       return;
     }
 
-    if (!isRotating) {
-      isRotating = false;
-      try { canvas.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+    if (wasMultiTouch) {
+      cameraVelocity = 0;
+      if (activePointers.size === 0) {
+        state.zoomLevel = userZoom;
+        saveGame();
+      }
       return;
     }
 
-    isRotating = false;
-    try { canvas.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+    if (!wasRotatingThisPointer) {
+      return;
+    }
+
+    // If the player paused their finger before lifting, stop inertia cleanly.
+    if (performance.now() - lastRotateTime > 85 || dragTotalDist < 12) {
+      cameraVelocity = 0;
+    } else {
+      cameraVelocity = Math.max(-MAX_CAMERA_VELOCITY, Math.min(MAX_CAMERA_VELOCITY, cameraVelocity));
+    }
 
     if (dragTotalDist >= 12) {
       state.cameraAngle = cameraAngle;
@@ -6086,12 +6314,10 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     }
   });
 
-  canvas.addEventListener('pointercancel', (e: PointerEvent) => {
+  const handlePointerAbort = (e: PointerEvent): void => {
     clearPointer(e);
-    if (holdTimer) {
-      clearTimeout(holdTimer);
-      holdTimer = null;
-    }
+    clearHoldTimer();
+    cameraVelocity = 0;
     if (isPaintingStroke) {
       isPaintingStroke = false;
       lastPaintedTileKey = null;
@@ -6101,9 +6327,14 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         saveGame();
       }
     }
-    isRotating = false;
     try { canvas.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
     requestSave();
+  };
+  canvas.addEventListener('pointercancel', handlePointerAbort);
+  canvas.addEventListener('lostpointercapture', (e: PointerEvent) => {
+    if (activePointers.has(e.pointerId)) {
+      handlePointerAbort(e);
+    }
   });
 
   function getAvailableSlide(excludeDog?: Dog): PlacedDecor | null {
@@ -6239,7 +6470,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       key: 'bowl',
       cx: bowlPos.gx,
       cy: bowlPos.gy,
-      r: 0.22
+      r: 0.15
     });
 
     const sp = state.starterProps || createDefaultStarterProps();
@@ -6779,37 +7010,56 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     });
   }
 
+  function getBreedDrinkReachPx(breed: string): number {
+    if (breed === 'borzoi') return 23.5;
+    if (breed === 'wolfhound') return 22.5;
+    if (breed === 'chihuahua' || breed === 'pug') return 15.8;
+    const sizeClass = BREED_BY_KEY[breed]?.sizeClass || 'standard';
+    if (sizeClass === 'toy') return 17.2;
+    if (sizeClass === 'giant') return 21.8;
+    return 20.5;
+  }
+
   function getSideDrinkSpot(
     waterGx: number,
     waterGy: number,
     sideOffsetPx: number,
     dyPx: number,
     dogGx: number,
-    dogGy: number
+    dogGy: number,
+    ignoreObstacleKey?: string
   ): { gx: number; gy: number } {
     const waterScreen = gridToScreen(waterGx, waterGy);
     const s = getScale();
     const rawOptions = [
       screenToGrid(waterScreen.x + sideOffsetPx * s, waterScreen.y + dyPx * s),
       screenToGrid(waterScreen.x - sideOffsetPx * s, waterScreen.y + dyPx * s),
-      screenToGrid(waterScreen.x + sideOffsetPx * 0.8 * s, waterScreen.y + (dyPx + 14) * s),
-      screenToGrid(waterScreen.x - sideOffsetPx * 0.8 * s, waterScreen.y + (dyPx + 14) * s)
+      screenToGrid(waterScreen.x + sideOffsetPx * s, waterScreen.y + (dyPx - 3.5) * s),
+      screenToGrid(waterScreen.x - sideOffsetPx * s, waterScreen.y + (dyPx - 3.5) * s),
+      screenToGrid(waterScreen.x + sideOffsetPx * s, waterScreen.y + (dyPx + 3.5) * s),
+      screenToGrid(waterScreen.x - sideOffsetPx * s, waterScreen.y + (dyPx + 3.5) * s)
     ];
 
     const gridSize = getGridSize();
     const scored = rawOptions.map(raw => {
       const clampedGx = Math.max(0.35, Math.min(gridSize - 0.35, raw.gx));
       const clampedGy = Math.max(0.35, Math.min(gridSize - 0.35, raw.gy));
-      const blocked = isPointBlockedByObstacle(clampedGx, clampedGy, 0.02);
+      const blocked = isPointBlockedByObstacle(clampedGx, clampedGy, 0.02, ignoreObstacleKey);
       const safe = blocked ? pushOutsideAllObstacles(clampedGx, clampedGy, 0.05) : { gx: clampedGx, gy: clampedGy };
       const finalGx = Math.max(0.35, Math.min(gridSize - 0.35, safe.gx));
       const finalGy = Math.max(0.35, Math.min(gridSize - 0.35, safe.gy));
       const finalScreen = gridToScreen(finalGx, finalGy);
       const horizSep = Math.abs(finalScreen.x - waterScreen.x) / Math.max(0.01, s);
+      const vertErr = Math.abs((finalScreen.y - waterScreen.y) / Math.max(0.01, s) - dyPx);
+      const horizErr = Math.abs(horizSep - sideOffsetPx);
       const distFromDog = Math.hypot(finalGx - dogGx, finalGy - dogGy);
-      // Strongly prefer unobstructed side spots with clean horizontal separation so the body never covers the water
-      const penalty = (blocked ? 10 : 0) + Math.max(0, sideOffsetPx * 0.72 - horizSep) * 0.4;
-      return { gx: finalGx, gy: finalGy, score: penalty + distFromDog * 0.15 };
+      // Strictly keep the dog directly beside the water (penalize vertical drift heavily so it never stands in front)
+      const penalty =
+        (blocked ? 50 : 0) +
+        vertErr * 2.8 +
+        horizErr * 1.4 +
+        Math.max(0, sideOffsetPx * 0.78 - horizSep) * 2.0;
+      return { gx: finalGx, gy: finalGy, score: penalty + distFromDog * 0.12 };
     });
 
     scored.sort((a, b) => a.score - b.score);
@@ -6819,11 +7069,12 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
   function getAvailableWaterSource(dog: Dog): DrinkTarget | null {
     const candidates: DrinkTarget[] = [];
     const bowlPos = getWaterBowlPos();
+    const reachPx = getBreedDrinkReachPx(dog.breed);
 
     const bowlBusy = dogs.some(d => d !== dog && d.drinkTarget?.key === 'bowl');
     if (!bowlBusy) {
-      // Stand cleanly beside the bowl (outside the doghouse tile(s)) so the torso never covers the bowl
-      const sideSpot = getSideDrinkSpot(bowlPos.gx, bowlPos.gy, 23.5, 1.5, dog.gx, dog.gy);
+      // Stand directly beside the bowl so torso clears the rim and head dips cleanly into the water
+      const sideSpot = getSideDrinkSpot(bowlPos.gx, bowlPos.gy, reachPx, -0.4, dog.gx, dog.gy, 'bowl');
       if (findNavPath(dog.gx, dog.gy, sideSpot.gx, sideSpot.gy) !== null) {
         candidates.push({
           kind: 'bowl',
@@ -6846,7 +7097,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
         const centerGx = dec.gx + 0.5;
         const centerGy = dec.gy + 0.5;
-        const safeStand = getSideDrinkSpot(centerGx, centerGy, 31.5, 3.2, dog.gx, dog.gy);
+        const safeStand = getSideDrinkSpot(centerGx, centerGy, reachPx + 11.0, 0.5, dog.gx, dog.gy);
         if (findNavPath(dog.gx, dog.gy, safeStand.gx, safeStand.gy) === null) continue;
 
         fountainCandidates.push({
@@ -7031,6 +7282,23 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
           return;
         }
       }
+      const reachPx = getBreedDrinkReachPx(this.breed);
+      const isBowl = this.drinkTarget.kind === 'bowl';
+      const alignedSpot = getSideDrinkSpot(
+        this.drinkTarget.waterGx,
+        this.drinkTarget.waterGy,
+        isBowl ? reachPx : reachPx + 11.0,
+        isBowl ? -0.4 : 0.5,
+        this.gx,
+        this.gy,
+        isBowl ? 'bowl' : undefined
+      );
+      this.drinkTarget.standGx = alignedSpot.gx;
+      this.drinkTarget.standGy = alignedSpot.gy;
+      if (Math.hypot(alignedSpot.gx - this.gx, alignedSpot.gy - this.gy) < 0.35) {
+        this.gx = alignedSpot.gx;
+        this.gy = alignedSpot.gy;
+      }
       const dogPos = gridToScreen(this.gx, this.gy);
       const waterPos = gridToScreen(this.drinkTarget.waterGx, this.drinkTarget.waterGy);
       if (Math.abs(waterPos.x - dogPos.x) > 0.5) {
@@ -7152,6 +7420,10 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     }
 
     enterSleep(): void {
+      if (this.waterBoostTimer > 0) {
+        this.pickNewTarget();
+        return;
+      }
       this.cancelSlide();
       this.cancelDrink();
       if (isNearSlideZone(this.gx, this.gy) || isPointBlockedByObstacle(this.gx, this.gy, 0.04)) {
@@ -7557,8 +7829,30 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
             return;
           }
         }
-        const dogPos = gridToScreen(this.gx, this.gy);
+        const sNow = Math.max(0.01, getScale());
+        const isBowl = this.drinkTarget.kind === 'bowl';
+        const reachPx = getBreedDrinkReachPx(this.breed);
+        const desiredSidePx = isBowl ? reachPx : reachPx + 11.0;
+        const desiredDyPx = isBowl ? -0.4 : 0.5;
+        let dogPos = gridToScreen(this.gx, this.gy);
         const waterPos = gridToScreen(this.drinkTarget.waterGx, this.drinkTarget.waterGy);
+        const curHorizSep = Math.abs(dogPos.x - waterPos.x) / sNow;
+        const curVertErr = Math.abs((dogPos.y - waterPos.y) / sNow - desiredDyPx);
+        if (curVertErr > 2.2 || Math.abs(curHorizSep - desiredSidePx) > 2.8) {
+          const liveSpot = getSideDrinkSpot(
+            this.drinkTarget.waterGx,
+            this.drinkTarget.waterGy,
+            desiredSidePx,
+            desiredDyPx,
+            this.gx,
+            this.gy,
+            isBowl ? 'bowl' : undefined
+          );
+          const blend = Math.min(1, dt * 10);
+          this.gx += (liveSpot.gx - this.gx) * blend;
+          this.gy += (liveSpot.gy - this.gy) * blend;
+          dogPos = gridToScreen(this.gx, this.gy);
+        }
         if (Math.abs(waterPos.x - dogPos.x) > 0.5) {
           this.facingRight = waterPos.x >= dogPos.x;
         }
@@ -7596,7 +7890,12 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         this.timer -= dt * visualPace;
         if (this.timer <= 0) {
           const napChance = 0.28 * (trait.napChanceMult ?? 1);
-          if (Math.random() < napChance && !isNearSlideZone(this.gx, this.gy) && !isPointBlockedByObstacle(this.gx, this.gy, 0.04)) {
+          if (
+            this.waterBoostTimer <= 0 &&
+            Math.random() < napChance &&
+            !isNearSlideZone(this.gx, this.gy) &&
+            !isPointBlockedByObstacle(this.gx, this.gy, 0.04)
+          ) {
             this.enterSleep();
           } else {
             this.pickNewTarget();
@@ -7604,7 +7903,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         }
       } else if (this.state === 'WALK') {
         // Ensure final destination never lies inside a solid park obstacle
-        if (!this.slideTarget && isPointBlockedByObstacle(this.targetGx, this.targetGy, 0.02)) {
+        const ignoreObsKey = this.drinkTarget?.kind === 'bowl' ? 'bowl' : undefined;
+        if (!this.slideTarget && isPointBlockedByObstacle(this.targetGx, this.targetGy, 0.02, ignoreObsKey)) {
           const safeT = pushOutsideAllObstacles(this.targetGx, this.targetGy, 0.06);
           this.setWalkTarget(safeT.gx, safeT.gy);
         }
@@ -8121,7 +8421,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         : isOnSlide
           ? this.slideTilt
           : isDrinking
-            ? 0.04
+            ? 0.05
             : (this.state === 'DIG' ? 0.25 : 0);
 
       c.translate(0, -bounce);
@@ -12520,10 +12820,20 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       lastTime = now;
       const dt = rawDt > 1 ? 0.016 : Math.min(0.05, Math.max(0, rawDt));
 
-      // Smooth rotational inertia after flicking the park
+      // Smooth rotational inertia after flicking the park (hard-clamped against NaN/runaway velocity)
+      if (!Number.isFinite(cameraAngle)) {
+        cameraAngle = 0;
+      }
+      if (!Number.isFinite(cameraVelocity) || activePointers.size > 0) {
+        cameraVelocity = 0;
+      }
       if (!isRotating && Math.abs(cameraVelocity) > 0.002) {
+        cameraVelocity = Math.max(-MAX_CAMERA_VELOCITY, Math.min(MAX_CAMERA_VELOCITY, cameraVelocity));
         cameraAngle += cameraVelocity * dt;
-        cameraVelocity *= Math.pow(0.08, dt);
+        if (cameraAngle > Math.PI || cameraAngle < -Math.PI) {
+          cameraAngle = ((cameraAngle + Math.PI) % (Math.PI * 2) + (Math.PI * 2)) % (Math.PI * 2) - Math.PI;
+        }
+        cameraVelocity *= Math.pow(0.06, dt);
         if (Math.abs(cameraVelocity) <= 0.002) {
           cameraVelocity = 0;
           state.cameraAngle = cameraAngle;

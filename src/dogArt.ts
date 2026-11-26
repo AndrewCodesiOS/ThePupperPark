@@ -457,9 +457,11 @@ function withDrinkingHeadPose(
   const lapPulse = Math.max(0, Math.sin(animPhase * 2.6));
   const pivotX = headX - 2.0;
   const pivotY = headY + 4.5;
-  const dipTx = opts.dipTx ?? Math.max(1.8, 15.0 - headX);
-  const dipTy = opts.dipTy ?? Math.max(0.2, -headY - 14.5);
-  const dipAngle = (opts.dipAngle ?? 0.56) + lapPulse * 0.085;
+  const dipTx = opts.dipTx ?? Math.max(1.8, Math.min(4.6, 14.2 - headX));
+  const dipTy = opts.dipTy !== undefined
+    ? opts.dipTy + 0.8
+    : Math.max(1.2, -headY - 12.8);
+  const dipAngle = (opts.dipAngle ?? 0.62) + lapPulse * 0.09;
 
   // Seamless shaded neck bridge connecting shoulders/chest to the dipped head
   const neckMidX = headX - 1.6 + dipTx * 0.55;
