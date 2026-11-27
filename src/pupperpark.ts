@@ -285,7 +285,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     cozyFloor: number;
   }> = {
     flowers: {
-      cost: 250,
+      cost: 100,
       max: 5,
       tileWidth: 1,
       buyLabel: 'Buy Flowers',
@@ -301,7 +301,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       cozyFloor: 0.5
     },
     hydrant: {
-      cost: 350,
+      cost: 200,
       max: 3,
       tileWidth: 1,
       buyLabel: 'Buy Hydrant',
@@ -317,7 +317,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       cozyFloor: 1.0
     },
     tree: {
-      cost: 500,
+      cost: 300,
       max: 3,
       tileWidth: 1,
       buyLabel: 'Buy Tree',
@@ -333,7 +333,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       cozyFloor: 1.0
     },
     lamp: {
-      cost: 800,
+      cost: 400,
       max: 4,
       tileWidth: 1,
       buyLabel: 'Buy Lamp',
@@ -1079,6 +1079,21 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     squeak: () => {
       playSound(1200, 'triangle', 0.08, 0.04);
       setTimeout(() => playSound(950, 'triangle', 0.08, 0.04), 60);
+    },
+    ballBounce: (pitchBoost = 0) => {
+      const boost = Math.min(4, Math.max(0, pitchBoost));
+      playSound(315 + boost * 52, 'sine', 0.065, 0.036);
+      setTimeout(() => playSound(475 + boost * 64, 'triangle', 0.05, 0.022), 22);
+    },
+    frisbeeClack: (pitchBoost = 0) => {
+      const boost = Math.min(4, Math.max(0, pitchBoost));
+      playSound(520 + boost * 42, 'triangle', 0.05, 0.03);
+      setTimeout(() => playSound(790 + boost * 55, 'sine', 0.04, 0.018), 18);
+    },
+    duckBonk: (pitchBoost = 0) => {
+      const boost = Math.min(4, Math.max(0, pitchBoost));
+      playSound(495 + boost * 35, 'sawtooth', 0.065, 0.028);
+      setTimeout(() => playSound(410 + boost * 25, 'sawtooth', 0.07, 0.022), 45);
     },
     quack: () => {
       playSound(450, 'sawtooth', 0.1, 0.04);
@@ -2377,9 +2392,137 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     }
   }
 
-  const tennisBall = { gx: 3.5, gy: 3.5, targetGx: 3.5, targetGy: 3.5, isRolling: false, timer: 6.0, bouncePhase: 0, passChainCount: 0 };
-  const frisbee = { gx: 2.0, gy: 5.0, targetGx: 2.0, targetGy: 5.0, isMoving: false, timer: 7.5 };
-  const duck = { gx: 5.0, gy: 5.0, targetGx: 5.0, targetGy: 5.0, isMoved: false, timer: 5.5, quackPhase: 0 };
+  const tennisBall: {
+    gx: number;
+    gy: number;
+    targetGx: number;
+    targetGy: number;
+    vx: number;
+    vy: number;
+    z: number;
+    vz: number;
+    spinAngle: number;
+    squash: number;
+    isRolling: boolean;
+    timer: number;
+    bouncePhase: number;
+    passChainCount: number;
+    ricochetCount: number;
+    soundCooldown: number;
+    chaserRedirectCooldown: number;
+    kickerGrace: number;
+    kicker: Dog | null;
+    chaser: Dog | null;
+  } = {
+    gx: 3.5,
+    gy: 3.5,
+    targetGx: 3.5,
+    targetGy: 3.5,
+    vx: 0,
+    vy: 0,
+    z: 0,
+    vz: 0,
+    spinAngle: 0,
+    squash: 0,
+    isRolling: false,
+    timer: 6.0,
+    bouncePhase: 0,
+    passChainCount: 0,
+    ricochetCount: 0,
+    soundCooldown: 0,
+    chaserRedirectCooldown: 0,
+    kickerGrace: 0,
+    kicker: null,
+    chaser: null
+  };
+  const frisbee: {
+    gx: number;
+    gy: number;
+    targetGx: number;
+    targetGy: number;
+    vx: number;
+    vy: number;
+    z: number;
+    vz: number;
+    spinAngle: number;
+    tilt: number;
+    wobble: number;
+    wobblePhase: number;
+    curveRate: number;
+    isMoving: boolean;
+    timer: number;
+    ricochetCount: number;
+    soundCooldown: number;
+    chaserRedirectCooldown: number;
+    kickerGrace: number;
+    kicker: Dog | null;
+    chaser: Dog | null;
+  } = {
+    gx: 2.0,
+    gy: 5.0,
+    targetGx: 2.0,
+    targetGy: 5.0,
+    vx: 0,
+    vy: 0,
+    z: 0,
+    vz: 0,
+    spinAngle: 0,
+    tilt: 0,
+    wobble: 0,
+    wobblePhase: 0,
+    curveRate: 0,
+    isMoving: false,
+    timer: 7.5,
+    ricochetCount: 0,
+    soundCooldown: 0,
+    chaserRedirectCooldown: 0,
+    kickerGrace: 0,
+    kicker: null,
+    chaser: null
+  };
+  const duck: {
+    gx: number;
+    gy: number;
+    targetGx: number;
+    targetGy: number;
+    vx: number;
+    vy: number;
+    z: number;
+    vz: number;
+    squash: number;
+    wobble: number;
+    facingRight: boolean;
+    isMoved: boolean;
+    timer: number;
+    quackPhase: number;
+    ricochetCount: number;
+    soundCooldown: number;
+    chaserRedirectCooldown: number;
+    kickerGrace: number;
+    kicker: Dog | null;
+    chaser: Dog | null;
+  } = {
+    gx: 5.0,
+    gy: 5.0,
+    targetGx: 5.0,
+    targetGy: 5.0,
+    vx: 0,
+    vy: 0,
+    z: 0,
+    vz: 0,
+    squash: 0,
+    wobble: 0,
+    facingRight: true,
+    isMoved: false,
+    timer: 5.5,
+    quackPhase: 0,
+    ricochetCount: 0,
+    soundCooldown: 0,
+    chaserRedirectCooldown: 0,
+    kickerGrace: 0,
+    kicker: null,
+    chaser: null
+  };
 
   let parkBarkCooldown = PARK_BARK_MIN_COOLDOWN + Math.random() * (PARK_BARK_MAX_COOLDOWN - PARK_BARK_MIN_COOLDOWN);
   const barkPopups: Array<{
@@ -7080,7 +7223,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
   const NAV_SUBDIV = 2;
   const NAV_CELL = 1 / NAV_SUBDIV;
   const NAV_AGENT_PAD = 0.08;
-  const DOG_AVOID_RADIUS = 0.56;
+  const DOG_AVOID_RADIUS = 0.64;
   const DOG_MIN_SEPARATION = 0.35;
 
   function getNavSize(): number {
@@ -7913,6 +8056,10 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     stuckCount: number;
     lastProgressGx: number;
     lastProgressGy: number;
+    smoothSteerX: number;
+    smoothSteerY: number;
+    squeezeTimer: number;
+    faceFlipCooldown: number;
 
     constructor(gx: number, gy: number, rosterId: string, breed = 'aussie', isShiny = false, shinyColor: string | null = null) {
       const safeStart = pushOutsideAllObstacles(gx, gy, 0.08);
@@ -7966,6 +8113,10 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       this.stuckCount = 0;
       this.lastProgressGx = safeStart.gx;
       this.lastProgressGy = safeStart.gy;
+      this.smoothSteerX = 0;
+      this.smoothSteerY = 0;
+      this.squeezeTimer = 0;
+      this.faceFlipCooldown = 0;
 
       // During 9 PM - 7 AM local time, each dog starts with a flat 50% chance to be curled up in overnight sleep
       const nowMs = Date.now();
@@ -7989,6 +8140,9 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       this.stuckCount = 0;
       this.lastProgressGx = this.gx;
       this.lastProgressGy = this.gy;
+      this.smoothSteerX = 0;
+      this.smoothSteerY = 0;
+      this.squeezeTimer = 0;
     }
 
     setWalkTarget(gx: number, gy: number): void {
@@ -8000,6 +8154,9 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       this.stuckCount = 0;
       this.lastProgressGx = this.gx;
       this.lastProgressGy = this.gy;
+      this.smoothSteerX = 0;
+      this.smoothSteerY = 0;
+      this.squeezeTimer = 0;
     }
 
     computeNavPath(force = false): boolean {
@@ -9131,11 +9288,21 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
           let moveX = sDist > 1e-4 ? sdx / sDist : 0;
           let moveY = sDist > 1e-4 ? sdy / sDist : 0;
 
-          // Smooth dog-to-dog avoidance steering with deterministic passing bias
+          if (this.squeezeTimer > 0) this.squeezeTimer = Math.max(0, this.squeezeTimer - dt);
+          if (this.faceFlipCooldown > 0) this.faceFlipCooldown = Math.max(0, this.faceFlipCooldown - dt);
+
+          const gridSize = getGridSize();
+          const edgeMargin = this.slideTarget ? 0.2 : 0.32;
+          const nearObstacle = isPointBlockedByObstacle(this.gx, this.gy, 0.22);
+
+          // Smooth dog-to-dog avoidance steering with obstacle-aware passing & consistent right-hand rule
           let avoidX = 0;
           let avoidY = 0;
-          const approachingReserved = Boolean((this.drinkTarget || this.slideTarget || this.treatTarget) && dist < 0.32);
-          const avoidScale = approachingReserved ? 0.35 : 1.0;
+          const approachingReserved = Boolean((this.drinkTarget || this.slideTarget || this.treatTarget) && dist < 0.34);
+          let avoidScale = approachingReserved ? 0.35 : 1.0;
+          if (this.squeezeTimer > 0) {
+            avoidScale *= 0.38;
+          }
 
           for (let i = 0; i < dogs.length; i++) {
             const other = dogs[i];
@@ -9150,7 +9317,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
             let nx = 0;
             let ny = 0;
             if (d < 1e-4) {
-              const seedAngle = (this.rosterId.charCodeAt(0) || 1) * 1.7;
+              const seedAngle = (this.rosterId.charCodeAt(0) || 1) * 1.7 + i * 0.9;
               nx = Math.cos(seedAngle);
               ny = Math.sin(seedAngle);
             } else {
@@ -9158,34 +9325,99 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
               ny = ry / d;
             }
 
-            const closeness = (DOG_AVOID_RADIUS - d) / DOG_AVOID_RADIUS;
-            const repel = closeness * 1.15 * avoidScale;
-            avoidX += nx * repel;
-            avoidY += ny * repel;
-
-            // Add subtle tangential sidestep when another dog is ahead so pups veer past cleanly
+            // Positive aheadDot means the other dog is ahead along our current path
             const aheadDot = moveX * (-nx) + moveY * (-ny);
-            if (aheadDot > -0.15) {
-              const sideSign = this.rosterId < other.rosterId ? 1 : -1;
-              const tangent = closeness * 0.68 * avoidScale;
-              avoidX += -ny * sideSign * tangent;
-              avoidY += nx * sideSign * tangent;
+            // Ignore dogs we've already passed unless we're directly overlapping them
+            if (aheadDot < -0.35 && d > DOG_MIN_SEPARATION) continue;
+
+            const closeness = (DOG_AVOID_RADIUS - d) / DOG_AVOID_RADIUS;
+            const radialWeight = (nearObstacle ? 0.52 : 0.85) * closeness * closeness * avoidScale;
+            avoidX += nx * radialWeight;
+            avoidY += ny * radialWeight;
+
+            // Smooth obstacle-aware tangential sidestep so dogs arc cleanly past each other
+            if (aheadDot > -0.22) {
+              const txR = -ny;
+              const tyR = nx;
+              const txL = ny;
+              const tyL = -nx;
+              const probeDist = 0.34;
+              const rGx = this.gx + txR * probeDist;
+              const rGy = this.gy + tyR * probeDist;
+              const lGx = this.gx + txL * probeDist;
+              const lGy = this.gy + tyL * probeDist;
+              const rightClear =
+                rGx >= edgeMargin && rGx <= gridSize - edgeMargin &&
+                rGy >= edgeMargin && rGy <= gridSize - edgeMargin &&
+                !isPointBlockedByObstacle(rGx, rGy, 0.04);
+              const leftClear =
+                lGx >= edgeMargin && lGx <= gridSize - edgeMargin &&
+                lGy >= edgeMargin && lGy <= gridSize - edgeMargin &&
+                !isPointBlockedByObstacle(lGx, lGy, 0.04);
+
+              let sideSign = 1;
+              if (rightClear && !leftClear) {
+                sideSign = 1;
+              } else if (leftClear && !rightClear) {
+                sideSign = -1;
+              } else if (other.state === 'WALK') {
+                // Consistent right-hand passing rule: because (nx, ny) is opposite for each dog,
+                // both choosing +1 steers them cleanly into opposite lanes without head-on deadlock!
+                sideSign = 1;
+              } else {
+                // Around stationary dogs (sitting/sleeping/digging/eating), take whichever open side aligns best with our goal
+                const alignR = txR * moveX + tyR * moveY;
+                const alignL = txL * moveX + tyL * moveY;
+                sideSign = alignR >= alignL ? 1 : -1;
+              }
+
+              const tangentBase = other.state === 'WALK' ? 0.95 : 1.08;
+              const tangent = closeness * tangentBase * avoidScale;
+              avoidX += (-ny * sideSign) * tangent;
+              avoidY += (nx * sideSign) * tangent;
             }
           }
 
-          let steerX = moveX + avoidX;
-          let steerY = moveY + avoidY;
-          const steerLen = Math.hypot(steerX, steerY);
-          if (steerLen > 1e-4) {
-            steerX /= steerLen;
-            steerY /= steerLen;
-          } else {
-            steerX = moveX;
-            steerY = moveY;
+          // Cap avoidance force so crowded gaps never cancel forward intent into zero-length jitter
+          const avoidMag = Math.hypot(avoidX, avoidY);
+          const maxAvoid = nearObstacle ? 1.12 : 1.42;
+          if (avoidMag > maxAvoid) {
+            avoidX = (avoidX / avoidMag) * maxAvoid;
+            avoidY = (avoidY / avoidMag) * maxAvoid;
           }
 
-          const gridSize = getGridSize();
-          const edgeMargin = this.slideTarget ? 0.2 : 0.32;
+          let rawSteerX = moveX + avoidX;
+          let rawSteerY = moveY + avoidY;
+          const rawSteerLen = Math.hypot(rawSteerX, rawSteerY);
+          if (rawSteerLen > 0.08) {
+            rawSteerX /= rawSteerLen;
+            rawSteerY /= rawSteerLen;
+          } else {
+            rawSteerX = moveX;
+            rawSteerY = moveY;
+          }
+
+          // Smooth steering blend prevents abrupt direction snapping and left/right vibration
+          if (Math.hypot(this.smoothSteerX, this.smoothSteerY) < 0.05) {
+            this.smoothSteerX = rawSteerX;
+            this.smoothSteerY = rawSteerY;
+          } else {
+            const steerBlend = Math.min(1, dt * 11);
+            this.smoothSteerX += (rawSteerX - this.smoothSteerX) * steerBlend;
+            this.smoothSteerY += (rawSteerY - this.smoothSteerY) * steerBlend;
+            const smLen = Math.hypot(this.smoothSteerX, this.smoothSteerY);
+            if (smLen > 1e-4) {
+              this.smoothSteerX /= smLen;
+              this.smoothSteerY /= smLen;
+            } else {
+              this.smoothSteerX = moveX;
+              this.smoothSteerY = moveY;
+            }
+          }
+
+          const steerX = this.smoothSteerX;
+          const steerY = this.smoothSteerY;
+
           const step = Math.min(Math.max(sDist, 0.05), walkSpeed * dt);
           const prevGx = this.gx;
           const prevGy = this.gy;
@@ -9197,28 +9429,37 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
             this.gx = tryGx;
             this.gy = tryGy;
           } else {
-            // Smooth wall-sliding along whichever axis stays clear of obstacles
-            const slideX = Math.max(edgeMargin, Math.min(gridSize - edgeMargin, prevGx + steerX * step));
-            const slideY = Math.max(edgeMargin, Math.min(gridSize - edgeMargin, prevGy + steerY * step));
-            const xClear = !isPointBlockedByObstacle(slideX, prevGy, 0.02);
-            const yClear = !isPointBlockedByObstacle(prevGx, slideY, 0.02);
-            if (xClear && (!yClear || Math.abs(steerX) >= Math.abs(steerY))) {
-              this.gx = slideX;
-            } else if (yClear) {
-              this.gy = slideY;
-            } else {
-              // Gentle tangential nudge around circular obstacles (fountains/trees)
-              const tan1Gx = Math.max(edgeMargin, Math.min(gridSize - edgeMargin, prevGx - steerY * step));
-              const tan1Gy = Math.max(edgeMargin, Math.min(gridSize - edgeMargin, prevGy + steerX * step));
-              const tan2Gx = Math.max(edgeMargin, Math.min(gridSize - edgeMargin, prevGx + steerY * step));
-              const tan2Gy = Math.max(edgeMargin, Math.min(gridSize - edgeMargin, prevGy - steerX * step));
-              if (!isPointBlockedByObstacle(tan1Gx, tan1Gy, 0.02)) {
-                this.gx = tan1Gx;
-                this.gy = tan1Gy;
-              } else if (!isPointBlockedByObstacle(tan2Gx, tan2Gy, 0.02)) {
-                this.gx = tan2Gx;
-                this.gy = tan2Gy;
+            // Goal-aligned obstacle sliding: pick the clear slide/tangent that advances best toward the waypoint
+            const candidates = [
+              { gx: Math.max(edgeMargin, Math.min(gridSize - edgeMargin, prevGx + steerX * step)), gy: prevGy },
+              { gx: prevGx, gy: Math.max(edgeMargin, Math.min(gridSize - edgeMargin, prevGy + steerY * step)) },
+              {
+                gx: Math.max(edgeMargin, Math.min(gridSize - edgeMargin, prevGx - steerY * step)),
+                gy: Math.max(edgeMargin, Math.min(gridSize - edgeMargin, prevGy + steerX * step))
+              },
+              {
+                gx: Math.max(edgeMargin, Math.min(gridSize - edgeMargin, prevGx + steerY * step)),
+                gy: Math.max(edgeMargin, Math.min(gridSize - edgeMargin, prevGy - steerX * step))
               }
+            ];
+            let bestCand: { gx: number; gy: number } | null = null;
+            let bestDot = -Infinity;
+            for (let c = 0; c < candidates.length; c++) {
+              const cand = candidates[c];
+              const cdx = cand.gx - prevGx;
+              const cdy = cand.gy - prevGy;
+              const cLen = Math.hypot(cdx, cdy);
+              if (cLen < 0.002) continue;
+              if (isPointBlockedByObstacle(cand.gx, cand.gy, 0.02)) continue;
+              const goalDot = (cdx / cLen) * moveX + (cdy / cLen) * moveY;
+              if (goalDot > bestDot) {
+                bestDot = goalDot;
+                bestCand = cand;
+              }
+            }
+            if (bestCand) {
+              this.gx = bestCand.gx;
+              this.gy = bestCand.gy;
             }
           }
 
@@ -9229,25 +9470,27 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
             this.gy = pushed.gy;
           }
 
-          // Gentle personal-space separation if still overlapping another non-sliding dog
+          // Smooth, dt-scaled personal-space separation that yields gracefully in tight corridors
+          const effectiveMinSep = (this.squeezeTimer > 0 || nearObstacle) ? 0.22 : DOG_MIN_SEPARATION;
+          const sepBlend = Math.min(0.45, dt * 10);
           for (let i = 0; i < dogs.length; i++) {
             const other = dogs[i];
             if (other === this || other.state === 'SLIDE_CLIMB' || other.state === 'SLIDE_DOWN') continue;
             const rx = this.gx - other.gx;
             const ry = this.gy - other.gy;
             const d = Math.hypot(rx, ry);
-            if (d < DOG_MIN_SEPARATION) {
+            if (d < effectiveMinSep) {
               let ux = 0;
               let uy = 0;
               if (d < 1e-4) {
-                const seedAngle = ((this.rosterId.charCodeAt(this.rosterId.length - 1) || 1) * 1.9);
+                const seedAngle = ((this.rosterId.charCodeAt(this.rosterId.length - 1) || 1) * 1.9 + i * 0.7);
                 ux = Math.cos(seedAngle);
                 uy = Math.sin(seedAngle);
               } else {
                 ux = rx / d;
                 uy = ry / d;
               }
-              const push = Math.min(0.08, (DOG_MIN_SEPARATION - d) * 0.55);
+              const push = Math.min(0.042, (effectiveMinSep - d) * sepBlend);
               const candGx = Math.max(edgeMargin, Math.min(gridSize - edgeMargin, this.gx + ux * push));
               const candGy = Math.max(edgeMargin, Math.min(gridSize - edgeMargin, this.gy + uy * push));
               if (!isPointBlockedByObstacle(candGx, candGy, 0.02)) {
@@ -9257,7 +9500,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
             }
           }
 
-          // Record normalized grid movement direction & face actual screen-space direction
+          // Record normalized grid movement direction & face actual screen-space direction (debounced to prevent flicker)
           const stepGx = this.gx - prevGx;
           const stepGy = this.gy - prevGy;
           const stepLen = Math.hypot(stepGx, stepGy);
@@ -9268,30 +9511,37 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
           const prevScreen = gridToScreen(prevGx, prevGy);
           const nextScreen = gridToScreen(this.gx, this.gy);
           const screenDeltaX = nextScreen.x - prevScreen.x;
-          if (Math.abs(screenDeltaX) > 0.35) {
-            this.facingRight = screenDeltaX >= 0;
+          if (Math.abs(screenDeltaX) > 0.65 && this.faceFlipCooldown <= 0) {
+            const wantRight = screenDeltaX >= 0;
+            if (wantRight !== this.facingRight) {
+              this.facingRight = wantRight;
+              this.faceFlipCooldown = 0.14;
+            }
           }
 
-          // Anti-stuck recovery: replan once if blocked, then pick a fresh reachable spot
+          // Anti-stuck recovery: first enable tight-space squeeze + replan, then pick a fresh spot if truly blocked
           this.stuckTimer += dt;
-          if (this.stuckTimer >= 0.65) {
+          if (this.stuckTimer >= 0.55) {
             const progress = Math.hypot(this.gx - this.lastProgressGx, this.gy - this.lastProgressGy);
             this.lastProgressGx = this.gx;
             this.lastProgressGy = this.gy;
             this.stuckTimer = 0;
 
-            if (progress < 0.07) {
+            if (progress < 0.08) {
               this.stuckCount += 1;
               if (this.stuckCount === 1) {
+                this.squeezeTimer = 1.05;
                 if (!this.computeNavPath(true)) {
                   this.cancelSlide();
                   this.cancelDrink();
+                  this.cancelEat();
                   this.onReachToy = null;
                   this.pickNewTarget();
                 }
               } else {
                 this.cancelSlide();
                 this.cancelDrink();
+                this.cancelEat();
                 this.onReachToy = null;
                 this.pickNewTarget();
               }
@@ -12706,13 +12956,22 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     ctx.translate(pos.x, pos.y);
     ctx.scale(scale, scale);
 
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    const bounceOffset = Math.max(0, tennisBall.z);
+    const shadowScale = Math.max(0.52, 1 - bounceOffset / 44);
+    ctx.fillStyle = `rgba(0,0,0,${(0.32 * shadowScale).toFixed(2)})`;
     ctx.beginPath();
-    ctx.ellipse(0, 4, 7, 3.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 4, 7 * shadowScale, 3.5 * shadowScale, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    const bounceOffset = Math.abs(Math.sin(tennisBall.bouncePhase * 6)) * 8;
     ctx.translate(0, -bounceOffset);
+
+    // Subtle squash-and-stretch during obstacle ricochets and ground landings
+    const sq = tennisBall.squash;
+    if (Math.abs(sq) > 0.005) {
+      ctx.translate(0, -4);
+      ctx.scale(1 + sq, 1 - sq * 0.8);
+      ctx.translate(0, 4);
+    }
 
     ctx.fillStyle = isFresh ? '#d8ff1f' : (isWorn ? '#b7d42c' : '#ccff00');
     ctx.strokeStyle = isFresh ? '#7aa800' : (isWorn ? '#6d7f23' : '#739900');
@@ -12722,20 +12981,26 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     ctx.fill();
     ctx.stroke();
 
-    // Classic curved tennis seam
+    // Classic curved tennis seam rotating smoothly with ball spin
+    ctx.save();
+    ctx.translate(0, -4);
+    ctx.rotate(tennisBall.spinAngle);
     ctx.strokeStyle = isFresh ? 'rgba(255,255,255,0.92)' : (isWorn ? 'rgba(240,242,225,0.45)' : 'rgba(255,255,255,0.65)');
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.arc(-2.6, -4, 3.8, -0.85, 0.85);
+    ctx.arc(-2.6, 0, 3.8, -0.85, 0.85);
     ctx.stroke();
 
     if (isWorn) {
       // Cute subtle scuff mark when Well-Loved
       ctx.fillStyle = 'rgba(92, 74, 42, 0.38)';
       ctx.beginPath();
-      ctx.ellipse(2.2, -2.2, 1.8, 1.1, 0.4, 0, Math.PI * 2);
+      ctx.ellipse(2.2, 1.8, 1.8, 1.1, 0.4, 0, Math.PI * 2);
       ctx.fill();
-    } else if (isFresh) {
+    }
+    ctx.restore();
+
+    if (isFresh) {
       ctx.fillStyle = 'rgba(255,255,255,0.75)';
       ctx.beginPath();
       ctx.arc(-2, -6.4, 1.4, 0, Math.PI * 2);
@@ -12756,10 +13021,22 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     ctx.translate(pos.x, pos.y);
     ctx.scale(scale, scale);
 
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    const glideHeight = Math.max(0, frisbee.z);
+    const shadowScale = Math.max(0.55, 1 - glideHeight / 46);
+    ctx.fillStyle = `rgba(0,0,0,${(0.30 * shadowScale).toFixed(2)})`;
     ctx.beginPath();
-    ctx.ellipse(0, 4, 9, 4.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 4, 9 * shadowScale, 4.5 * shadowScale, 0, 0, Math.PI * 2);
     ctx.fill();
+
+    ctx.translate(0, -glideHeight);
+
+    // Subtle flight bank and post-ricochet wobble
+    const totalTilt = frisbee.tilt + Math.sin(frisbee.wobblePhase * 18) * frisbee.wobble * 0.36;
+    if (Math.abs(totalTilt) > 0.005) {
+      ctx.translate(0, -2);
+      ctx.rotate(totalTilt);
+      ctx.translate(0, 2);
+    }
 
     ctx.fillStyle = isFresh ? '#1696f7' : (isWorn ? '#3179ad' : '#0984e3');
     ctx.strokeStyle = isFresh ? '#55efc4' : (isWorn ? '#4ca6a8' : '#00cec9');
@@ -12773,6 +13050,17 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     ctx.beginPath();
     ctx.ellipse(0, -3, 6, 3, 0, 0, Math.PI * 2);
     ctx.fill();
+
+    // Subtle rotating rim glint while gliding/spinning
+    const spinSpeed = Math.hypot(frisbee.vx, frisbee.vy);
+    if (spinSpeed > 0.35 || glideHeight > 0.5) {
+      const gxOff = Math.cos(frisbee.spinAngle) * 7.2;
+      const gyOff = -2.2 + Math.sin(frisbee.spinAngle) * 3.4;
+      ctx.fillStyle = 'rgba(255,255,255,0.62)';
+      ctx.beginPath();
+      ctx.ellipse(gxOff, gyOff, 2.4, 1.1, frisbee.spinAngle * 0.25, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     if (isWorn) {
       // Cute chew/scuff marks on rim
@@ -12806,10 +13094,27 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     ctx.translate(pos.x, pos.y);
     ctx.scale(scale, scale);
 
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    const hopHeight = Math.max(0, duck.z);
+    const shadowScale = Math.max(0.62, 1 - hopHeight / 38);
+    ctx.fillStyle = `rgba(0,0,0,${(0.30 * shadowScale).toFixed(2)})`;
     ctx.beginPath();
-    ctx.ellipse(0, 4, 9, 4.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 4, 9 * shadowScale, 4.5 * shadowScale, 0, 0, Math.PI * 2);
     ctx.fill();
+
+    ctx.translate(0, -hopHeight);
+
+    // Side-to-side waddle rocking & rubbery squish
+    const rockAngle = Math.sin(duck.quackPhase * 12) * duck.wobble * 0.34;
+    if (Math.abs(rockAngle) > 0.004) {
+      ctx.rotate(rockAngle);
+    }
+    const sq = duck.squash;
+    if (Math.abs(sq) > 0.005) {
+      ctx.scale(1 + sq, 1 - sq * 0.78);
+    }
+    if (!duck.facingRight) {
+      ctx.scale(-1, 1);
+    }
 
     ctx.fillStyle = isFresh ? '#fff06b' : (isWorn ? '#e6d396' : '#ffeaa7');
     ctx.strokeStyle = isFresh ? '#f9ca24' : (isWorn ? '#c9ad63' : '#fdcb6e');
@@ -12869,8 +13174,73 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       state.roster.push(entry);
       recordOwnedBreed(normBreed);
       syncBreedCountsFromRoster();
-      const spawnPos = hasGrandDoghousePlaced() ? { gx: 2.22, gy: 2.22 } : { gx: 2.18, gy: 1.92 };
-      dogs.push(new Dog(spawnPos.gx, spawnPos.gy, entry.id, normBreed, isShiny, chosenColor));
+      const findDoghouseSpawnSpot = (): { gx: number; gy: number } => {
+        const gridSize = getGridSize();
+        const baseRaw = hasGrandDoghousePlaced() ? { gx: 2.22, gy: 2.22 } : { gx: 2.18, gy: 1.92 };
+        const base = pushOutsideAllObstacles(baseRaw.gx, baseRaw.gy, 0.08);
+        const minClearance = 0.48;
+
+        const minDistToDogs = (gx: number, gy: number): number => {
+          let best = Infinity;
+          for (let i = 0; i < dogs.length; i++) {
+            const other = dogs[i];
+            if (other.state === 'SLIDE_CLIMB' || other.state === 'SLIDE_DOWN') continue;
+            const d = Math.hypot(other.gx - gx, other.gy - gy);
+            if (d < best) best = d;
+          }
+          return best;
+        };
+
+        // Always use the default doghouse entrance spot first if no dog is standing there
+        if (!isPointBlockedByObstacle(base.gx, base.gy, 0.06) && minDistToDogs(base.gx, base.gy) >= minClearance) {
+          return base;
+        }
+
+        // Otherwise fan out cleanly in tight rings close around the doghouse entrance
+        const radii = [0.52, 0.80, 1.10, 1.42, 1.76, 2.12];
+        const angleSteps = 16;
+        let bestClearSpot: { gx: number; gy: number } | null = null;
+        let bestClearScore = Infinity;
+        let bestFallbackSpot: { gx: number; gy: number } = base;
+        let bestFallbackClearance = minDistToDogs(base.gx, base.gy);
+
+        for (let rIdx = 0; rIdx < radii.length; rIdx++) {
+          const radius = radii[rIdx];
+          for (let aIdx = 0; aIdx < angleSteps; aIdx++) {
+            const ang = (aIdx / angleSteps) * Math.PI * 2 + rIdx * 0.21;
+            const cx = base.gx + Math.cos(ang) * radius;
+            const cy = base.gy + Math.sin(ang) * radius;
+            if (cx < 0.44 || cx > gridSize - 0.44 || cy < 0.44 || cy > gridSize - 0.44) continue;
+            if (isPointBlockedByObstacle(cx, cy, 0.08) || isNearSlideZone(cx, cy)) continue;
+
+            const dogClearance = minDistToDogs(cx, cy);
+            if (dogClearance > bestFallbackClearance) {
+              bestFallbackClearance = dogClearance;
+              bestFallbackSpot = { gx: cx, gy: cy };
+            }
+            if (dogClearance >= minClearance) {
+              // Slightly prefer open yard right in front of the doghouse door over behind it
+              const frontPenalty = (cx < base.gx - 0.30 || cy < base.gy - 0.30) ? 0.26 : 0;
+              const score = radius + frontPenalty;
+              if (score < bestClearScore) {
+                bestClearScore = score;
+                bestClearSpot = { gx: cx, gy: cy };
+              }
+            }
+          }
+          if (bestClearSpot) break;
+        }
+
+        return bestClearSpot || bestFallbackSpot;
+      };
+
+      const spawnPos = findDoghouseSpawnSpot();
+      const spawnedDog = new Dog(spawnPos.gx, spawnPos.gy, entry.id, normBreed, isShiny, chosenColor);
+      if (!spawnedDog.isNightSleep) {
+        spawnedDog.petBounce = 0.24;
+        spawnedDog.timer = 0.45 + Math.random() * 0.85;
+      }
+      dogs.push(spawnedDog);
 
       if (isShiny) {
         state.totalShiniesFound = (Number(state.totalShiniesFound) || 0) + 1;
@@ -15233,11 +15603,102 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
           return false;
         }
 
+        const BALL_DRAG = 3.15;
+        const FRISBEE_DRAG = 2.15;
+        const DUCK_DRAG = 3.85;
+
+        const launchTennisBallToward = (
+          kicker: Dog,
+          startGx: number,
+          startGy: number,
+          targetGx: number,
+          targetGy: number
+        ): void => {
+          const dx = targetGx - startGx;
+          const dy = targetGy - startGy;
+          const dist = Math.hypot(dx, dy) || 0.01;
+          const launchSpeed = Math.max(4.6, Math.min(9.8, dist * (BALL_DRAG + 0.32)));
+          tennisBall.vx = (dx / dist) * launchSpeed;
+          tennisBall.vy = (dy / dist) * launchSpeed;
+          tennisBall.z = Math.max(tennisBall.z, 1.5);
+          tennisBall.vz = 115 + Math.random() * 35;
+          tennisBall.squash = 0.24;
+          tennisBall.isRolling = true;
+          tennisBall.ricochetCount = 0;
+          tennisBall.kicker = kicker;
+          tennisBall.kickerGrace = 0.28;
+          tennisBall.chaser = null;
+          tennisBall.targetGx = targetGx;
+          tennisBall.targetGy = targetGy;
+        };
+
+        const launchFrisbeeToward = (
+          kicker: Dog,
+          startGx: number,
+          startGy: number,
+          targetGx: number,
+          targetGy: number
+        ): void => {
+          const dx = targetGx - startGx;
+          const dy = targetGy - startGy;
+          const dist = Math.hypot(dx, dy) || 0.01;
+          const launchSpeed = Math.max(4.4, Math.min(8.6, dist * (FRISBEE_DRAG + 0.35)));
+          frisbee.vx = (dx / dist) * launchSpeed;
+          frisbee.vy = (dy / dist) * launchSpeed;
+          frisbee.z = Math.max(frisbee.z, 2.5);
+          frisbee.vz = 72 + Math.random() * 18;
+          frisbee.curveRate = (Math.random() < 0.5 ? -1 : 1) * (0.28 + Math.random() * 0.34);
+          frisbee.wobble = 0.14;
+          frisbee.isMoving = true;
+          frisbee.ricochetCount = 0;
+          frisbee.kicker = kicker;
+          frisbee.kickerGrace = 0.30;
+          frisbee.chaser = null;
+          frisbee.targetGx = targetGx;
+          frisbee.targetGy = targetGy;
+        };
+
+        const launchDuckToward = (
+          kicker: Dog,
+          startGx: number,
+          startGy: number,
+          targetGx: number,
+          targetGy: number
+        ): void => {
+          const dx = targetGx - startGx;
+          const dy = targetGy - startGy;
+          const dist = Math.hypot(dx, dy) || 0.01;
+          const launchSpeed = Math.max(3.8, Math.min(7.2, dist * (DUCK_DRAG + 0.25)));
+          duck.vx = (dx / dist) * launchSpeed;
+          duck.vy = (dy / dist) * launchSpeed;
+          duck.z = Math.max(duck.z, 1.0);
+          duck.vz = 68 + Math.random() * 18;
+          duck.squash = 0.26;
+          duck.wobble = 0.55;
+          if (Math.abs(dx - dy) > 0.05) {
+            duck.facingRight = (dx - dy) >= 0;
+          }
+          duck.isMoved = true;
+          duck.ricochetCount = 0;
+          duck.kicker = kicker;
+          duck.kickerGrace = 0.30;
+          duck.chaser = null;
+          duck.targetGx = targetGx;
+          duck.targetGy = targetGy;
+        };
+
         walker.cancelSlide();
         walker.cancelDrink();
         walker.setWalkTarget(safeSpot.gx, safeSpot.gy);
         walker.digOnArrival = false;
         walker.state = 'WALK';
+        if (toyKind === 'ball') {
+          tennisBall.chaser = walker;
+        } else if (toyKind === 'frisbee') {
+          frisbee.chaser = walker;
+        } else {
+          duck.chaser = walker;
+        }
         walker.onReachToy = () => {
           applyToyPlayBonuses(walker);
           walker.petBounce = 0.28;
@@ -15248,10 +15709,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
             sfx.squeak();
             const startGx = tennisBall.gx;
             const startGy = tennisBall.gy;
-            tennisBall.isRolling = true;
             const nextSpot = pickForwardToySpot(walker, startGx, startGy, 1.25, 2.55);
-            tennisBall.targetGx = nextSpot.gx;
-            tennisBall.targetGy = nextSpot.gy;
+            launchTennisBallToward(walker, startGx, startGy, nextSpot.gx, nextSpot.gy);
 
             // If the ball was kicked close to another awake pup, give them a high chance to play with it!
             if (tennisBall.passChainCount < 3 && dogs.length > 1) {
@@ -15279,16 +15738,16 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
             }
           } else if (toyKind === 'frisbee') {
             sfx.shiny();
-            frisbee.isMoving = true;
-            const nextSpot = pickForwardToySpot(walker, frisbee.gx, frisbee.gy, 1.35, 2.65);
-            frisbee.targetGx = nextSpot.gx;
-            frisbee.targetGy = nextSpot.gy;
+            const startGx = frisbee.gx;
+            const startGy = frisbee.gy;
+            const nextSpot = pickForwardToySpot(walker, startGx, startGy, 1.45, 2.85);
+            launchFrisbeeToward(walker, startGx, startGy, nextSpot.gx, nextSpot.gy);
           } else {
             sfx.quack();
-            duck.isMoved = true;
-            const nextSpot = pickForwardToySpot(walker, duck.gx, duck.gy, 0.95, 1.75);
-            duck.targetGx = nextSpot.gx;
-            duck.targetGy = nextSpot.gy;
+            const startGx = duck.gx;
+            const startGy = duck.gy;
+            const nextSpot = pickForwardToySpot(walker, startGx, startGy, 0.95, 1.75);
+            launchDuckToward(walker, startGx, startGy, nextSpot.gx, nextSpot.gy);
           }
 
           // After batting the toy, occasionally chain into chasing the same toy again (22%, if not passed)
@@ -15318,13 +15777,424 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         return true;
       };
 
+      // Shared sub-stepped collision resolver for park toys against fences, static park obstacles, and bystander dogs
+      interface ToyPhysBody {
+        gx: number;
+        gy: number;
+        vx: number;
+        vy: number;
+        kicker: Dog | null;
+        kickerGrace: number;
+        chaser: Dog | null;
+      }
+
+      const resolveToyWorldCollisions = (
+        body: ToyPhysBody,
+        radius: number,
+        restitution: number,
+        dogRestitution: number,
+        gridSz: number,
+        onHit: (hitGx: number, hitGy: number, impactSpeed: number, splashBlue: boolean) => void
+      ): void => {
+        const minEdge = 0.36;
+        const maxEdge = gridSz - 0.36;
+
+        // 1. Park perimeter fences
+        if (body.gx < minEdge) {
+          body.gx = minEdge;
+          if (body.vx < 0) {
+            const imp = Math.abs(body.vx);
+            body.vx = -body.vx * restitution;
+            onHit(body.gx, body.gy, imp, false);
+          }
+        } else if (body.gx > maxEdge) {
+          body.gx = maxEdge;
+          if (body.vx > 0) {
+            const imp = Math.abs(body.vx);
+            body.vx = -body.vx * restitution;
+            onHit(body.gx, body.gy, imp, false);
+          }
+        }
+        if (body.gy < minEdge) {
+          body.gy = minEdge;
+          if (body.vy < 0) {
+            const imp = Math.abs(body.vy);
+            body.vy = -body.vy * restitution;
+            onHit(body.gx, body.gy, imp, false);
+          }
+        } else if (body.gy > maxEdge) {
+          body.gy = maxEdge;
+          if (body.vy > 0) {
+            const imp = Math.abs(body.vy);
+            body.vy = -body.vy * restitution;
+            onHit(body.gx, body.gy, imp, false);
+          }
+        }
+
+        // 2. Static park obstacles (trees, hydrants, fountains, lamps, mushrooms, doghouse/manor, slides, water bowl)
+        for (let i = 0; i < cachedStaticObstacles.length; i++) {
+          const obs = cachedStaticObstacles[i];
+          let nx = 0;
+          let ny = 0;
+          let hit = false;
+          let hitX = body.gx;
+          let hitY = body.gy;
+
+          if (obs.kind === 'circle') {
+            const minDist = obs.r + radius;
+            const dx = body.gx - obs.cx;
+            const dy = body.gy - obs.cy;
+            const distSq = dx * dx + dy * dy;
+            if (distSq < minDist * minDist) {
+              hit = true;
+              const dist = Math.sqrt(distSq);
+              if (dist > 1e-4) {
+                nx = dx / dist;
+                ny = dy / dist;
+              } else {
+                const spd = Math.hypot(body.vx, body.vy) || 1;
+                nx = -body.vx / spd;
+                ny = -body.vy / spd;
+              }
+              body.gx = obs.cx + nx * (minDist + 0.004);
+              body.gy = obs.cy + ny * (minDist + 0.004);
+              hitX = obs.cx + nx * obs.r;
+              hitY = obs.cy + ny * obs.r;
+            }
+          } else {
+            const closestX = Math.max(obs.minGx, Math.min(obs.maxGx, body.gx));
+            const closestY = Math.max(obs.minGy, Math.min(obs.maxGy, body.gy));
+            const dx = body.gx - closestX;
+            const dy = body.gy - closestY;
+            const distSq = dx * dx + dy * dy;
+            if (distSq < radius * radius) {
+              hit = true;
+              if (distSq > 1e-8) {
+                const dist = Math.sqrt(distSq);
+                nx = dx / dist;
+                ny = dy / dist;
+                body.gx = closestX + nx * (radius + 0.004);
+                body.gy = closestY + ny * (radius + 0.004);
+                hitX = closestX;
+                hitY = closestY;
+              } else {
+                const dLeft = Math.abs(body.gx - obs.minGx);
+                const dRight = Math.abs(obs.maxGx - body.gx);
+                const dTop = Math.abs(body.gy - obs.minGy);
+                const dBottom = Math.abs(obs.maxGy - body.gy);
+                const minD = Math.min(dLeft, dRight, dTop, dBottom);
+                if (minD === dLeft) {
+                  nx = -1; ny = 0;
+                  body.gx = obs.minGx - (radius + 0.004);
+                } else if (minD === dRight) {
+                  nx = 1; ny = 0;
+                  body.gx = obs.maxGx + (radius + 0.004);
+                } else if (minD === dTop) {
+                  nx = 0; ny = -1;
+                  body.gy = obs.minGy - (radius + 0.004);
+                } else {
+                  nx = 0; ny = 1;
+                  body.gy = obs.maxGy + (radius + 0.004);
+                }
+                hitX = body.gx;
+                hitY = body.gy;
+              }
+            }
+          }
+
+          if (hit) {
+            const vn = body.vx * nx + body.vy * ny;
+            if (vn < 0) {
+              const imp = -vn;
+              body.vx -= (1 + restitution) * vn * nx;
+              body.vy -= (1 + restitution) * vn * ny;
+              const jitter = (Math.random() - 0.5) * 0.09;
+              const cosJ = Math.cos(jitter);
+              const sinJ = Math.sin(jitter);
+              const rvx = body.vx * cosJ - body.vy * sinJ;
+              const rvy = body.vx * sinJ + body.vy * cosJ;
+              body.vx = rvx;
+              body.vy = rvy;
+              const isWaterObject = obs.key === 'bowl' || obs.key.startsWith('fountain:');
+              onHit(hitX, hitY, imp, isWaterObject);
+            }
+          }
+        }
+
+        // 3. Bystander dogs (excluding active chaser, just-kicked grace window, and dogs on slides)
+        for (let i = 0; i < dogs.length; i++) {
+          const d = dogs[i];
+          if (d === body.chaser) continue;
+          if (d === body.kicker && body.kickerGrace > 0) continue;
+          if (d.state === 'SLIDE_CLIMB' || d.state === 'SLIDE_DOWN') continue;
+          const minDist = radius + 0.23;
+          const dx = body.gx - d.gx;
+          const dy = body.gy - d.gy;
+          const distSq = dx * dx + dy * dy;
+          if (distSq < minDist * minDist && distSq > 1e-6) {
+            const dist = Math.sqrt(distSq);
+            const nx = dx / dist;
+            const ny = dy / dist;
+            const vn = body.vx * nx + body.vy * ny;
+            if (vn < 0) {
+              const imp = -vn;
+              body.gx = d.gx + nx * (minDist + 0.004);
+              body.gy = d.gy + ny * (minDist + 0.004);
+              body.vx -= (1 + dogRestitution) * vn * nx;
+              body.vy -= (1 + dogRestitution) * vn * ny;
+              if (d.state !== 'SLEEP') {
+                d.petBounce = Math.max(d.petBounce, 0.22);
+              }
+              onHit((body.gx + d.gx) * 0.5, (body.gy + d.gy) * 0.5, imp, false);
+            }
+          }
+        }
+      };
+
+      const spawnToyImpactParticles = (
+        hitGx: number,
+        hitGy: number,
+        heightPx: number,
+        primaryColor: string,
+        splashBlue: boolean
+      ): void => {
+        const hitScreen = gridToScreen(hitGx, hitGy);
+        const s = getScale();
+        const hitY = hitScreen.y - (4 + heightPx) * s;
+        particles.push({
+          x: hitScreen.x,
+          y: hitY,
+          vx: 0,
+          vy: 0,
+          life: 0.24,
+          maxLife: 0.24,
+          color: splashBlue ? '#74b9ff' : primaryColor,
+          size: 3.5,
+          isRing: true
+        });
+        const burstCount = splashBlue ? 5 : 4;
+        for (let p = 0; p < burstCount; p++) {
+          const ang = Math.random() * Math.PI * 2;
+          const spd = 22 + Math.random() * 34;
+          particles.push({
+            x: hitScreen.x,
+            y: hitY,
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd - 16,
+            life: 0.26 + Math.random() * 0.16,
+            maxLife: 0.42,
+            color: splashBlue ? (p % 2 === 0 ? '#74b9ff' : '#dff9fb') : (p % 2 === 0 ? '#ffffff' : primaryColor),
+            size: 1.6 + Math.random() * 1.4
+          });
+        }
+      };
+
+      const nudgeTennisBallFromImpact = (nx: number, ny: number, imp: number): void => {
+        const boost = Math.max(2.0, Math.min(5.2, imp * 0.85));
+        tennisBall.vx = -nx * boost;
+        tennisBall.vy = -ny * boost;
+        tennisBall.z = Math.max(tennisBall.z, 1.0);
+        tennisBall.vz = Math.max(tennisBall.vz, 75);
+        tennisBall.squash = Math.max(tennisBall.squash, 0.24);
+        tennisBall.isRolling = true;
+      };
+
+      const nudgeFrisbeeFromImpact = (nx: number, ny: number, imp: number): void => {
+        const boost = Math.max(1.8, Math.min(4.6, imp * 0.72));
+        frisbee.vx = -nx * boost;
+        frisbee.vy = -ny * boost;
+        frisbee.z = Math.max(frisbee.z, 1.5);
+        frisbee.vz = Math.max(frisbee.vz, 38);
+        frisbee.wobble = Math.max(frisbee.wobble, 0.45);
+        frisbee.curveRate = (Math.random() < 0.5 ? -1 : 1) * 0.25;
+        frisbee.isMoving = true;
+      };
+
+      const nudgeDuckFromImpact = (nx: number, ny: number, imp: number): void => {
+        const boost = Math.max(1.6, Math.min(4.0, imp * 0.65));
+        duck.vx = -nx * boost;
+        duck.vy = -ny * boost;
+        duck.z = Math.max(duck.z, 0.8);
+        duck.vz = Math.max(duck.vz, 48);
+        duck.squash = Math.max(duck.squash, 0.30);
+        duck.wobble = Math.max(duck.wobble, 0.62);
+        duck.quackPhase += 1.4;
+        if (Math.abs(duck.vx - duck.vy) > 0.05) {
+          duck.facingRight = (duck.vx - duck.vy) >= 0;
+        }
+        duck.isMoved = true;
+      };
+
       if (state.hasTennisBall) {
+        const BALL_DRAG = 3.15;
+        const BALL_RADIUS = 0.12;
+        const BALL_GRAVITY = 385;
+        const BALL_RESTITUTION = 0.84;
+
         tennisBall.bouncePhase += dt;
+        tennisBall.squash *= Math.exp(-16 * dt);
+        if (tennisBall.soundCooldown > 0) tennisBall.soundCooldown = Math.max(0, tennisBall.soundCooldown - dt);
+        if (tennisBall.chaserRedirectCooldown > 0) {
+          tennisBall.chaserRedirectCooldown = Math.max(0, tennisBall.chaserRedirectCooldown - dt);
+        }
+        if (tennisBall.kickerGrace > 0) {
+          tennisBall.kickerGrace = Math.max(0, tennisBall.kickerGrace - dt);
+          if (tennisBall.kickerGrace <= 0) tennisBall.kicker = null;
+        }
+        if (tennisBall.chaser && (!tennisBall.chaser.onReachToy || tennisBall.chaser.state !== 'WALK')) {
+          tennisBall.chaser = null;
+        }
+
+        const triggerBallRicochet = (
+          hitGx: number,
+          hitGy: number,
+          impactSpeed: number,
+          splashBlue = false,
+          overrideQuack = false
+        ): void => {
+          tennisBall.ricochetCount += 1;
+          tennisBall.vz = Math.max(tennisBall.vz, 72 + Math.min(62, impactSpeed * 10));
+          tennisBall.squash = Math.max(tennisBall.squash, Math.min(0.36, 0.16 + impactSpeed * 0.03));
+
+          if (tennisBall.soundCooldown <= 0) {
+            if (overrideQuack) {
+              sfx.duckBonk(tennisBall.ricochetCount - 1);
+            } else {
+              sfx.ballBounce(tennisBall.ricochetCount - 1);
+            }
+            tennisBall.soundCooldown = 0.075;
+            spawnToyImpactParticles(hitGx, hitGy, tennisBall.z, '#d8ff66', splashBlue);
+          }
+
+          const gridSz = getGridSize();
+          const pred = pushOutsideAllObstacles(
+            Math.max(0.4, Math.min(gridSz - 0.4, tennisBall.gx + tennisBall.vx / BALL_DRAG)),
+            Math.max(0.4, Math.min(gridSz - 0.4, tennisBall.gy + tennisBall.vy / BALL_DRAG)),
+            0.1
+          );
+          tennisBall.targetGx = pred.gx;
+          tennisBall.targetGy = pred.gy;
+          if (
+            tennisBall.chaser &&
+            tennisBall.chaser.onReachToy &&
+            tennisBall.chaser.state === 'WALK' &&
+            tennisBall.chaserRedirectCooldown <= 0
+          ) {
+            tennisBall.chaser.setWalkTarget(pred.gx, pred.gy);
+            tennisBall.chaserRedirectCooldown = 0.16;
+          }
+        };
+
+        if (tennisBall.isRolling || tennisBall.z > 0 || Math.abs(tennisBall.vz) > 1) {
+          tennisBall.vz -= BALL_GRAVITY * dt;
+          tennisBall.z += tennisBall.vz * dt;
+          if (tennisBall.z <= 0) {
+            tennisBall.z = 0;
+            if (Math.abs(tennisBall.vz) > 26) {
+              tennisBall.squash = Math.max(tennisBall.squash, Math.min(0.24, Math.abs(tennisBall.vz) * 0.0018));
+              tennisBall.vz = -tennisBall.vz * 0.56;
+            } else {
+              tennisBall.vz = 0;
+              const hSpeed = Math.hypot(tennisBall.vx, tennisBall.vy);
+              if (tennisBall.isRolling && hSpeed > 1.4) {
+                tennisBall.vz = Math.min(48, hSpeed * 7.5);
+              }
+            }
+          }
+        }
+
         if (tennisBall.isRolling) {
-          tennisBall.gx += (tennisBall.targetGx - tennisBall.gx) * (dt * 5);
-          tennisBall.gy += (tennisBall.targetGy - tennisBall.gy) * (dt * 5);
-          if (Math.hypot(tennisBall.targetGx - tennisBall.gx, tennisBall.targetGy - tennisBall.gy) < 0.05) {
+          ensureNavCache();
+          const gridSz = getGridSize();
+          const startSpeed = Math.hypot(tennisBall.vx, tennisBall.vy);
+          const steps = Math.max(1, Math.min(12, Math.ceil((startSpeed * dt) / 0.05)));
+          const subDt = dt / steps;
+
+          for (let step = 0; step < steps; step++) {
+            tennisBall.gx += tennisBall.vx * subDt;
+            tennisBall.gy += tennisBall.vy * subDt;
+
+            resolveToyWorldCollisions(
+              tennisBall,
+              BALL_RADIUS,
+              BALL_RESTITUTION,
+              0.74,
+              gridSz,
+              (hx, hy, imp, splashBlue) => triggerBallRicochet(hx, hy, imp, splashBlue)
+            );
+
+            // Bounce off Frisbee & knock it into a glide
+            if (state.hasFrisbee) {
+              const minDist = BALL_RADIUS + 0.21;
+              const dx = tennisBall.gx - frisbee.gx;
+              const dy = tennisBall.gy - frisbee.gy;
+              const distSq = dx * dx + dy * dy;
+              if (distSq < minDist * minDist && distSq > 1e-6) {
+                const dist = Math.sqrt(distSq);
+                const nx = dx / dist;
+                const ny = dy / dist;
+                tennisBall.gx = frisbee.gx + nx * (minDist + 0.004);
+                tennisBall.gy = frisbee.gy + ny * (minDist + 0.004);
+                const vn = tennisBall.vx * nx + tennisBall.vy * ny;
+                if (vn < 0) {
+                  const imp = -vn;
+                  tennisBall.vx -= (1 + 0.78) * vn * nx;
+                  tennisBall.vy -= (1 + 0.78) * vn * ny;
+                  nudgeFrisbeeFromImpact(nx, ny, imp);
+                  triggerBallRicochet((tennisBall.gx + frisbee.gx) * 0.5, (tennisBall.gy + frisbee.gy) * 0.5, imp);
+                }
+              }
+            }
+
+            // Bounce off Rubber Duck & make it scoot and wobble
+            if (state.hasDuck) {
+              const minDist = BALL_RADIUS + 0.20;
+              const dx = tennisBall.gx - duck.gx;
+              const dy = tennisBall.gy - duck.gy;
+              const distSq = dx * dx + dy * dy;
+              if (distSq < minDist * minDist && distSq > 1e-6) {
+                const dist = Math.sqrt(distSq);
+                const nx = dx / dist;
+                const ny = dy / dist;
+                tennisBall.gx = duck.gx + nx * (minDist + 0.004);
+                tennisBall.gy = duck.gy + ny * (minDist + 0.004);
+                const vn = tennisBall.vx * nx + tennisBall.vy * ny;
+                if (vn < 0) {
+                  const imp = -vn;
+                  tennisBall.vx -= (1 + 0.76) * vn * nx;
+                  tennisBall.vy -= (1 + 0.76) * vn * ny;
+                  nudgeDuckFromImpact(nx, ny, imp);
+                  triggerBallRicochet((tennisBall.gx + duck.gx) * 0.5, (tennisBall.gy + duck.gy) * 0.5, imp, false, true);
+                }
+              }
+            }
+
+            const drag = Math.exp(-BALL_DRAG * subDt);
+            tennisBall.vx *= drag;
+            tennisBall.vy *= drag;
+          }
+
+          const curSpeed = Math.hypot(tennisBall.vx, tennisBall.vy);
+          const screenSpinDir = (tennisBall.vx - tennisBall.vy) >= 0 ? 1 : -1;
+          tennisBall.spinAngle += screenSpinDir * curSpeed * dt * 4.4;
+
+          if (curSpeed < 0.24) {
+            tennisBall.vx = 0;
+            tennisBall.vy = 0;
             tennisBall.isRolling = false;
+            const safeRest = pushOutsideAllObstacles(tennisBall.gx, tennisBall.gy, 0.1);
+            tennisBall.gx = safeRest.gx;
+            tennisBall.gy = safeRest.gy;
+            tennisBall.targetGx = safeRest.gx;
+            tennisBall.targetGy = safeRest.gy;
+            if (
+              tennisBall.chaser &&
+              tennisBall.chaser.onReachToy &&
+              tennisBall.chaser.state === 'WALK' &&
+              Math.hypot(tennisBall.chaser.targetGx - safeRest.gx, tennisBall.chaser.targetGy - safeRest.gy) > 0.22
+            ) {
+              tennisBall.chaser.setWalkTarget(safeRest.gx, safeRest.gy);
+            }
           }
         } else {
           tennisBall.timer -= dt;
@@ -15341,13 +16211,201 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       }
 
       if (state.hasFrisbee) {
+        const FRISBEE_AIR_DRAG = 2.15;
+        const FRISBEE_GROUND_DRAG = 4.6;
+        const FRISBEE_RADIUS = 0.19;
+        const FRISBEE_GRAVITY = 155;
+        const FRISBEE_RESTITUTION = 0.68;
+
+        frisbee.wobblePhase += dt;
+        frisbee.wobble *= Math.exp(-5.2 * dt);
+        if (frisbee.soundCooldown > 0) frisbee.soundCooldown = Math.max(0, frisbee.soundCooldown - dt);
+        if (frisbee.chaserRedirectCooldown > 0) {
+          frisbee.chaserRedirectCooldown = Math.max(0, frisbee.chaserRedirectCooldown - dt);
+        }
+        if (frisbee.kickerGrace > 0) {
+          frisbee.kickerGrace = Math.max(0, frisbee.kickerGrace - dt);
+          if (frisbee.kickerGrace <= 0) frisbee.kicker = null;
+        }
+        if (frisbee.chaser && (!frisbee.chaser.onReachToy || frisbee.chaser.state !== 'WALK')) {
+          frisbee.chaser = null;
+        }
+
+        const triggerFrisbeeRicochet = (
+          hitGx: number,
+          hitGy: number,
+          impactSpeed: number,
+          splashBlue = false,
+          overrideQuack = false
+        ): void => {
+          frisbee.ricochetCount += 1;
+          frisbee.wobble = Math.max(frisbee.wobble, Math.min(0.68, 0.34 + impactSpeed * 0.06));
+          frisbee.curveRate = -frisbee.curveRate * 0.7;
+          // Crisp flat deflection (tiny lift pop if airborne, no high ball-like bounce)
+          if (frisbee.z > 1) {
+            frisbee.vz = Math.max(frisbee.vz, 22);
+          }
+
+          if (frisbee.soundCooldown <= 0) {
+            if (overrideQuack) {
+              sfx.duckBonk(frisbee.ricochetCount - 1);
+            } else {
+              sfx.frisbeeClack(frisbee.ricochetCount - 1);
+            }
+            frisbee.soundCooldown = 0.08;
+            spawnToyImpactParticles(hitGx, hitGy, frisbee.z, '#74b9ff', splashBlue);
+          }
+
+          const gridSz = getGridSize();
+          const pred = pushOutsideAllObstacles(
+            Math.max(0.4, Math.min(gridSz - 0.4, frisbee.gx + frisbee.vx / FRISBEE_AIR_DRAG)),
+            Math.max(0.4, Math.min(gridSz - 0.4, frisbee.gy + frisbee.vy / FRISBEE_AIR_DRAG)),
+            0.1
+          );
+          frisbee.targetGx = pred.gx;
+          frisbee.targetGy = pred.gy;
+          if (
+            frisbee.chaser &&
+            frisbee.chaser.onReachToy &&
+            frisbee.chaser.state === 'WALK' &&
+            frisbee.chaserRedirectCooldown <= 0
+          ) {
+            frisbee.chaser.setWalkTarget(pred.gx, pred.gy);
+            frisbee.chaserRedirectCooldown = 0.16;
+          }
+        };
+
+        // Smooth aerodynamic glide height (floats while spinning fast, settles flat with minimal skim)
+        if (frisbee.isMoving || frisbee.z > 0 || Math.abs(frisbee.vz) > 1) {
+          const hSpeed = Math.hypot(frisbee.vx, frisbee.vy);
+          const liftFactor = frisbee.isMoving && frisbee.z > 1.5 ? Math.min(0.72, hSpeed * 0.13) : 0;
+          const effGravity = FRISBEE_GRAVITY * (1 - liftFactor);
+          frisbee.vz -= effGravity * dt;
+          frisbee.z += frisbee.vz * dt;
+          if (frisbee.z > 22) {
+            frisbee.z = 22;
+            if (frisbee.vz > 0) frisbee.vz *= 0.4;
+          }
+          if (frisbee.z <= 0) {
+            frisbee.z = 0;
+            if (Math.abs(frisbee.vz) > 34) {
+              frisbee.vz = -frisbee.vz * 0.18;
+              frisbee.wobble = Math.max(frisbee.wobble, 0.18);
+            } else {
+              frisbee.vz = 0;
+            }
+          }
+        }
+
         if (frisbee.isMoving) {
-          frisbee.gx += (frisbee.targetGx - frisbee.gx) * (dt * 5);
-          frisbee.gy += (frisbee.targetGy - frisbee.gy) * (dt * 5);
-          if (Math.hypot(frisbee.targetGx - frisbee.gx, frisbee.targetGy - frisbee.gy) < 0.05) {
+          ensureNavCache();
+          const gridSz = getGridSize();
+          const startSpeed = Math.hypot(frisbee.vx, frisbee.vy);
+          const steps = Math.max(1, Math.min(12, Math.ceil((startSpeed * dt) / 0.05)));
+          const subDt = dt / steps;
+
+          for (let step = 0; step < steps; step++) {
+            // Subtle aerodynamic curve while gliding through the air
+            if (frisbee.z > 1.5 && Math.abs(frisbee.curveRate) > 0.01) {
+              const turn = frisbee.curveRate * subDt;
+              const cosT = Math.cos(turn);
+              const sinT = Math.sin(turn);
+              const nvx = frisbee.vx * cosT - frisbee.vy * sinT;
+              const nvy = frisbee.vx * sinT + frisbee.vy * cosT;
+              frisbee.vx = nvx;
+              frisbee.vy = nvy;
+            }
+
+            frisbee.gx += frisbee.vx * subDt;
+            frisbee.gy += frisbee.vy * subDt;
+
+            resolveToyWorldCollisions(
+              frisbee,
+              FRISBEE_RADIUS,
+              FRISBEE_RESTITUTION,
+              0.60,
+              gridSz,
+              (hx, hy, imp, splashBlue) => triggerFrisbeeRicochet(hx, hy, imp, splashBlue)
+            );
+
+            // Clack into Tennis Ball
+            if (state.hasTennisBall) {
+              const minDist = FRISBEE_RADIUS + 0.14;
+              const dx = frisbee.gx - tennisBall.gx;
+              const dy = frisbee.gy - tennisBall.gy;
+              const distSq = dx * dx + dy * dy;
+              if (distSq < minDist * minDist && distSq > 1e-6) {
+                const dist = Math.sqrt(distSq);
+                const nx = dx / dist;
+                const ny = dy / dist;
+                frisbee.gx = tennisBall.gx + nx * (minDist + 0.004);
+                frisbee.gy = tennisBall.gy + ny * (minDist + 0.004);
+                const vn = frisbee.vx * nx + frisbee.vy * ny;
+                if (vn < 0) {
+                  const imp = -vn;
+                  frisbee.vx -= (1 + 0.62) * vn * nx;
+                  frisbee.vy -= (1 + 0.62) * vn * ny;
+                  nudgeTennisBallFromImpact(nx, ny, imp);
+                  triggerFrisbeeRicochet((frisbee.gx + tennisBall.gx) * 0.5, (frisbee.gy + tennisBall.gy) * 0.5, imp);
+                }
+              }
+            }
+
+            // Clack into Rubber Duck
+            if (state.hasDuck) {
+              const minDist = FRISBEE_RADIUS + 0.19;
+              const dx = frisbee.gx - duck.gx;
+              const dy = frisbee.gy - duck.gy;
+              const distSq = dx * dx + dy * dy;
+              if (distSq < minDist * minDist && distSq > 1e-6) {
+                const dist = Math.sqrt(distSq);
+                const nx = dx / dist;
+                const ny = dy / dist;
+                frisbee.gx = duck.gx + nx * (minDist + 0.004);
+                frisbee.gy = duck.gy + ny * (minDist + 0.004);
+                const vn = frisbee.vx * nx + frisbee.vy * ny;
+                if (vn < 0) {
+                  const imp = -vn;
+                  frisbee.vx -= (1 + 0.62) * vn * nx;
+                  frisbee.vy -= (1 + 0.62) * vn * ny;
+                  nudgeDuckFromImpact(nx, ny, imp);
+                  triggerFrisbeeRicochet((frisbee.gx + duck.gx) * 0.5, (frisbee.gy + duck.gy) * 0.5, imp, false, true);
+                }
+              }
+            }
+
+            const activeDrag = frisbee.z > 0.5 ? FRISBEE_AIR_DRAG : FRISBEE_GROUND_DRAG;
+            const drag = Math.exp(-activeDrag * subDt);
+            frisbee.vx *= drag;
+            frisbee.vy *= drag;
+          }
+
+          const curSpeed = Math.hypot(frisbee.vx, frisbee.vy);
+          const screenVx = frisbee.vx - frisbee.vy;
+          frisbee.spinAngle += (frisbee.curveRate >= 0 ? 1 : -1) * (4.5 + curSpeed * 3.8) * dt;
+          const targetTilt = Math.max(-0.22, Math.min(0.22, screenVx * 0.032 + frisbee.curveRate * 0.18));
+          frisbee.tilt += (targetTilt - frisbee.tilt) * Math.min(1, dt * 10);
+
+          if (curSpeed < 0.22) {
+            frisbee.vx = 0;
+            frisbee.vy = 0;
             frisbee.isMoving = false;
+            const safeRest = pushOutsideAllObstacles(frisbee.gx, frisbee.gy, 0.1);
+            frisbee.gx = safeRest.gx;
+            frisbee.gy = safeRest.gy;
+            frisbee.targetGx = safeRest.gx;
+            frisbee.targetGy = safeRest.gy;
+            if (
+              frisbee.chaser &&
+              frisbee.chaser.onReachToy &&
+              frisbee.chaser.state === 'WALK' &&
+              Math.hypot(frisbee.chaser.targetGx - safeRest.gx, frisbee.chaser.targetGy - safeRest.gy) > 0.22
+            ) {
+              frisbee.chaser.setWalkTarget(safeRest.gx, safeRest.gy);
+            }
           }
         } else {
+          frisbee.tilt *= Math.exp(-10 * dt);
           frisbee.timer -= dt;
           if (frisbee.timer <= 0 && dogs.length > 0) {
             frisbee.timer = 10.0 + Math.random() * 8.0;
@@ -15361,11 +16419,176 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       }
 
       if (state.hasDuck) {
+        const DUCK_DRAG = 3.85;
+        const DUCK_RADIUS = 0.18;
+        const DUCK_GRAVITY = 470;
+        const DUCK_RESTITUTION = 0.62;
+
+        duck.quackPhase += dt * (duck.isMoved ? 2.4 : 1.0);
+        duck.squash *= Math.exp(-13 * dt);
+        duck.wobble *= Math.exp((duck.isMoved ? -2.2 : -5.5) * dt);
+        if (duck.soundCooldown > 0) duck.soundCooldown = Math.max(0, duck.soundCooldown - dt);
+        if (duck.chaserRedirectCooldown > 0) {
+          duck.chaserRedirectCooldown = Math.max(0, duck.chaserRedirectCooldown - dt);
+        }
+        if (duck.kickerGrace > 0) {
+          duck.kickerGrace = Math.max(0, duck.kickerGrace - dt);
+          if (duck.kickerGrace <= 0) duck.kicker = null;
+        }
+        if (duck.chaser && (!duck.chaser.onReachToy || duck.chaser.state !== 'WALK')) {
+          duck.chaser = null;
+        }
+
+        const triggerDuckRicochet = (
+          hitGx: number,
+          hitGy: number,
+          impactSpeed: number,
+          splashBlue = false
+        ): void => {
+          duck.ricochetCount += 1;
+          duck.squash = Math.max(duck.squash, Math.min(0.38, 0.22 + impactSpeed * 0.04));
+          duck.wobble = Math.max(duck.wobble, Math.min(0.85, 0.50 + impactSpeed * 0.08));
+          duck.vz = Math.max(duck.vz, 48 + Math.min(34, impactSpeed * 6));
+          if (Math.abs(duck.vx - duck.vy) > 0.05) {
+            duck.facingRight = (duck.vx - duck.vy) >= 0;
+          }
+
+          if (duck.soundCooldown <= 0) {
+            sfx.duckBonk(duck.ricochetCount - 1);
+            duck.soundCooldown = 0.095;
+            spawnToyImpactParticles(hitGx, hitGy, duck.z, '#ffeaa7', splashBlue);
+          }
+
+          const gridSz = getGridSize();
+          const pred = pushOutsideAllObstacles(
+            Math.max(0.4, Math.min(gridSz - 0.4, duck.gx + duck.vx / DUCK_DRAG)),
+            Math.max(0.4, Math.min(gridSz - 0.4, duck.gy + duck.vy / DUCK_DRAG)),
+            0.1
+          );
+          duck.targetGx = pred.gx;
+          duck.targetGy = pred.gy;
+          if (
+            duck.chaser &&
+            duck.chaser.onReachToy &&
+            duck.chaser.state === 'WALK' &&
+            duck.chaserRedirectCooldown <= 0
+          ) {
+            duck.chaser.setWalkTarget(pred.gx, pred.gy);
+            duck.chaserRedirectCooldown = 0.16;
+          }
+        };
+
+        // Cute heavy short hop & soft rubbery plop landing
+        if (duck.isMoved || duck.z > 0 || Math.abs(duck.vz) > 1) {
+          duck.vz -= DUCK_GRAVITY * dt;
+          duck.z += duck.vz * dt;
+          if (duck.z <= 0) {
+            duck.z = 0;
+            if (Math.abs(duck.vz) > 38) {
+              duck.squash = Math.max(duck.squash, 0.20);
+              duck.vz = -duck.vz * 0.26;
+            } else {
+              duck.vz = 0;
+            }
+          }
+        }
+
         if (duck.isMoved) {
-          duck.gx += (duck.targetGx - duck.gx) * (dt * 4);
-          duck.gy += (duck.targetGy - duck.gy) * (dt * 4);
-          if (Math.hypot(duck.targetGx - duck.gx, duck.targetGy - duck.gy) < 0.05) {
+          ensureNavCache();
+          const gridSz = getGridSize();
+          const startSpeed = Math.hypot(duck.vx, duck.vy);
+          const steps = Math.max(1, Math.min(12, Math.ceil((startSpeed * dt) / 0.05)));
+          const subDt = dt / steps;
+
+          for (let step = 0; step < steps; step++) {
+            duck.gx += duck.vx * subDt;
+            duck.gy += duck.vy * subDt;
+
+            resolveToyWorldCollisions(
+              duck,
+              DUCK_RADIUS,
+              DUCK_RESTITUTION,
+              0.56,
+              gridSz,
+              (hx, hy, imp, splashBlue) => triggerDuckRicochet(hx, hy, imp, splashBlue)
+            );
+
+            // Bump into Tennis Ball
+            if (state.hasTennisBall) {
+              const minDist = DUCK_RADIUS + 0.14;
+              const dx = duck.gx - tennisBall.gx;
+              const dy = duck.gy - tennisBall.gy;
+              const distSq = dx * dx + dy * dy;
+              if (distSq < minDist * minDist && distSq > 1e-6) {
+                const dist = Math.sqrt(distSq);
+                const nx = dx / dist;
+                const ny = dy / dist;
+                duck.gx = tennisBall.gx + nx * (minDist + 0.004);
+                duck.gy = tennisBall.gy + ny * (minDist + 0.004);
+                const vn = duck.vx * nx + duck.vy * ny;
+                if (vn < 0) {
+                  const imp = -vn;
+                  duck.vx -= (1 + 0.58) * vn * nx;
+                  duck.vy -= (1 + 0.58) * vn * ny;
+                  nudgeTennisBallFromImpact(nx, ny, imp);
+                  triggerDuckRicochet((duck.gx + tennisBall.gx) * 0.5, (duck.gy + tennisBall.gy) * 0.5, imp);
+                }
+              }
+            }
+
+            // Bump into Frisbee
+            if (state.hasFrisbee) {
+              const minDist = DUCK_RADIUS + 0.19;
+              const dx = duck.gx - frisbee.gx;
+              const dy = duck.gy - frisbee.gy;
+              const distSq = dx * dx + dy * dy;
+              if (distSq < minDist * minDist && distSq > 1e-6) {
+                const dist = Math.sqrt(distSq);
+                const nx = dx / dist;
+                const ny = dy / dist;
+                duck.gx = frisbee.gx + nx * (minDist + 0.004);
+                duck.gy = frisbee.gy + ny * (minDist + 0.004);
+                const vn = duck.vx * nx + duck.vy * ny;
+                if (vn < 0) {
+                  const imp = -vn;
+                  duck.vx -= (1 + 0.58) * vn * nx;
+                  duck.vy -= (1 + 0.58) * vn * ny;
+                  nudgeFrisbeeFromImpact(nx, ny, imp);
+                  triggerDuckRicochet((duck.gx + frisbee.gx) * 0.5, (duck.gy + frisbee.gy) * 0.5, imp);
+                }
+              }
+            }
+
+            const drag = Math.exp(-DUCK_DRAG * subDt);
+            duck.vx *= drag;
+            duck.vy *= drag;
+          }
+
+          const curSpeed = Math.hypot(duck.vx, duck.vy);
+          if (curSpeed > 0.35 && Math.abs(duck.vx - duck.vy) > 0.08) {
+            duck.facingRight = (duck.vx - duck.vy) >= 0;
+          }
+          if (curSpeed > 0.6) {
+            duck.wobble = Math.max(duck.wobble, Math.min(0.45, curSpeed * 0.09));
+          }
+
+          if (curSpeed < 0.22) {
+            duck.vx = 0;
+            duck.vy = 0;
             duck.isMoved = false;
+            const safeRest = pushOutsideAllObstacles(duck.gx, duck.gy, 0.1);
+            duck.gx = safeRest.gx;
+            duck.gy = safeRest.gy;
+            duck.targetGx = safeRest.gx;
+            duck.targetGy = safeRest.gy;
+            if (
+              duck.chaser &&
+              duck.chaser.onReachToy &&
+              duck.chaser.state === 'WALK' &&
+              Math.hypot(duck.chaser.targetGx - safeRest.gx, duck.chaser.targetGy - safeRest.gy) > 0.22
+            ) {
+              duck.chaser.setWalkTarget(safeRest.gx, safeRest.gy);
+            }
           }
         } else {
           duck.timer -= dt;
