@@ -1349,112 +1349,64 @@ function drawGoalIconArt(ctx: CanvasRenderingContext2D, id: GoalIconId): void {
     }
 
     case 'whistle': {
-      drawAura(ctx, 'rgba(255, 220, 110, 0.38)', 'rgba(85, 239, 196, 0)');
+      drawAura(ctx, 'rgba(255, 234, 167, 0.36)', 'rgba(255, 234, 167, 0)');
 
+      // Exact Call button (#btnWhistle) megaphone silhouette mapped cleanly from viewBox 0 0 24 24
       ctx.save();
-      ctx.translate(32, 36);
-      ctx.rotate(-0.2);
+      ctx.translate(32, 32);
+      const s = 2.05;
+      const vx = (x: number): number => (x - 12) * s;
+      const vy = (y: number): number => (y - 12.5) * s;
 
-      // Lanyard jump-ring at the rear of the barrel
-      ctx.strokeStyle = INK;
-      ctx.lineWidth = 5.4;
-      ctx.beginPath();
-      ctx.arc(20.5, 1.2, 4.4, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.strokeStyle = '#ffe588';
-      ctx.lineWidth = 2.3;
-      ctx.beginPath();
-      ctx.arc(20.5, 1.2, 4.4, 0, Math.PI * 2);
-      ctx.stroke();
-
-      // Smooth classic coach-whistle silhouette (mouthpiece on left, tangent round chamber on right)
-      const bodyGrad = ctx.createLinearGradient(-18, -12, 16, 17);
-      bodyGrad.addColorStop(0, '#fff9cf');
-      bodyGrad.addColorStop(0.38, '#ffd452');
-      bodyGrad.addColorStop(0.75, '#e89c1e');
-      bodyGrad.addColorStop(1, '#b5630e');
-      ctx.fillStyle = bodyGrad;
-      ctx.strokeStyle = INK;
-      ctx.lineWidth = 2.3;
-      ctx.beginPath();
-      // Rounded mouthpiece tip
-      ctx.moveTo(-21, -7.6);
-      // Top mouthpiece edge leading into crisp sound-slot notch
-      ctx.lineTo(-7.2, -8.4);
-      ctx.lineTo(-6.2, -5.6);
-      ctx.lineTo(-1.0, -5.9);
-      ctx.lineTo(0.06, -8.56);
-      // Seamless sweep around the circular sound chamber
-      ctx.arc(5.6, 3.2, 13.0, -Math.PI * 0.64, Math.PI * 1.05, false);
-      // Smoothly tapered underside of mouthpiece
-      ctx.quadraticCurveTo(-13.5, 0.2, -21, -1.6);
-      ctx.quadraticCurveTo(-23.2, -4.6, -21, -7.6);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-
-      // Dark recessed fipple air slot inside the notch
-      ctx.fillStyle = '#261738';
-      ctx.beginPath();
-      ctx.moveTo(-6.8, -8.2);
-      ctx.lineTo(-0.3, -8.5);
-      ctx.lineTo(-1.2, -5.8);
-      ctx.lineTo(-6.0, -5.5);
-      ctx.closePath();
-      ctx.fill();
-
-      // Raised mouthpiece grip band
-      ctx.fillStyle = '#ffeaa7';
-      ctx.strokeStyle = INK;
-      ctx.lineWidth = 1.6;
-      drawRoundedRect(ctx, -21.8, -8.2, 4.2, 7.1, 1.6);
-      ctx.fill();
-      ctx.stroke();
-
-      // Inset circular side hub on the sound chamber
-      const hubGrad = ctx.createRadialGradient(3.5, 0.5, 1.5, 5.6, 3.2, 7.8);
-      hubGrad.addColorStop(0, '#fff4b8');
-      hubGrad.addColorStop(0.65, '#f0a624');
-      hubGrad.addColorStop(1, '#b86a12');
-      ctx.fillStyle = hubGrad;
-      ctx.strokeStyle = INK;
-      ctx.lineWidth = 1.7;
-      ctx.beginPath();
-      ctx.arc(5.6, 3.2, 7.2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-
-      // Subtle inner brass specular ring & top gloss highlight
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.78)';
-      ctx.beginPath();
-      ctx.ellipse(3.3, 0.6, 2.4, 1.4, -0.55, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.72)';
-      ctx.lineWidth = 1.7;
-      ctx.beginPath();
-      ctx.moveTo(-15.5, -6.2);
-      ctx.lineTo(-8.8, -6.9);
-      ctx.stroke();
-
-      // Vibrant mint-aqua acoustic sound waves radiating straight out of the top air slot
-      ctx.strokeStyle = '#55efc4';
-      ctx.lineWidth = 2.4;
+      // Curved lower grip handle matching <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>
       ctx.lineCap = 'round';
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 6.8;
       ctx.beginPath();
-      ctx.arc(-3.6, -11.8, 5.4, -Math.PI * 0.82, -Math.PI * 0.18);
+      ctx.arc(vx(8.7), vy(16.0), 3.01 * s, 0.27, Math.PI + 0.27, false);
       ctx.stroke();
 
-      ctx.strokeStyle = '#9effe2';
-      ctx.lineWidth = 2.1;
+      ctx.strokeStyle = '#ffd66b';
+      ctx.lineWidth = 3.2;
       ctx.beginPath();
-      ctx.arc(-3.6, -12.6, 10.0, -Math.PI * 0.8, -Math.PI * 0.2);
+      ctx.arc(vx(8.7), vy(16.0), 3.01 * s, 0.27, Math.PI + 0.27, false);
+      ctx.stroke();
+
+      // Main megaphone cone matching <path d="M3 11l18-5v12L3 14v-3z"/>
+      const coneGrad = ctx.createLinearGradient(vx(3), vy(6), vx(21), vy(18));
+      coneGrad.addColorStop(0, '#fff9d6');
+      coneGrad.addColorStop(0.45, '#ffeaa7');
+      coneGrad.addColorStop(0.82, '#f7c148');
+      coneGrad.addColorStop(1, '#d68910');
+      ctx.fillStyle = coneGrad;
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 2.4;
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.moveTo(vx(3), vy(11));
+      ctx.lineTo(vx(21), vy(6));
+      ctx.lineTo(vx(21), vy(18));
+      ctx.lineTo(vx(3), vy(14));
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Subtle glossy top highlight ridge & inner rim accent
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(vx(5.2), vy(11.3));
+      ctx.lineTo(vx(18.6), vy(7.6));
+      ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(181, 102, 12, 0.45)';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(vx(19.1), vy(7.2));
+      ctx.lineTo(vx(19.1), vy(16.9));
       ctx.stroke();
 
       ctx.restore();
-
-      drawSparkle(ctx, 16, 16, 4.2, '#fff9c4', 0.95);
-      drawSparkle(ctx, 47, 15, 3.6, '#81ecec', 0.9);
       break;
     }
 

@@ -14,6 +14,7 @@ export interface DogRenderParams {
   tailWag: number;
   earBounce: number;
   isDrinking?: boolean;
+  isEating?: boolean;
   isLayingDown?: boolean;
   isSitting?: boolean;
 }
@@ -22,6 +23,7 @@ const SIT_TORSO_TILT = -0.44;
 let activePoseEyesAsleep = false;
 let activePoseLayingAwake = false;
 let activePoseSitting = false;
+let activePoseEating = false;
 
 function clampByte(n: number): number {
   return Math.max(0, Math.min(255, Math.round(n)));
@@ -426,6 +428,53 @@ function drawMouthAndTongue(
   if (isSleeping && activePoseEyesAsleep) return;
 
   if (isDrinking) {
+    if (activePoseEating) {
+      // Enthusiastic rhythmic munching jaw & happy nibble tongue while eating a treat
+      const chompRaw = Math.sin(animPhase * 3.1);
+      const chompOpen = Math.max(0, chompRaw);
+      const nibbleTongue = Math.max(0, Math.sin(animPhase * 3.1 - 0.55));
+
+      // Open munching mouth cavity
+      c.fillStyle = '#5a2230';
+      c.beginPath();
+      c.ellipse(x + 0.7, y + 0.65 + chompOpen * 0.45, 2.0, 0.95 + chompOpen * 0.95, 0.14, 0, Math.PI * 2);
+      c.fill();
+
+      // Upper lip curve
+      c.strokeStyle = strokeColor;
+      c.lineWidth = 1.05;
+      c.lineCap = 'round';
+      c.beginPath();
+      c.moveTo(x - 1.7, y - 0.1);
+      c.quadraticCurveTo(x + 0.35, y + 0.75, x + 2.4, y - 0.2);
+      c.stroke();
+
+      // Happy pink tongue bobbing out between bites
+      if (nibbleTongue > 0.15) {
+        const tTipX = x + 1.15 + nibbleTongue * 1.45;
+        const tTipY = y + 1.25 + nibbleTongue * 1.35;
+        c.fillStyle = tongueFill;
+        c.strokeStyle = tongueStroke;
+        c.lineWidth = 0.55;
+        c.beginPath();
+        c.moveTo(x - 0.2, y + 0.55);
+        c.quadraticCurveTo(x + 0.1, tTipY + 0.35, tTipX, tTipY + 0.35);
+        c.quadraticCurveTo(tTipX + 1.1, tTipY - 0.2, x + 1.9, y + 0.45);
+        c.closePath();
+        c.fill();
+        c.stroke();
+      }
+
+      // Subtle lower jaw contour flexing with each chomp
+      c.strokeStyle = strokeColor;
+      c.lineWidth = 0.85;
+      c.beginPath();
+      c.moveTo(x - 0.6, y + 1.15 + chompOpen * 0.75);
+      c.quadraticCurveTo(x + 0.85, y + 1.75 + chompOpen * 1.0, x + 2.1, y + 0.95 + chompOpen * 0.55);
+      c.stroke();
+      return;
+    }
+
     // Open drinking mouth with rhythmic animated lapping tongue dipping into the water
     const lapRaw = Math.sin(animPhase * 2.6);
     const lapExtend = Math.max(0, lapRaw);
@@ -591,14 +640,19 @@ function withDrinkingHeadPose(
     return;
   }
 
-  const lapPulse = Math.max(0, Math.sin(animPhase * 2.6));
+  const lapPulse = activePoseEating
+    ? Math.max(0, Math.sin(animPhase * 3.1)) * 1.15
+    : Math.max(0, Math.sin(animPhase * 2.6));
   const pivotX = headX - 2.0;
   const pivotY = headY + 4.5;
-  const dipTx = opts.dipTx ?? Math.max(1.8, Math.min(4.6, 14.2 - headX));
-  const dipTy = opts.dipTy !== undefined
+  const rawDipTx = opts.dipTx ?? Math.max(1.8, Math.min(4.6, 14.2 - headX));
+  const rawDipTy = opts.dipTy !== undefined
     ? opts.dipTy + 0.8
     : Math.max(1.2, -headY - 12.8);
-  const dipAngle = (opts.dipAngle ?? 0.62) + lapPulse * 0.09;
+  const dipTx = activePoseEating ? rawDipTx * 0.82 : rawDipTx;
+  const dipTy = activePoseEating ? rawDipTy * 0.86 : rawDipTy;
+  const baseDipAngle = (opts.dipAngle ?? 0.62) * (activePoseEating ? 0.86 : 1);
+  const dipAngle = baseDipAngle + lapPulse * (activePoseEating ? 0.1 : 0.09);
 
   // Seamless shaded neck bridge connecting shoulders/chest to the dipped head
   const neckMidX = headX - 1.6 + dipTx * 0.55;
@@ -638,18 +692,22 @@ export function drawIllustratedDog(c: CanvasRenderingContext2D, p: DogRenderPara
     moodWagAmp,
     tailWag,
     earBounce,
-    isDrinking = false,
+    isDrinking: rawIsDrinking = false,
+    isEating = false,
     isLayingDown = false,
     isSitting = false
   } = p;
 
+  const isDrinking = Boolean(rawIsDrinking) || Boolean(isEating);
   const isSleeping = p.isSleeping || isLayingDown;
   const prevEyesAsleep = activePoseEyesAsleep;
   const prevLayingAwake = activePoseLayingAwake;
   const prevSitting = activePoseSitting;
+  const prevEating = activePoseEating;
   activePoseEyesAsleep = p.isSleeping;
   activePoseLayingAwake = isLayingDown && !p.isSleeping;
   activePoseSitting = isSitting && !isSleeping && !isDrinking;
+  activePoseEating = Boolean(isEating) && !isSleeping;
 
   const legH = 10.0;
   const pawH = 3.0;
@@ -5733,5 +5791,6 @@ export function drawIllustratedDog(c: CanvasRenderingContext2D, p: DogRenderPara
     activePoseEyesAsleep = prevEyesAsleep;
     activePoseLayingAwake = prevLayingAwake;
     activePoseSitting = prevSitting;
+    activePoseEating = prevEating;
   }
 }

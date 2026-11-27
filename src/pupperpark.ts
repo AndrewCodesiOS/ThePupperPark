@@ -49,8 +49,10 @@ import {
 } from './goals';
 import { MAGIC_SPARK_INLINE_SVG, getGoalIconDataUrl } from './goalIcons';
 import {
+  HUD_BONE_PRESETS,
   UiIconId,
   boneInlineHtml,
+  drawHudStyleBone,
   hydrateStaticUiIcons,
   magicInlineHtml,
   setHtmlIfChanged,
@@ -3361,6 +3363,38 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     isMagic: boolean;
     value: number;
   }> = [];
+  type WorldTreatKind = 'free' | 'cup' | 'xp' | 'kong' | 'feast' | 'bacon';
+
+  interface WorldTreat {
+    id: number;
+    kind: WorldTreatKind;
+    ownerRosterId: string;
+    gx: number;
+    gy: number;
+    height: number;
+    vz: number;
+    bounced: boolean;
+    landed: boolean;
+    eatDuration: number;
+    eatElapsed: number;
+    beingEaten: boolean;
+    consumed: boolean;
+    age: number;
+    rot: number;
+  }
+
+  const WORLD_TREAT_CONFIG: Record<WorldTreatKind, { minSec: number; maxSec: number; crumbs: readonly string[] }> = {
+    free: { minSec: 1.8, maxSec: 2.5, crumbs: ['#ffe4a8', '#e59b42', '#ff9ff3'] },
+    bacon: { minSec: 2.3, maxSec: 3.1, crumbs: ['#d9483b', '#ffe5c2', '#ff9f68'] },
+    cup: { minSec: 2.6, maxSec: 3.5, crumbs: ['#ffffff', '#ece7ff', '#74b9ff'] },
+    xp: { minSec: 2.7, maxSec: 3.6, crumbs: ['#ffe4a8', '#a29bfe', '#81ecec'] },
+    feast: { minSec: 3.3, maxSec: 4.3, crumbs: ['#e3634b', '#9c2c1d', '#ffeaa7'] },
+    kong: { minSec: 3.6, maxSec: 4.6, crumbs: ['#ffe082', '#e69f38', '#ff6b6b'] }
+  };
+
+  const worldTreats: WorldTreat[] = [];
+  let nextWorldTreatId = 1;
+
   const particles: Array<{
     x: number;
     y: number;
@@ -3377,6 +3411,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
   function rebuildCanvasDogsFromRoster(): void {
     invalidateNavCache();
     dogs.length = 0;
+    worldTreats.length = 0;
     state.roster.forEach(entry => {
       let spawnPos = pushOutsideAllObstacles(
         1.5 + Math.random() * 4,
@@ -6063,6 +6098,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     rebuildCanvasDogsFromRoster();
     resize(true);
     droppedBones.length = 0;
+    worldTreats.length = 0;
     particles.length = 0;
     barkPopups.length = 0;
     floatingTexts.length = 0;
@@ -6333,6 +6369,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     dogs.forEach((dog, idx) => {
       dog.cancelSlide();
       dog.cancelDrink();
+      dog.cancelEat();
       dog.onReachToy = null;
       dog.digOnArrival = false;
       if (dog.state === 'SLEEP') {
@@ -7637,11 +7674,12 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         const safe = pushOutsideAllObstacles(d.gx, d.gy, 0.08);
         d.gx = safe.gx;
         d.gy = safe.gy;
-        if (d.state === 'SLEEP' || d.state === 'LAY' || d.state === 'SIT' || d.state === 'DRINK') {
+        if (d.state === 'SLEEP' || d.state === 'LAY' || d.state === 'SIT' || d.state === 'DRINK' || d.state === 'EAT') {
           if (d.state === 'SLEEP') {
             d.sleepCooldown = DAY_SLEEP_COOLDOWN_MIN_SEC + Math.random() * (DAY_SLEEP_COOLDOWN_MAX_SEC - DAY_SLEEP_COOLDOWN_MIN_SEC);
           }
           d.cancelDrink();
+          d.cancelEat();
           d.isNightSleep = false;
           d.nightSleepUntilMs = 0;
           d.state = 'IDLE';
@@ -7654,6 +7692,15 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         d.targetGy = safeT.gy;
       }
       d.clearNavPath();
+    });
+
+    worldTreats.forEach(t => {
+      if (t.consumed) return;
+      if (isPointBlockedByObstacle(t.gx, t.gy, 0.04)) {
+        const safeT = pushOutsideAllObstacles(t.gx, t.gy, 0.08);
+        t.gx = safeT.gx;
+        t.gy = safeT.gy;
+      }
     });
 
     [tennisBall, frisbee, duck].forEach(toy => {
@@ -7679,6 +7726,40 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     if (sizeClass === 'toy') return 17.2;
     if (sizeClass === 'giant') return 21.8;
     return 20.5;
+  }
+
+  /**
+   * Calibrated horizontal distance (unscaled px) from dog origin to treat center so
+   * the dipped muzzle reaches the near edge of the snack while keeping the treat clearly visible.
+   */
+  const EAT_TREAT_DY_PX = -2.6;
+
+  function getBreedTreatReachPx(breed: string): number {
+    if (breed === 'borzoi' || breed === 'irishWolfhound' || breed === 'wolfhound' || breed === 'greatDane') {
+      return 32.0;
+    }
+    if (
+      breed === 'afghanHound' ||
+      breed === 'shepherd' ||
+      breed === 'malinois' ||
+      breed === 'doberman' ||
+      breed === 'collie' ||
+      breed === 'poodle' ||
+      breed === 'bassetHound' ||
+      breed === 'redboneCoonhound'
+    ) {
+      return 29.0;
+    }
+    if (breed === 'chowChow' || breed === 'samoyed' || breed === 'akita' || breed === 'rottweiler') {
+      return 28.0;
+    }
+    if (breed === 'chihuahua' || breed === 'pug' || breed === 'frenchBulldog') {
+      return 22.5;
+    }
+    const sizeClass = BREED_BY_KEY[breed]?.sizeClass || 'standard';
+    if (sizeClass === 'toy') return 24.0;
+    if (sizeClass === 'giant') return 30.5;
+    return 27.0;
   }
 
   function getSideDrinkSpot(
@@ -7786,7 +7867,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     gy: number;
     targetGx: number;
     targetGy: number;
-    state: 'IDLE' | 'WALK' | 'DIG' | 'SLEEP' | 'SIT' | 'LAY' | 'DRINK' | 'SLIDE_CLIMB' | 'SLIDE_DOWN';
+    state: 'IDLE' | 'WALK' | 'DIG' | 'SLEEP' | 'SIT' | 'LAY' | 'DRINK' | 'EAT' | 'SLIDE_CLIMB' | 'SLIDE_DOWN';
     timer: number;
     facingRight: boolean;
     sleepFacingRight: boolean;
@@ -7818,6 +7899,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     drinkCooldown: number;
     waterBoostTimer: number;
     onReachWater: (() => void) | null;
+    treatTarget: WorldTreat | null;
+    onReachTreat: (() => void) | null;
     digCount: number;
     digStreak: number;
     whistleBoostTimer: number;
@@ -7869,6 +7952,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       this.drinkCooldown = 18 + Math.random() * 32;
       this.waterBoostTimer = 0;
       this.onReachWater = null;
+      this.treatTarget = null;
+      this.onReachTreat = null;
       this.digCount = 0;
       this.digStreak = 0;
       this.whistleBoostTimer = 0;
@@ -8025,6 +8110,142 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       }
     }
 
+    cancelEat(): void {
+      if (this.treatTarget) {
+        this.treatTarget.beingEaten = false;
+      }
+      this.treatTarget = null;
+      this.onReachTreat = null;
+      if (this.state === 'EAT') {
+        this.state = 'IDLE';
+        this.timer = 0.4 + Math.random() * 0.5;
+      }
+    }
+
+    alertForTreat(treat: WorldTreat): void {
+      const wasSleeping = this.state === 'SLEEP';
+      if (wasSleeping) {
+        this.sleepCooldown = DAY_SLEEP_COOLDOWN_MIN_SEC + Math.random() * (DAY_SLEEP_COOLDOWN_MAX_SEC - DAY_SLEEP_COOLDOWN_MIN_SEC);
+        if (this.isNightSleep) {
+          this.isNightSleep = false;
+          this.nightSleepUntilMs = 0;
+          this.nightSleepRollCooldown = 25 * 60 + Math.random() * 20 * 60;
+        }
+        this.facingRight = this.sleepFacingRight;
+        this.petBounce = Math.max(this.petBounce, 0.4);
+      } else if (this.state === 'LAY' || this.state === 'SIT') {
+        this.facingRight = this.sleepFacingRight;
+        this.petBounce = Math.max(this.petBounce, 0.3);
+      } else {
+        this.petBounce = Math.max(this.petBounce, 0.28);
+      }
+
+      // If mid-slide, let the dog finish sliding down; finishSlide() will immediately claim the waiting treat
+      if (this.state === 'SLIDE_CLIMB' || this.state === 'SLIDE_DOWN') {
+        return;
+      }
+
+      // If already eating or walking to another unconsumed treat, finish that one first; finishEat() chains the rest
+      if (this.treatTarget && !this.treatTarget.consumed && (this.state === 'EAT' || this.onReachTreat)) {
+        return;
+      }
+
+      this.cancelDrink();
+      this.onReachSlide = null;
+      this.slideTarget = null;
+      this.onReachToy = null;
+      this.digOnArrival = false;
+      this.clearNavPath();
+      this.assignTreatTarget(treat);
+    }
+
+    assignTreatTarget(treat: WorldTreat): void {
+      this.treatTarget = treat;
+      const s = Math.max(0.01, getScale());
+      const reachPx = getBreedTreatReachPx(this.breed);
+      const dogPos = gridToScreen(this.gx, this.gy);
+      const treatPos = gridToScreen(treat.gx, treat.gy);
+      const horizSep = Math.abs(treatPos.x - dogPos.x) / s;
+      const vertErr = Math.abs((dogPos.y - treatPos.y) / s - EAT_TREAT_DY_PX);
+
+      if (Math.abs(treatPos.x - dogPos.x) > 0.5) {
+        this.facingRight = treatPos.x >= dogPos.x;
+      }
+
+      // If treat landed right in front of the dog at a comfortable eating distance, enter EAT cleanly
+      if (Math.abs(horizSep - reachPx) <= 10 && vertErr <= 10) {
+        this.onReachTreat = null;
+        this.state = 'EAT';
+        return;
+      }
+
+      // Otherwise trot smoothly to a clear side spot beside the treat
+      const standSpot = getSideDrinkSpot(treat.gx, treat.gy, reachPx, EAT_TREAT_DY_PX, this.gx, this.gy);
+      this.setWalkTarget(standSpot.gx, standSpot.gy);
+      this.onReachTreat = () => this.startEating();
+      this.state = 'WALK';
+    }
+
+    tryClaimNextTreat(): boolean {
+      const next = worldTreats.find(t => !t.consumed && t.ownerRosterId === this.rosterId);
+      if (!next) return false;
+      this.assignTreatTarget(next);
+      return true;
+    }
+
+    startEating(): void {
+      if (!this.treatTarget || this.treatTarget.consumed) {
+        this.cancelEat();
+        return;
+      }
+      const reachPx = getBreedTreatReachPx(this.breed);
+      const alignedSpot = getSideDrinkSpot(this.treatTarget.gx, this.treatTarget.gy, reachPx, EAT_TREAT_DY_PX, this.gx, this.gy);
+      if (Math.hypot(alignedSpot.gx - this.gx, alignedSpot.gy - this.gy) < 0.35) {
+        this.gx = alignedSpot.gx;
+        this.gy = alignedSpot.gy;
+      }
+      const dogPos = gridToScreen(this.gx, this.gy);
+      const treatPos = gridToScreen(this.treatTarget.gx, this.treatTarget.gy);
+      if (Math.abs(treatPos.x - dogPos.x) > 0.5) {
+        this.facingRight = treatPos.x >= dogPos.x;
+      }
+      this.onReachTreat = null;
+      this.state = 'EAT';
+    }
+
+    finishEat(): void {
+      const target = this.treatTarget;
+      if (target) {
+        target.consumed = true;
+        target.beingEaten = false;
+      }
+      this.treatTarget = null;
+      this.onReachTreat = null;
+      this.petBounce = 0.32;
+
+      const pos = gridToScreen(this.gx, this.gy);
+      const scale = getScale();
+      for (let i = 0; i < 3; i++) {
+        particles.push({
+          x: pos.x + (Math.random() - 0.5) * 18 * scale,
+          y: pos.y - 20 * scale,
+          vx: (Math.random() - 0.5) * 26,
+          vy: -36 - Math.random() * 18,
+          life: 0.72,
+          maxLife: 0.72,
+          color: i % 2 === 0 ? '#ff9ff3' : '#ffeaa7',
+          size: i % 2 === 0 ? 4.6 : 3.2 * scale,
+          isHeart: i % 2 === 0
+        });
+      }
+
+      if (this.tryClaimNextTreat()) {
+        return;
+      }
+      this.state = 'IDLE';
+      this.timer = 0.4 + Math.random() * 0.5;
+    }
+
     startSlideClimb(): void {
       if (!this.slideTarget) {
         this.state = 'IDLE';
@@ -8059,8 +8280,10 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       this.onReachSlide = null;
       this.slideCooldown = 16 + Math.random() * 8;
       this.petBounce = 0.42;
-      this.state = 'IDLE';
-      this.timer = 0.7 + Math.random() * 0.9;
+      if (!this.tryClaimNextTreat()) {
+        this.state = 'IDLE';
+        this.timer = 0.7 + Math.random() * 0.9;
+      }
 
       const pos = gridToScreen(this.gx, this.gy);
       const scale = getScale();
@@ -8287,6 +8510,9 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     }
 
     pickNewTarget(): void {
+      if (this.tryClaimNextTreat()) {
+        return;
+      }
       if (this.drinkCooldown <= 0 && !this.onReachToy) {
         const waterSource = getAvailableWaterSource(this);
         if (waterSource && Math.random() < 0.10) {
@@ -8464,7 +8690,9 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
               ? 2.2
               : this.state === 'DRINK'
                 ? 7.4
-                : 5 * Math.min(1.35, visualPace)
+                : this.state === 'EAT'
+                  ? 7.8
+                  : 5 * Math.min(1.35, visualPace)
       );
       this.wagPhase += dt * (
         this.state === 'SLEEP'
@@ -8475,9 +8703,11 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
               ? 4.4 * moodInfo.wagMult
               : this.state === 'SLIDE_DOWN'
                 ? 10.5 * moodInfo.wagMult
-                : this.state === 'DRINK'
-                  ? 6.4 * moodInfo.wagMult
-                  : 5.2 * moodInfo.wagMult
+                : this.state === 'EAT'
+                  ? 8.4 * moodInfo.wagMult
+                  : this.state === 'DRINK'
+                    ? 6.4 * moodInfo.wagMult
+                    : 5.2 * moodInfo.wagMult
       );
 
       if (moodInfo.tier === 'ecstatic' && this.state !== 'SLEEP' && Math.random() < dt * 0.45) {
@@ -8636,6 +8866,60 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         return;
       }
 
+      if (this.state === 'EAT') {
+        const treat = this.treatTarget;
+        if (!treat || treat.consumed) {
+          this.cancelEat();
+          return;
+        }
+        const sNow = Math.max(0.01, getScale());
+        const reachPx = getBreedTreatReachPx(this.breed);
+        const desiredDyPx = EAT_TREAT_DY_PX;
+        let dogPos = gridToScreen(this.gx, this.gy);
+        const treatPos = gridToScreen(treat.gx, treat.gy);
+        const curHorizSep = Math.abs(dogPos.x - treatPos.x) / sNow;
+        const curVertErr = Math.abs((dogPos.y - treatPos.y) / sNow - desiredDyPx);
+        if (curVertErr > 1.6 || Math.abs(curHorizSep - reachPx) > 1.8) {
+          const liveSpot = getSideDrinkSpot(treat.gx, treat.gy, reachPx, desiredDyPx, this.gx, this.gy);
+          const blend = Math.min(1, dt * 11);
+          this.gx += (liveSpot.gx - this.gx) * blend;
+          this.gy += (liveSpot.gy - this.gy) * blend;
+          dogPos = gridToScreen(this.gx, this.gy);
+        }
+        if (Math.abs(treatPos.x - dogPos.x) > 0.5) {
+          this.facingRight = treatPos.x >= dogPos.x;
+        }
+
+        if (!treat.landed) {
+          treat.beingEaten = false;
+          return;
+        }
+
+        treat.beingEaten = true;
+        treat.eatElapsed += dt;
+
+        // Crumb / cream / sparkle nibbles popping up in sync with each munch
+        if (Math.sin(this.animPhase * 3.1) > 0.35 && Math.random() < dt * 7.8) {
+          const crumbs = WORLD_TREAT_CONFIG[treat.kind].crumbs;
+          const col = crumbs[Math.floor(Math.random() * crumbs.length)];
+          particles.push({
+            x: treatPos.x + (Math.random() - 0.5) * 9 * sNow,
+            y: treatPos.y - (3 + Math.random() * 4) * sNow,
+            vx: (Math.random() - 0.5) * 28,
+            vy: -18 - Math.random() * 18,
+            life: 0.36,
+            maxLife: 0.36,
+            color: col,
+            size: (1.8 + Math.random() * 1.1) * sNow
+          });
+        }
+
+        if (treat.eatElapsed >= treat.eatDuration) {
+          this.finishEat();
+        }
+        return;
+      }
+
       if (this.state === 'SLEEP') {
         this.facingRight = this.sleepFacingRight;
         if (this.isNightSleep) {
@@ -8674,6 +8958,9 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
           this.timer = 1.0 + Math.random() * 1.2;
         }
       } else if (this.state === 'IDLE') {
+        if (this.tryClaimNextTreat()) {
+          return;
+        }
         this.timer -= dt * visualPace;
         if (this.timer <= 0) {
           const nowMs = Date.now();
@@ -8746,6 +9033,13 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
             return;
           }
 
+          if (this.onReachTreat) {
+            const cb = this.onReachTreat;
+            this.onReachTreat = null;
+            cb();
+            return;
+          }
+
           if (this.onReachToy) {
             const cb = this.onReachToy;
             this.onReachToy = null;
@@ -8812,6 +9106,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
             if (!ok) {
               this.cancelSlide();
               this.cancelDrink();
+              this.cancelEat();
               this.onReachToy = null;
               this.pickNewTarget();
               return;
@@ -8839,7 +9134,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
           // Smooth dog-to-dog avoidance steering with deterministic passing bias
           let avoidX = 0;
           let avoidY = 0;
-          const approachingReserved = Boolean((this.drinkTarget || this.slideTarget) && dist < 0.32);
+          const approachingReserved = Boolean((this.drinkTarget || this.slideTarget || this.treatTarget) && dist < 0.32);
           const avoidScale = approachingReserved ? 0.35 : 1.0;
 
           for (let i = 0; i < dogs.length; i++) {
@@ -9175,6 +9470,9 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       const isSitting = this.state === 'SIT';
       const isGroundedRest = isSleeping || isLayingDown;
       const isDrinking = this.state === 'DRINK';
+      const isEating = this.state === 'EAT' && Boolean(this.treatTarget?.landed);
+      const isWatchingTreat = this.state === 'EAT' && !isEating;
+      const isDipping = isDrinking || isEating;
       const isOnSlide = this.state === 'SLIDE_CLIMB' || this.state === 'SLIDE_DOWN';
       const effectiveFacingRight = (isGroundedRest || isSitting) ? this.sleepFacingRight : this.facingRight;
 
@@ -9237,7 +9535,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       }
 
       let feastJump = 0;
-      if (state.feastAnimTimer > 0 && !isGroundedRest && !isSitting && !isOnSlide && !isDrinking) {
+      if (state.feastAnimTimer > 0 && !isGroundedRest && !isSitting && !isOnSlide && !isDipping) {
         feastJump = Math.abs(Math.sin(state.feastAnimTimer * Math.PI * 4)) * 14;
       }
 
@@ -9257,21 +9555,21 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
             ? -0.8 + petHop * 0.65
             : isOnSlide
               ? this.slideElevation
-              : isDrinking
+              : isDipping
                 ? petHop
                 : (this.state === 'WALK' ? Math.abs(Math.sin(this.animPhase)) * 3 : 0) + feastJump + petHop;
       const poseTilt = isGroundedRest || isSitting
         ? 0
         : isOnSlide
           ? this.slideTilt
-          : isDrinking
+          : isDipping
             ? 0.05
             : (this.state === 'DIG' ? 0.25 : 0);
 
       c.translate(0, -bounce);
       c.rotate(poseTilt);
 
-      const legSwing = isGroundedRest || isSitting || isDrinking
+      const legSwing = isGroundedRest || isSitting || isDipping
         ? 0
         : (this.state === 'WALK' || this.state === 'SLIDE_CLIMB'
             ? Math.sin(this.animPhase) * 4.1
@@ -9286,8 +9584,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
             ? Math.sin(this.wagPhase * 1.9) * 2.1 * moodWagAmp
             : Math.sin(this.wagPhase * 2.2) * 2.5 * moodWagAmp;
       const isBlinking = !isSleeping && this.blinkTimer < 0.13;
-      const isJoyful = !isSleeping && !isDrinking && (this.petBounce > 0.05 || this.state === 'SLIDE_DOWN' || state.feastAnimTimer > 0);
-      const showTongue = isDrinking
+      const isJoyful = !isSleeping && !isDipping && (this.petBounce > 0.05 || this.state === 'SLIDE_DOWN' || state.feastAnimTimer > 0 || isWatchingTreat);
+      const showTongue = isDipping
         ? true
         : isJoyful || (!isSleeping && moodInfo.tier === 'ecstatic' && Math.sin(this.wagPhase * 0.45) > 0.35);
       const earBounce = isSleeping
@@ -9315,7 +9613,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         moodWagAmp,
         tailWag,
         earBounce,
-        isDrinking
+        isDrinking,
+        isEating
       });
 
       c.restore();
@@ -12057,6 +12356,325 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     ctx.restore();
   }
 
+  function dropTreatForActivePack(kind: WorldTreatKind): void {
+    const cfg = WORLD_TREAT_CONFIG[kind];
+    if (!cfg || dogs.length === 0) return;
+    const scale = Math.max(0.01, getScale());
+    const gridSize = getGridSize();
+
+    dogs.forEach(dog => {
+      // Stacking rule: at most 1 active treat of each kind on screen per dog at a time
+      const existingSameKind = worldTreats.find(
+        t => !t.consumed && t.ownerRosterId === dog.rosterId && t.kind === kind
+      );
+      if (existingSameKind) {
+        if (existingSameKind.landed && !existingSameKind.beingEaten) {
+          existingSameKind.vz = 42;
+          existingSameKind.height = Math.max(existingSameKind.height, 1.5);
+          existingSameKind.landed = false;
+          existingSameKind.bounced = true;
+        }
+        dog.alertForTreat(existingSameKind);
+        return;
+      }
+
+      const isSliding = (dog.state === 'SLIDE_CLIMB' || dog.state === 'SLIDE_DOWN') && Boolean(dog.slideTarget);
+      const baseGx = isSliding && dog.slideTarget
+        ? Math.min(gridSize - 0.5, dog.slideTarget.gx + 1.66)
+        : dog.gx;
+      const baseGy = isSliding && dog.slideTarget ? dog.slideTarget.gy + 0.5 : dog.gy;
+      const baseScreen = gridToScreen(baseGx, baseGy);
+
+      const effectiveFacing = (dog.state === 'SLEEP' || dog.state === 'LAY' || dog.state === 'SIT')
+        ? dog.sleepFacingRight
+        : dog.facingRight;
+      const faceSign = effectiveFacing ? 1 : -1;
+      const reachPx = getBreedTreatReachPx(dog.breed);
+
+      // If this dog already has other distinct treat types waiting, fan them neatly beside each other
+      const otherActiveCount = worldTreats.filter(t => !t.consumed && t.ownerRosterId === dog.rosterId).length;
+      const spreadPattern: Array<[number, number]> = [
+        [0, 0],
+        [7, 7],
+        [-5, 9],
+        [10, -4],
+        [-6, -5],
+        [4, 12]
+      ];
+      const [spreadX, spreadY] = spreadPattern[otherActiveCount % spreadPattern.length];
+
+      // Place treat cleanly ahead and slightly toward the foreground (-EAT_TREAT_DY_PX) so it stays fully visible
+      const rawGrid = screenToGrid(
+        baseScreen.x + (faceSign * reachPx + spreadX) * scale,
+        baseScreen.y + (-EAT_TREAT_DY_PX + spreadY) * scale
+      );
+      const clampedGx = Math.max(0.42, Math.min(gridSize - 0.42, rawGrid.gx));
+      const clampedGy = Math.max(0.42, Math.min(gridSize - 0.42, rawGrid.gy));
+      const safePos = isPointBlockedByObstacle(clampedGx, clampedGy, 0.04)
+        ? pushOutsideAllObstacles(clampedGx, clampedGy, 0.07)
+        : { gx: clampedGx, gy: clampedGy };
+
+      const treat: WorldTreat = {
+        id: nextWorldTreatId++,
+        kind,
+        ownerRosterId: dog.rosterId,
+        gx: Math.max(0.42, Math.min(gridSize - 0.42, safePos.gx)),
+        gy: Math.max(0.42, Math.min(gridSize - 0.42, safePos.gy)),
+        height: 54 + Math.random() * 18,
+        vz: 16 + Math.random() * 16,
+        bounced: false,
+        landed: false,
+        eatDuration: cfg.minSec + Math.random() * (cfg.maxSec - cfg.minSec),
+        eatElapsed: 0,
+        beingEaten: false,
+        consumed: false,
+        age: 0,
+        rot: (Math.random() - 0.5) * 0.28
+      };
+
+      worldTreats.push(treat);
+      dog.alertForTreat(treat);
+    });
+  }
+
+  function updateWorldTreats(dt: number): void {
+    if (worldTreats.length === 0) return;
+    const activeIds = new Set(dogs.map(d => d.rosterId));
+
+    for (let i = worldTreats.length - 1; i >= 0; i--) {
+      const t = worldTreats[i];
+      t.age += dt;
+
+      if (t.consumed || !activeIds.has(t.ownerRosterId) || (!t.beingEaten && t.age > 35)) {
+        t.consumed = true;
+        worldTreats.splice(i, 1);
+        continue;
+      }
+
+      if (!t.landed) {
+        t.vz -= 460 * dt;
+        t.height += t.vz * dt;
+        if (t.height <= 0) {
+          t.height = 0;
+          if (!t.bounced) {
+            t.bounced = true;
+            t.vz = 72 + Math.random() * 22;
+            const pos = gridToScreen(t.gx, t.gy);
+            const s = getScale();
+            const crumbs = WORLD_TREAT_CONFIG[t.kind].crumbs;
+            for (let k = 0; k < 3; k++) {
+              particles.push({
+                x: pos.x + (Math.random() - 0.5) * 10 * s,
+                y: pos.y - 2 * s,
+                vx: (Math.random() - 0.5) * 34,
+                vy: -20 - Math.random() * 16,
+                life: 0.34,
+                maxLife: 0.34,
+                color: crumbs[k % crumbs.length],
+                size: 2.0 * s
+              });
+            }
+          } else {
+            t.vz = 0;
+            t.landed = true;
+          }
+        }
+      }
+    }
+  }
+
+  function drawWorldTreat(t: WorldTreat): void {
+    const pos = gridToScreen(t.gx, t.gy);
+    const scale = getScale();
+    const ink = '#261738';
+    const eatRatio = t.eatDuration > 0 ? Math.min(1, t.eatElapsed / t.eatDuration) : 0;
+    const biteScale = Math.max(0.42, 1.1 - eatRatio * 0.56);
+    const nibbleX = t.beingEaten ? Math.sin(t.age * 28) * 0.85 : 0;
+    const nibbleY = t.beingEaten ? Math.abs(Math.sin(t.age * 16)) * -0.65 : 0;
+    const shadowScale = Math.max(0.35, 1 - t.height / 95) * biteScale;
+
+    ctx.save();
+    ctx.translate(pos.x, pos.y);
+    ctx.scale(scale, scale);
+
+    // Soft grounded shadow under the treat
+    ctx.fillStyle = `rgba(18, 28, 22, ${(0.32 * shadowScale).toFixed(2)})`;
+    ctx.beginPath();
+    ctx.ellipse(0, 2.2, 9.2 * shadowScale, 4.0 * shadowScale, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.translate(nibbleX, -t.height + nibbleY);
+    ctx.scale(biteScale, biteScale);
+
+    if (t.kind === 'free') {
+      // Crunchy Snaps: two mini honey-baked HUD-style snap biscuits
+      drawHudStyleBone(ctx, { x: -3.2, y: -1.5, width: 14.5, rot: -0.32 + t.rot, outlineScale: 0.56, ...HUD_BONE_PRESETS.biscuit });
+      drawHudStyleBone(ctx, { x: 3.6, y: 0.6, width: 14.0, rot: 0.26 + t.rot, outlineScale: 0.56, ...HUD_BONE_PRESETS.biscuitLight });
+    } else if (t.kind === 'xp') {
+      // Starlight XP Biscuit: golden HUD-style bone with lavender XP star emblem
+      drawHudStyleBone(ctx, { x: 0, y: -1.2, width: 20.5, rot: -0.22 + t.rot, outlineScale: 0.58, ...HUD_BONE_PRESETS.biscuit });
+      ctx.save();
+      ctx.translate(0, -1.2);
+      ctx.rotate(-0.22 + t.rot);
+      ctx.fillStyle = '#a29bfe';
+      ctx.strokeStyle = ink;
+      ctx.lineWidth = 0.95;
+      ctx.beginPath();
+      for (let i = 0; i < 10; i++) {
+        const ang = (Math.PI / 5) * i - Math.PI / 2;
+        const rad = i % 2 === 0 ? 3.5 : 1.55;
+        const px = Math.cos(ang) * rad;
+        const py = Math.sin(ang) * rad;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    } else if (t.kind === 'feast') {
+      // Jumbo Meaty Bone: bold savory roasted meat-colored HUD-style bone
+      drawHudStyleBone(ctx, { x: 0, y: -1.4, width: 23.5, rot: -0.25 + t.rot, outlineScale: 0.6, ...HUD_BONE_PRESETS.meaty });
+    } else if (t.kind === 'cup') {
+      // Puppuccino: blue paper pup cup with vanilla whipped-cream swirl (lowers as eaten)
+      const creamScale = Math.max(0.25, 1 - eatRatio * 0.78);
+      const cupGrad = ctx.createLinearGradient(-6, -7, 6, 2);
+      cupGrad.addColorStop(0, '#74b9ff');
+      cupGrad.addColorStop(1, '#4a69bd');
+      ctx.fillStyle = cupGrad;
+      ctx.strokeStyle = ink;
+      ctx.lineWidth = 1.25;
+      ctx.beginPath();
+      ctx.moveTo(-6.2, -7.2);
+      ctx.lineTo(6.2, -7.2);
+      ctx.lineTo(4.6, 1.4);
+      ctx.quadraticCurveTo(0, 2.8, -4.6, 1.4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // White paper cup lip
+      ctx.fillStyle = '#f5f6fa';
+      ctx.beginPath();
+      ctx.roundRect(-7.0, -8.5, 14.0, 2.3, 1.1);
+      ctx.fill();
+      ctx.stroke();
+
+      // Fluffy whipped cream peak
+      ctx.save();
+      ctx.translate(0, -8.2);
+      ctx.scale(1, creamScale);
+      const creamGrad = ctx.createLinearGradient(0, -8, 0, 1);
+      creamGrad.addColorStop(0, '#ffffff');
+      creamGrad.addColorStop(1, '#ece7ff');
+      ctx.fillStyle = creamGrad;
+      ctx.beginPath();
+      ctx.moveTo(-5.8, 0.2);
+      ctx.quadraticCurveTo(-6.4, -4.2, -2.2, -4.8);
+      ctx.quadraticCurveTo(-1.2, -8.2, 1.6, -7.4);
+      ctx.quadraticCurveTo(4.8, -6.2, 4.2, -3.6);
+      ctx.quadraticCurveTo(6.6, -2.8, 5.8, 0.2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+
+      if (eatRatio < 0.72) {
+        drawHudStyleBone(ctx, {
+          x: 4.2,
+          y: -11.5 * creamScale - 2.2,
+          width: 8.6,
+          rot: 0.52,
+          outlineScale: 0.48,
+          ...HUD_BONE_PRESETS.biscuitLight
+        });
+      }
+    } else if (t.kind === 'kong') {
+      // PB-Stuffed Kong: tiered ruby-red rubber Kong with creamy peanut butter peeking out
+      const pbScale = Math.max(0.18, 1 - eatRatio * 0.85);
+      const redGrad = ctx.createLinearGradient(-6, -12, 6, 2);
+      redGrad.addColorStop(0, '#ff6b6b');
+      redGrad.addColorStop(0.55, '#e83a3a');
+      redGrad.addColorStop(1, '#a81818');
+      ctx.fillStyle = redGrad;
+      ctx.strokeStyle = ink;
+      ctx.lineWidth = 1.25;
+
+      // Bottom, middle, top Kong bulbs
+      ctx.beginPath();
+      ctx.ellipse(0, -1.2, 6.2, 4.1, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(0, -6.2, 4.8, 3.3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(0, -10.4, 3.5, 2.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Glossy red shine
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+      ctx.beginPath();
+      ctx.ellipse(-2.8, -1.8, 1.3, 2.1, 0.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Overflowing creamy peanut butter
+      ctx.save();
+      ctx.translate(0, -11.6);
+      ctx.scale(1, pbScale);
+      ctx.fillStyle = '#e69f38';
+      ctx.strokeStyle = ink;
+      ctx.lineWidth = 1.0;
+      ctx.beginPath();
+      ctx.moveTo(-2.7, 0.4);
+      ctx.quadraticCurveTo(-2.2, -3.0, 0, -2.4);
+      ctx.quadraticCurveTo(2.4, -3.2, 2.7, 0.4);
+      ctx.quadraticCurveTo(3.3, 2.6, 1.4, 2.4);
+      ctx.quadraticCurveTo(0, 0.9, -1.3, 2.9);
+      ctx.quadraticCurveTo(-3.2, 2.2, -2.7, 0.4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    } else {
+      // Sizzling Bacon Strip: wavy crimson-brown bacon with marbled cream-gold ribbons
+      ctx.save();
+      ctx.translate(0, -1.6);
+      ctx.rotate(-0.22 + t.rot);
+      const traceBacon = (yOff: number, halfH: number): void => {
+        ctx.beginPath();
+        ctx.moveTo(-10.5, yOff - halfH + 1);
+        ctx.bezierCurveTo(-5, yOff - halfH - 2.6, -1, yOff - halfH + 2.8, 4.5, yOff - halfH - 2.0);
+        ctx.quadraticCurveTo(8, yOff - halfH - 2.8, 10.5, yOff - halfH + 0.5);
+        ctx.lineTo(10.5, yOff + halfH + 0.5);
+        ctx.quadraticCurveTo(8, yOff + halfH - 2.8, 4.5, yOff + halfH - 2.0);
+        ctx.bezierCurveTo(-1, yOff + halfH + 2.8, -5, yOff + halfH - 2.6, -10.5, yOff + halfH + 1);
+        ctx.closePath();
+      };
+      const baconGrad = ctx.createLinearGradient(0, -5, 0, 5);
+      baconGrad.addColorStop(0, '#d9483b');
+      baconGrad.addColorStop(0.55, '#b82e24');
+      baconGrad.addColorStop(1, '#851c16');
+      ctx.fillStyle = baconGrad;
+      ctx.strokeStyle = ink;
+      ctx.lineWidth = 1.3;
+      traceBacon(0, 4.4);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#ffe5c2';
+      traceBacon(-1.1, 1.1);
+      ctx.fill();
+      ctx.fillStyle = '#ffd1a3';
+      traceBacon(1.6, 0.9);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    ctx.restore();
+  }
+
   function drawFreshToySparkle(x: number, y: number, phaseOffset: number, maxRadius = 4.2): void {
     const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.0055 + phaseOffset);
     const r = maxRadius * (0.45 + 0.55 * pulse);
@@ -12388,6 +13006,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       addPackHappiness(8);
       state.totalTreatsCount = (Number(state.totalTreatsCount) || 0) + 1;
       recordDailyProgress('treats', 1);
+      dropTreatForActivePack(treatKey as WorldTreatKind);
       sfx.treat();
       updateUI();
       saveGame();
@@ -12405,10 +13024,10 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     const gainedMood = Math.max(0, nextMood - prevMood);
     state.totalTreatsCount = (Number(state.totalTreatsCount) || 0) + 1;
     recordDailyProgress('treats', 1);
+    dropTreatForActivePack('free');
     sfx.treat();
     const s = getScale();
     dogs.forEach(d => {
-      if (d.state === 'SLEEP') return;
       d.petBounce = Math.max(d.petBounce, 0.35);
       const p = gridToScreen(d.gx, d.gy);
       for (let i = 0; i < 3; i++) {
@@ -14568,10 +15187,12 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         d.state !== 'SLIDE_CLIMB' &&
         d.state !== 'SLIDE_DOWN' &&
         d.state !== 'DRINK' &&
+        d.state !== 'EAT' &&
         d.state !== 'SLEEP' &&
         !d.isNightSleep &&
         !d.slideTarget &&
         !d.drinkTarget &&
+        !d.treatTarget &&
         !d.onReachToy;
 
       const isEligibleForBallPass = (d: Dog, kicker: Dog): boolean =>
@@ -15271,6 +15892,15 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         });
       });
 
+      updateWorldTreats(dt);
+      worldTreats.forEach(treat => {
+        if (treat.consumed) return;
+        renderables.push({
+          sortY: gridToScreen(treat.gx, treat.gy).y,
+          draw: () => drawWorldTreat(treat)
+        });
+      });
+
       dogs.forEach(dog => {
         dog.update(dt);
         let dogSortY = gridToScreen(dog.gx, dog.gy).y;
@@ -15283,6 +15913,10 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
             ? gridToScreen(activeBowlPos.gx, activeBowlPos.gy).y
             : getCenteredTilePos(dog.drinkTarget.gx ?? 0, dog.drinkTarget.gy ?? 0).y;
           dogSortY = Math.max(dogSortY, waterSortY + 1);
+        } else if (dog.state === 'EAT' && dog.treatTarget) {
+          // Keep the treat crisply in front of the dipping snout so the dog's head never hides it
+          const treatSortY = gridToScreen(dog.treatTarget.gx, dog.treatTarget.gy).y;
+          dogSortY = Math.min(dogSortY, treatSortY - 0.8);
         }
         renderables.push({
           sortY: dogSortY,
