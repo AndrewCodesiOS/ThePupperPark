@@ -390,7 +390,7 @@ export function formatRelicStatParts(def: TreasureDef, rank: number): string[] {
     parts.push(`+${formatWholePct(def.scalingAdd * scale)} Dig Scaling`);
   }
   if (def.magicAdd) {
-    parts.push(`+${formatDecimalPct(def.magicAdd * scale)} ✨ Magic Chance`);
+    parts.push(`+${formatDecimalPct(def.magicAdd * scale)} Magic Chance`);
   }
   if (def.xpAdd) {
     parts.push(`+${formatWholePct(def.xpAdd * scale)} Pup XP`);
@@ -600,7 +600,7 @@ export function formatActiveTreasureSummary(bonuses: TreasureBonuses): string {
     parts.push(`+${formatWholePct(bonuses.workBonus - 1)} Scaling`);
   }
   if (bonuses.magicBonus > 0.0005) {
-    parts.push(`+${formatDecimalPct(bonuses.magicBonus)} ✨ Magic`);
+    parts.push(`+${formatDecimalPct(bonuses.magicBonus)} Magic`);
   }
   if (bonuses.xpMult > 1.001) {
     parts.push(`+${formatWholePct(bonuses.xpMult - 1)} Pup XP`);

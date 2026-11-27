@@ -34,6 +34,7 @@ import {
 import {
   ACHIEVEMENTS,
   AchievementFilter,
+  CHECKIN_COOLDOWN_MS,
   DAILY_BONUS_MAGIC,
   DailyGoalMetric,
   DailyGoalsState,
@@ -43,9 +44,19 @@ import {
   formatGoalProgress,
   getDailyGoalsForDate,
   getLocalDateKey,
-  getMsUntilLocalMidnight
+  getMsUntilLocalMidnight,
+  getPreviousLocalDateKey
 } from './goals';
 import { MAGIC_SPARK_INLINE_SVG, getGoalIconDataUrl } from './goalIcons';
+import {
+  UiIconId,
+  boneInlineHtml,
+  hydrateStaticUiIcons,
+  magicInlineHtml,
+  setHtmlIfChanged,
+  uiIconHtml
+} from './uiIcons';
+import { getDogPortraitDataUrl, hydrateStaticShopArt } from './shopArt';
 
 export interface RosterEntry {
   id: string;
@@ -129,6 +140,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
   const noopHandle: PupperParkHandle = { syncRootBackground() {} };
   if (initialized) return noopHandle;
   initialized = true;
+  hydrateStaticUiIcons();
+  hydrateStaticShopArt();
 
   const canvasEl = document.getElementById('gameCanvas') as HTMLCanvasElement | null;
   if (!canvasEl) return noopHandle;
@@ -1326,10 +1339,21 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     activePlaySeconds: number;
     lifetimeMagicBones: number;
     totalDigsCount: number;
+    totalTapsCount: number;
     totalPetsCount: number;
     totalTreatsCount: number;
     totalWhistlesCount: number;
+    totalRerollsCount: number;
+    totalFreshToyBoosts: number;
     totalShiniesFound: number;
+    totalCheckInsCount: number;
+    totalCheckInDays: number;
+    lastCheckInDateKey: string;
+    checkInStreak: number;
+    bestCheckInStreak: number;
+    totalDailyGoalsClaimed: number;
+    totalDailyBonusesClaimed: number;
+    uniqueBreedsOwned: string[];
     everFullPack: boolean;
     everJoyful: boolean;
     everEcstatic: boolean;
@@ -1402,10 +1426,21 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     activePlaySeconds: 0,
     lifetimeMagicBones: 0,
     totalDigsCount: 0,
+    totalTapsCount: 0,
     totalPetsCount: 0,
     totalTreatsCount: 0,
     totalWhistlesCount: 0,
+    totalRerollsCount: 0,
+    totalFreshToyBoosts: 0,
     totalShiniesFound: 0,
+    totalCheckInsCount: 0,
+    totalCheckInDays: 0,
+    lastCheckInDateKey: '',
+    checkInStreak: 0,
+    bestCheckInStreak: 0,
+    totalDailyGoalsClaimed: 0,
+    totalDailyBonusesClaimed: 0,
+    uniqueBreedsOwned: [],
     everFullPack: false,
     everJoyful: false,
     everEcstatic: false,
@@ -1548,7 +1583,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
     let rollGrade = 'Standard';
     if (rollRatio >= 0.95) {
-      rollGrade = '★ Max Roll';
+      rollGrade = 'Max Roll';
     } else if (rollRatio >= 0.65) {
       rollGrade = 'Prime';
     } else if (rollRatio >= 0.35) {
@@ -1556,6 +1591,23 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     }
 
     return { bonusPayout, bonusScaling, bonusXp, rollGrade };
+  }
+
+  function isMaxRollGrade(grade: string | undefined | null): boolean {
+    if (!grade) return false;
+    return grade === 'Max Roll' || grade.endsWith('Max Roll');
+  }
+
+  function formatRollGradeText(grade: string | undefined | null): string {
+    if (!grade) return 'Standard';
+    return isMaxRollGrade(grade) ? 'Max Roll' : grade;
+  }
+
+  function formatRollGradeHtml(grade: string | undefined | null): string {
+    if (isMaxRollGrade(grade)) {
+      return `${uiIconHtml('starFilled')} Max Roll`;
+    }
+    return formatRollGradeText(grade);
   }
 
   function getRollRating(entryOrRoll: { bonusPayout?: number; bonusScaling?: number; bonusXp?: number } | null): number {
@@ -1746,7 +1798,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
   interface WeatherConfig {
     id: WeatherId;
     name: string;
-    icon: string;
+    icon: UiIconId;
     shortMod: string;
     modLabel: string;
     desc: string;
@@ -1760,7 +1812,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     sunny: {
       id: 'sunny',
       name: 'Sunny',
-      icon: '☀️',
+      icon: 'weatherSunny',
       shortMod: '+12% Speed',
       modLabel: '+12% Dig Speed',
       desc: 'Warm sunbeams energize your pack to walk and dig 12% faster.',
@@ -1772,7 +1824,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     windy: {
       id: 'windy',
       name: 'Windy',
-      icon: '🍃',
+      icon: 'weatherWindy',
       shortMod: '+25% Treasure',
       modLabel: '+25% Treasure Odds',
       desc: 'Crisp gusts scatter leaves and uncover 25% more rare treasures.',
@@ -1784,10 +1836,10 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     rain: {
       id: 'rain',
       name: 'Gentle Rain',
-      icon: '🌧️',
-      shortMod: '+3% ✨ Magic',
+      icon: 'weatherRain',
+      shortMod: '+3% Magic',
       modLabel: '+3% Magic Chance',
-      desc: 'Soft, soothing showers boost ✨ Magic Bone odds by +3% on digs & taps.',
+      desc: 'Soft, soothing showers boost Magic Bone odds by +3% on digs & taps.',
       digSpeedMult: 1,
       treasureMult: 1,
       magicAdd: 0.03,
@@ -1796,7 +1848,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     twilight: {
       id: 'twilight',
       name: 'Cozy Twilight',
-      icon: '🌙',
+      icon: 'weatherTwilight',
       shortMod: '+15% Pup XP',
       modLabel: '+15% Pup XP',
       desc: 'Fireflies gather under evening skies, granting pups +15% bonus XP from digs & pets.',
@@ -1886,21 +1938,21 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     return d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600;
   }
 
-  function getTimeOfDayInfo(nowMs = Date.now()): { name: string; icon: string; hourFloat: number } {
+  function getTimeOfDayInfo(nowMs = Date.now()): { name: string; icon: UiIconId; hourFloat: number } {
     const h = getLocalHourFloat(nowMs);
-    if (h >= 5.0 && h < 7.5) return { name: 'Sunrise', icon: '🌅', hourFloat: h };
-    if (h >= 7.5 && h < 11.75) return { name: 'Morning', icon: '🌤️', hourFloat: h };
-    if (h >= 11.75 && h < 16.5) return { name: 'Afternoon', icon: '☀️', hourFloat: h };
-    if (h >= 16.5 && h < 19.0) return { name: 'Sunset', icon: '🌇', hourFloat: h };
-    if (h >= 19.0 && h < 21.25) return { name: 'Dusk', icon: '🌆', hourFloat: h };
-    return { name: 'Night', icon: '🌌', hourFloat: h };
+    if (h >= 5.0 && h < 7.5) return { name: 'Sunrise', icon: 'skySunrise', hourFloat: h };
+    if (h >= 7.5 && h < 11.75) return { name: 'Morning', icon: 'skyMorning', hourFloat: h };
+    if (h >= 11.75 && h < 16.5) return { name: 'Afternoon', icon: 'skyAfternoon', hourFloat: h };
+    if (h >= 16.5 && h < 19.0) return { name: 'Sunset', icon: 'skySunset', hourFloat: h };
+    if (h >= 19.0 && h < 21.25) return { name: 'Dusk', icon: 'skyDusk', hourFloat: h };
+    return { name: 'Night', icon: 'skyNight', hourFloat: h };
   }
 
   function getMoonPhaseInfo(nowMs = Date.now()): {
     phase: number;
     illumination: number;
     name: string;
-    icon: string;
+    icon: UiIconId;
   } {
     const SYNODIC_MONTH_DAYS = 29.53058867;
     const SYNODIC_MONTH_MS = SYNODIC_MONTH_DAYS * 86400000;
@@ -1929,31 +1981,31 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     const primaryHalfWindow = 0.5 / SYNODIC_MONTH_DAYS;
 
     let name = 'New Moon';
-    let icon = '🌑';
+    let icon: UiIconId = 'moonNew';
     if (dayPhase < primaryHalfWindow || dayPhase >= 1 - primaryHalfWindow) {
       name = 'New Moon';
-      icon = '🌑';
+      icon = 'moonNew';
     } else if (dayPhase < 0.25 - primaryHalfWindow) {
       name = 'Waxing Crescent';
-      icon = '🌒';
+      icon = 'moonWaxingCrescent';
     } else if (dayPhase < 0.25 + primaryHalfWindow) {
       name = 'First Quarter';
-      icon = '🌓';
+      icon = 'moonFirstQuarter';
     } else if (dayPhase < 0.5 - primaryHalfWindow) {
       name = 'Waxing Gibbous';
-      icon = '🌔';
+      icon = 'moonWaxingGibbous';
     } else if (dayPhase < 0.5 + primaryHalfWindow) {
       name = 'Full Moon';
-      icon = '🌕';
+      icon = 'moonFull';
     } else if (dayPhase < 0.75 - primaryHalfWindow) {
       name = 'Waning Gibbous';
-      icon = '🌖';
+      icon = 'moonWaningGibbous';
     } else if (dayPhase < 0.75 + primaryHalfWindow) {
       name = 'Last Quarter';
-      icon = '🌗';
+      icon = 'moonLastQuarter';
     } else {
       name = 'Waning Crescent';
-      icon = '🌘';
+      icon = 'moonWaningCrescent';
     }
 
     return { phase, illumination, name, icon };
@@ -1991,7 +2043,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     floor: number;
     tier: HappinessTierId;
     name: string;
-    icon: string;
+    icon: UiIconId;
     boneMult: number;
     xpMult: number;
     paceMult: number;
@@ -2090,7 +2142,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         floor,
         tier: 'ecstatic',
         name: 'Ecstatic',
-        icon: '🌟',
+        icon: 'moodEcstatic',
         boneMult: 1.18,
         xpMult: 1.15,
         paceMult: 1.08,
@@ -2098,7 +2150,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         wagMult: 1.48,
         wagAmp: 1.35,
         shortBonus: '+18%',
-        bonusSummary: '+18% Bones | +15% XP | +8% Pace | +2% ✨'
+        bonusSummary: '+18% Bones | +15% XP | +8% Pace | +2% Magic'
       };
     }
     if (value >= 70) {
@@ -2108,7 +2160,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         floor,
         tier: 'joyful',
         name: 'Joyful',
-        icon: '💛',
+        icon: 'moodJoyful',
         boneMult: 1.10,
         xpMult: 1.10,
         paceMult: 1.04,
@@ -2126,7 +2178,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         floor,
         tier: 'happy',
         name: 'Happy',
-        icon: '🙂',
+        icon: 'moodHappy',
         boneMult: 1.05,
         xpMult: 1.05,
         paceMult: 1.0,
@@ -2143,7 +2195,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       floor,
       tier: 'cozy',
       name: 'Cozy',
-      icon: '😌',
+      icon: 'moodCozy',
       boneMult: 1.0,
       xpMult: 1.0,
       paceMult: 1.0,
@@ -2338,6 +2390,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     duration: number;
   }> = [];
 
+  type FloatingTextIcon = 'bone' | 'magic' | 'heart' | 'spark';
+
   const floatingTexts: Array<{
     x: number;
     y: number;
@@ -2346,6 +2400,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     age: number;
     duration: number;
     align?: CanvasTextAlign;
+    icon?: FloatingTextIcon;
   }> = [];
 
   const tileRipples: Array<{
@@ -2454,9 +2509,10 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     y: number,
     text: string,
     color = '#ffeaa7',
-    align: CanvasTextAlign = 'center'
+    align: CanvasTextAlign = 'center',
+    icon?: FloatingTextIcon
   ): void {
-    floatingTexts.push({ x, y, text, color, age: 0, duration: 0.85, align });
+    floatingTexts.push({ x, y, text, color, age: 0, duration: 0.85, align, icon });
     if (floatingTexts.length > 24) {
       floatingTexts.shift();
     }
@@ -2539,6 +2595,9 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         state.dailyGoals.claimed = {};
       }
       state.dailyGoals.bonusClaimed = Boolean(state.dailyGoals.bonusClaimed);
+      if (typeof state.dailyGoals.lastCheckInAt !== 'number' || !Number.isFinite(state.dailyGoals.lastCheckInAt)) {
+        state.dailyGoals.lastCheckInAt = 0;
+      }
     }
     return state.dailyGoals;
   }
@@ -2548,6 +2607,45 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     const dg = ensureCurrentDailyGoals();
     const prev = Number(dg.progress[metric]) || 0;
     dg.progress[metric] = isMaxValue ? Math.max(prev, amount) : prev + amount;
+  }
+
+  function recordCheckInIfEligible(nowMs: number = Date.now()): boolean {
+    const dg = ensureCurrentDailyGoals(nowMs);
+    const todayKey = dg.dateKey;
+    const prevCheckIns = Math.max(0, Math.floor(Number(dg.progress.checkIns) || 0));
+    const lastAt = Number(dg.lastCheckInAt) || 0;
+    const isFirstToday = prevCheckIns === 0;
+    const isCooldownElapsed = lastAt > 0 && nowMs - lastAt >= CHECKIN_COOLDOWN_MS;
+    if (!isFirstToday && !isCooldownElapsed) {
+      return false;
+    }
+
+    if (isFirstToday && state.lastCheckInDateKey !== todayKey) {
+      const yesterdayKey = getPreviousLocalDateKey(nowMs);
+      if (state.lastCheckInDateKey === yesterdayKey) {
+        state.checkInStreak = Math.max(1, (Number(state.checkInStreak) || 0) + 1);
+      } else {
+        state.checkInStreak = 1;
+      }
+      state.bestCheckInStreak = Math.max(Number(state.bestCheckInStreak) || 0, state.checkInStreak);
+      state.totalCheckInDays = Math.max(Number(state.totalCheckInDays) || 0, 0) + 1;
+      state.lastCheckInDateKey = todayKey;
+    }
+
+    dg.progress.checkIns = prevCheckIns + 1;
+    dg.lastCheckInAt = nowMs;
+    state.totalCheckInsCount = Math.max(0, Number(state.totalCheckInsCount) || 0) + 1;
+    return true;
+  }
+
+  function recordOwnedBreed(rawBreed: string): void {
+    const key = normalizeBreedKey(rawBreed);
+    if (!Array.isArray(state.uniqueBreedsOwned)) {
+      state.uniqueBreedsOwned = [];
+    }
+    if (!state.uniqueBreedsOwned.includes(key)) {
+      state.uniqueBreedsOwned.push(key);
+    }
   }
 
   function addRegularBones(rawAmount: number, countForDaily = true): number {
@@ -2733,6 +2831,17 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       treasurePaceMult *
       (1 + packTraits.packPaceAura);
 
+    const digChance = anyTreatActive ? 0.62 : 0.42;
+    const strollsPerDig = (1 - digChance) / digChance;
+    const avgWalkDist = 0.54 * (getGridSize() - 1.24);
+    const packCount = state.roster.length;
+    const hasSlide = (state.placedDecorations || []).some(d => d.type === 'slide');
+    const slideAvail = 1 / Math.max(1, 1 + (packCount - 1) * 0.12);
+    const waterSources = 1 + (state.placedDecorations || []).filter(d => d.type === 'fountain').length;
+    const drinkAvail = Math.min(1, waterSources / Math.max(1, packCount * 0.22));
+    const pDrink = 0.10 * drinkAvail;
+    const avgNapCooldownSec = (DAY_SLEEP_COOLDOWN_MIN_SEC + DAY_SLEEP_COOLDOWN_MAX_SEC) * 0.5;
+
     let bonesPerMin = 0;
     let magicPerHour = 0;
     let totalDigsPerMin = 0;
@@ -2744,38 +2853,66 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         ? trait.weatherAffinity
         : null;
 
-      let personalBoneMult = 1;
-      if (anyTreatActive && trait.treatBoneBonus) {
-        personalBoneMult *= 1 + trait.treatBoneBonus;
-      }
-      if (isHighMood && trait.happyMoodBoneBonus) {
-        personalBoneMult *= 1 + trait.happyMoodBoneBonus;
-      }
-      if (weatherMatch?.boneBonus) {
-        personalBoneMult *= 1 + weatherMatch.boneBonus;
-      }
-      if (trait.luckyDigChance && trait.luckyDigMult && trait.luckyDigMult > 1) {
-        personalBoneMult *= 1 + trait.luckyDigChance * (trait.luckyDigMult - 1);
-      }
-
-      const rawBones = getEffectiveDigPower() * stats.boneYield * levelMult * cupMult * packDigMult * personalBoneMult;
-      const bonesPerRegularDig = Math.max(1, Math.round(rawBones * 10) / 10);
-
-      const dogVisualPace = baseVisualPace * (1 + (weatherMatch?.paceBonus || 0));
+      const walkMult = Math.max(0.5, stats.walkMult || 1.1);
+      const digRateMult = 1 + (trait.digSpeedBonus || 0) + (anyTreatActive ? (trait.treatDigSpeedBonus || 0) : 0);
+      const baseDogVisualPace = baseVisualPace * (1 + (weatherMatch?.paceBonus || 0));
       const napChance = Math.max(0.02, Math.min(0.32, 0.14 * (trait.napChanceMult ?? 1)));
       const avgNapSec = ((DAY_SLEEP_MIN_SEC + DAY_SLEEP_MAX_SEC) * 0.5 * (trait.napDurationMult ?? 1)) / baconPaceMult;
-      const avgNapCooldownSec = (DAY_SLEEP_COOLDOWN_MIN_SEC + DAY_SLEEP_COOLDOWN_MAX_SEC) * 0.5;
-      const sleepDutyFactor = Math.min(0.28, (napChance * avgNapSec) / (avgNapCooldownSec * 0.35 + avgNapSec));
-      const avgIdleSec = 1.2 / dogVisualPace;
-      const avgSleepOverheadSec = sleepDutyFactor * (avgNapSec + 1.4 / dogVisualPace);
+      const drinkBoostSec = 18 * (trait.drinkBoostDurationMult ?? 1);
 
-      const avgWalkSec = 2.92 / (Math.max(0.5, stats.walkMult || 1.1) * dogVisualPace);
-      const digRateMult = 1 + (trait.digSpeedBonus || 0) + (anyTreatActive ? (trait.treatDigSpeedBonus || 0) : 0);
-      const baseDigSec = (stats.digSec || 1.5) / (dogVisualPace * digRateMult);
-      const avgDigSec = trait.quickBurrowEvery && trait.quickBurrowEvery > 1
-        ? (baseDigSec * (trait.quickBurrowEvery - 1) + 0.25) / trait.quickBurrowEvery
-        : baseDigSec;
-      const cycleSec = avgIdleSec + avgSleepOverheadSec + avgWalkSec + avgDigSec;
+      const calcCore = (vPace: number, effNapPerRoll: number) => {
+        const pExit = Math.max(0.25, 0.64 - effNapPerRoll);
+        const preWalkRestSec =
+          (0.20 / pExit) * (4.85 + 1.45 / vPace) +
+          (0.16 / pExit) * (5.90 + 1.60 / vPace);
+        const postStrollSec =
+          0.35 * (4.85 + 1.45 / vPace) +
+          0.20 * (5.90 + 1.60 / vPace) +
+          0.45 * (2.30 / vPace);
+        const avgWalkSec = avgWalkDist / (walkMult * vPace);
+        const baseDigSec = (stats.digSec || 1.5) / (vPace * digRateMult);
+        const avgDigSec = trait.quickBurrowEvery && trait.quickBurrowEvery > 1
+          ? (baseDigSec * (trait.quickBurrowEvery - 1) + 0.25) / trait.quickBurrowEvery
+          : baseDigSec;
+        const digBranchSec = avgWalkSec + avgDigSec + 2.0 / vPace + preWalkRestSec;
+        const strollBranchSec = avgWalkSec + postStrollSec + preWalkRestSec;
+        const activeDigCycleSec = digBranchSec + strollsPerDig * strollBranchSec;
+        const avgDecisionGapSec = activeDigCycleSec / (1 + strollsPerDig);
+        const avgIdleRollGapSec = avgDecisionGapSec * pExit;
+        return { preWalkRestSec, avgWalkSec, activeDigCycleSec, avgDecisionGapSec, avgIdleRollGapSec };
+      };
+
+      // Pass 1: estimate hydration uptime & effective daytime nap probability per idle roll
+      const p1 = calcCore(baseDogVisualPace, 0.05);
+      const drinkAction1 = p1.avgWalkSec + 2.55 + 0.65 / baseDogVisualPace + p1.preWalkRestSec;
+      const drinkWaitDecisions = 1 / Math.max(0.01, pDrink) - 0.5;
+      const drinkCycle1 = 70 + drinkWaitDecisions * p1.avgDecisionGapSec + drinkAction1;
+      const hydratedShare = Math.min(0.45, drinkBoostSec / Math.max(1, drinkCycle1));
+      const dogVisualPace = baseDogVisualPace * (1 + 0.18 * hydratedShare);
+
+      const napAction1 = avgNapSec + 1.70 / dogVisualPace;
+      const napWaitRolls = 1 / Math.max(0.01, napChance * (1 - hydratedShare)) - 0.5;
+      const napCycle1 = avgNapCooldownSec + napWaitRolls * p1.avgIdleRollGapSec + napAction1;
+      const rollsPerNapCycle = Math.max(1, (napCycle1 - napAction1) / Math.max(0.5, p1.avgIdleRollGapSec));
+      const effNapPerRoll = Math.min(0.22, 1 / rollsPerNapCycle);
+
+      // Pass 2: compute exact steady-state cycle including strolls, sit/lay, naps, drinks & slide
+      const p2 = calcCore(dogVisualPace, effNapPerRoll);
+      const drinkActionSec = p2.avgWalkSec + 2.55 + 0.65 / dogVisualPace + p2.preWalkRestSec;
+      const avgDrinkCycleSec = 70 + drinkWaitDecisions * p2.avgDecisionGapSec + drinkActionSec;
+      const drinkTimeShare = Math.min(0.18, drinkActionSec / Math.max(1, avgDrinkCycleSec));
+
+      const slideActionSec = p2.avgWalkSec + 1.40 + 1.15 / dogVisualPace + p2.preWalkRestSec;
+      const slideWaitDecisions = 1 / Math.max(0.01, 0.32 * slideAvail) - 0.5;
+      const avgSlideCycleSec = 20 + slideWaitDecisions * p2.avgDecisionGapSec + slideActionSec;
+      const slideTimeShare = hasSlide ? Math.min(0.26, slideActionSec / Math.max(1, avgSlideCycleSec)) : 0;
+
+      const napActionSec = avgNapSec + 1.70 / dogVisualPace;
+      const avgNapCycleSec = avgNapCooldownSec + napWaitRolls * p2.avgIdleRollGapSec + napActionSec;
+      const napTimeShare = Math.min(0.32, napActionSec / Math.max(1, avgNapCycleSec));
+
+      const nonDigTimeShare = Math.min(0.68, drinkTimeShare + slideTimeShare + napTimeShare);
+      const cycleSec = p2.activeDigCycleSec / Math.max(0.25, 1 - nonDigTimeShare);
       const digsPerMin = 60 / Math.max(0.5, cycleSec);
       totalDigsPerMin += digsPerMin;
 
@@ -2790,13 +2927,40 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
           (weatherMatch?.magicAdd || 0) +
           (stats.magicBonus || 0)
       );
+      const regularShare = kongActive ? 1 : Math.max(0, 1 - magicChanceTotal);
+
+      let personalBoneMult = 1;
+      if (anyTreatActive && trait.treatBoneBonus) {
+        personalBoneMult *= 1 + trait.treatBoneBonus;
+      }
+      if (isHighMood && trait.happyMoodBoneBonus) {
+        personalBoneMult *= 1 + trait.happyMoodBoneBonus;
+      }
+      if (weatherMatch?.boneBonus) {
+        personalBoneMult *= 1 + weatherMatch.boneBonus;
+      }
+      if (trait.digStreakStep && trait.digStreakMax) {
+        const maxStacks = Math.max(1, Math.round(trait.digStreakMax / trait.digStreakStep));
+        const awakeNapSec = Math.max(cycleSec, avgNapCycleSec - avgNapSec);
+        const expectedRegDigsPerNap = Math.max(1, (awakeNapSec / Math.max(0.5, cycleSec)) * regularShare);
+        const avgStacks = expectedRegDigsPerNap <= maxStacks + 1
+          ? (expectedRegDigsPerNap - 1) * 0.5
+          : (maxStacks * (maxStacks + 1) * 0.5 + (expectedRegDigsPerNap - maxStacks - 1) * maxStacks) / expectedRegDigsPerNap;
+        personalBoneMult *= 1 + Math.max(0, avgStacks) * trait.digStreakStep;
+      }
+      if (trait.luckyDigChance && trait.luckyDigMult && trait.luckyDigMult > 1) {
+        personalBoneMult *= 1 + trait.luckyDigChance * (trait.luckyDigMult - 1);
+      }
+
+      const rawBones = getEffectiveDigPower() * stats.boneYield * levelMult * cupMult * packDigMult * personalBoneMult;
+      const bonesPerRegularDig = Math.max(1, Math.round(rawBones * 10) / 10);
+
       const magicPerDrop = 1 + (entry.isShiny ? SHINY_MAGIC_BONE_BONUS : 0);
       const extraMagicRate = trait.extraMagicChance || 0;
       if (kongActive) {
         bonesPerMin += digsPerMin * bonesPerRegularDig;
         magicPerHour += digsPerMin * 60 * (magicPerDrop + extraMagicRate);
       } else {
-        const regularShare = Math.max(0, 1 - magicChanceTotal);
         bonesPerMin += digsPerMin * regularShare * bonesPerRegularDig;
         magicPerHour += digsPerMin * 60 * (magicChanceTotal * magicPerDrop + regularShare * extraMagicRate);
       }
@@ -3467,6 +3631,9 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         const rosterDigSum = Array.isArray(state.roster)
           ? state.roster.reduce((sum, e) => sum + (Number(e?.digsCompleted) || 0), 0)
           : 0;
+        const rosterRerollSum = Array.isArray(state.roster)
+          ? state.roster.reduce((sum, e) => sum + (Number(e?.rerollCount) || 0), 0)
+          : 0;
         state.lifetimeMagicBones =
           typeof parsed.lifetimeMagicBones === 'number' && Number.isFinite(parsed.lifetimeMagicBones) && parsed.lifetimeMagicBones >= 0
             ? Math.max(parsed.lifetimeMagicBones, Math.max(0, Number(state.magicBones) || 0))
@@ -3475,6 +3642,10 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
           typeof parsed.totalDigsCount === 'number' && Number.isFinite(parsed.totalDigsCount) && parsed.totalDigsCount >= 0
             ? Math.max(parsed.totalDigsCount, rosterDigSum)
             : rosterDigSum;
+        state.totalTapsCount =
+          typeof parsed.totalTapsCount === 'number' && Number.isFinite(parsed.totalTapsCount) && parsed.totalTapsCount >= 0
+            ? parsed.totalTapsCount
+            : 0;
         state.totalPetsCount =
           typeof parsed.totalPetsCount === 'number' && Number.isFinite(parsed.totalPetsCount) && parsed.totalPetsCount >= 0
             ? parsed.totalPetsCount
@@ -3487,10 +3658,57 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
           typeof parsed.totalWhistlesCount === 'number' && Number.isFinite(parsed.totalWhistlesCount) && parsed.totalWhistlesCount >= 0
             ? parsed.totalWhistlesCount
             : 0;
+        state.totalRerollsCount =
+          typeof parsed.totalRerollsCount === 'number' && Number.isFinite(parsed.totalRerollsCount) && parsed.totalRerollsCount >= 0
+            ? Math.max(parsed.totalRerollsCount, rosterRerollSum)
+            : rosterRerollSum;
+        state.totalFreshToyBoosts =
+          typeof parsed.totalFreshToyBoosts === 'number' && Number.isFinite(parsed.totalFreshToyBoosts) && parsed.totalFreshToyBoosts >= 0
+            ? parsed.totalFreshToyBoosts
+            : 0;
         state.totalShiniesFound =
           typeof parsed.totalShiniesFound === 'number' && Number.isFinite(parsed.totalShiniesFound) && parsed.totalShiniesFound >= 0
             ? Math.max(parsed.totalShiniesFound, currentShinyCount)
             : currentShinyCount;
+        state.totalCheckInsCount =
+          typeof parsed.totalCheckInsCount === 'number' && Number.isFinite(parsed.totalCheckInsCount) && parsed.totalCheckInsCount >= 0
+            ? parsed.totalCheckInsCount
+            : 0;
+        state.totalCheckInDays =
+          typeof parsed.totalCheckInDays === 'number' && Number.isFinite(parsed.totalCheckInDays) && parsed.totalCheckInDays >= 0
+            ? parsed.totalCheckInDays
+            : 0;
+        state.lastCheckInDateKey = typeof parsed.lastCheckInDateKey === 'string' ? parsed.lastCheckInDateKey : '';
+        state.checkInStreak =
+          typeof parsed.checkInStreak === 'number' && Number.isFinite(parsed.checkInStreak) && parsed.checkInStreak >= 0
+            ? parsed.checkInStreak
+            : 0;
+        state.bestCheckInStreak =
+          typeof parsed.bestCheckInStreak === 'number' && Number.isFinite(parsed.bestCheckInStreak) && parsed.bestCheckInStreak >= 0
+            ? Math.max(parsed.bestCheckInStreak, state.checkInStreak)
+            : state.checkInStreak;
+        state.totalDailyGoalsClaimed =
+          typeof parsed.totalDailyGoalsClaimed === 'number' && Number.isFinite(parsed.totalDailyGoalsClaimed) && parsed.totalDailyGoalsClaimed >= 0
+            ? parsed.totalDailyGoalsClaimed
+            : 0;
+        state.totalDailyBonusesClaimed =
+          typeof parsed.totalDailyBonusesClaimed === 'number' && Number.isFinite(parsed.totalDailyBonusesClaimed) && parsed.totalDailyBonusesClaimed >= 0
+            ? parsed.totalDailyBonusesClaimed
+            : 0;
+        const ownedBreedsSet = new Set<string>();
+        if (Array.isArray(parsed.uniqueBreedsOwned)) {
+          parsed.uniqueBreedsOwned.forEach((b: unknown) => {
+            if (typeof b === 'string' && b.trim()) {
+              ownedBreedsSet.add(normalizeBreedKey(b));
+            }
+          });
+        }
+        if (Array.isArray(state.roster)) {
+          state.roster.forEach(e => {
+            if (e && e.breed) ownedBreedsSet.add(normalizeBreedKey(e.breed));
+          });
+        }
+        state.uniqueBreedsOwned = Array.from(ownedBreedsSet);
         state.everFullPack = Boolean(parsed.everFullPack) || (Array.isArray(state.roster) && state.roster.length >= MAX_DOGS);
         state.everJoyful = Boolean(parsed.everJoyful) || state.packHappiness >= 70;
         state.everEcstatic = Boolean(parsed.everEcstatic) || (state.packHappiness >= 90 && isEcstaticUnlocked());
@@ -3521,7 +3739,11 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
             dateKey: todayKey,
             progress: cleanProgress,
             claimed: cleanDailyClaimed,
-            bonusClaimed: Boolean(rawDaily.bonusClaimed)
+            bonusClaimed: Boolean(rawDaily.bonusClaimed),
+            lastCheckInAt:
+              typeof rawDaily.lastCheckInAt === 'number' && Number.isFinite(rawDaily.lastCheckInAt) && rawDaily.lastCheckInAt > 0
+                ? rawDaily.lastCheckInAt
+                : 0
           };
         } else {
           state.dailyGoals = createEmptyDailyGoalsState(todayKey);
@@ -3657,6 +3879,13 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       state.lifetimeBones = Math.max(0, state.bones || 0);
     }
 
+    if (!Array.isArray(state.uniqueBreedsOwned)) {
+      state.uniqueBreedsOwned = [];
+    }
+    state.roster.forEach(entry => {
+      if (entry && entry.breed) recordOwnedBreed(entry.breed);
+    });
+
     rebuildTileDetails();
     syncBreedCountsFromRoster();
     rebuildCanvasDogsFromRoster();
@@ -3752,15 +3981,21 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       updateAmbientBed();
     }
 
+    const recordedCheckIn = recordCheckInIfEligible(now);
+
     if (!hasSettledInitialReturn && !loadedFromExistingSave) {
       state.lastSaveTime = now;
       hasSettledInitialReturn = true;
+      refreshGoalBadges();
       saveGameAt(now);
       return;
     }
 
     const settled = settleAwayProgressSinceLastSave(now);
     hasSettledInitialReturn = true;
+    if (recordedCheckIn) {
+      refreshGoalBadges();
+    }
     if (!settled) {
       saveGameAt(now);
     }
@@ -3910,14 +4145,14 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
       if (summary.actualEarned > 0 || (summary.actualMagicEarned || 0) <= 0) {
         const bonesLine = document.createElement('div');
-        bonesLine.textContent = `+${formatAwardedBones(summary.actualEarned)} 🦴`;
+        bonesLine.innerHTML = `<span class="pp-inline-pair"><span>+${formatAwardedBones(summary.actualEarned)}</span>${uiIconHtml('hudBone')}</span>`;
         text.appendChild(bonesLine);
       }
 
       if ((summary.actualMagicEarned || 0) > 0) {
         const magicLine = document.createElement('div');
         magicLine.className = 'offline-magic-line';
-        magicLine.textContent = `+${summary.actualMagicEarned.toLocaleString()} ✨ Magic Bones`;
+        magicLine.innerHTML = `<span class="pp-inline-pair"><span>+${summary.actualMagicEarned.toLocaleString()}</span>${uiIconHtml('hudMagicBone')}<span>Magic Bones</span></span>`;
         text.appendChild(magicLine);
       }
 
@@ -3939,7 +4174,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
           card.innerHTML = `
             <div class="offline-treasure-info">
               <div class="offline-treasure-kicker">Relic Vault Mastered</div>
-              <div class="offline-treasure-name">Treasure Jackpot: +${foundTreasure.magicBones.toLocaleString()} ✨ Magic Bones</div>
+              <div class="offline-treasure-name">Treasure Jackpot: ${magicInlineHtml(`+${foundTreasure.magicBones.toLocaleString()}`)} Magic Bones</div>
               <div class="offline-treasure-meta">All 16 relics are already at Rank V (MAX).</div>
             </div>
           `;
@@ -4453,7 +4688,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     const manorActive = hasGrandDoghousePlaced();
     const shinyOddsLabel = formatRerollShinyOddsLabel(getEffectiveRerollShinyOdds());
     const manorNote = manorActive ? ' (Manor bonus)' : '';
-    return `Rerolls for ${entry.name} cost 25 → 50 → 75 → 100 (+25 per reroll on this dog; currently reroll #${dogRerolls + 1}). Higher-rated previous stats are kept if not beaten, and non-shiny pups have a ${shinyOddsLabel} chance${manorNote} to become ✨ Shiny (+${SHINY_MAGIC_BONE_BONUS} bonus Magic Bone per ✨ drop).`;
+    return `Rerolls for ${entry.name} cost 25 → 50 → 75 → 100 (+25 per reroll on this dog; currently reroll #${dogRerolls + 1}). Higher-rated previous stats are kept if not beaten, and non-shiny pups have a ${shinyOddsLabel} chance${manorNote} to become Shiny (+${SHINY_MAGIC_BONE_BONUS} bonus Magic Bone per Magic drop).`;
   }
 
   function renderRerollModalContent(dogId: string, resultInfo: RerollResultInfo | null = null): void {
@@ -4475,27 +4710,33 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
       const coatMetaEl = document.createElement('span');
       coatMetaEl.className = entry.isShiny ? 'reroll-meta-text is-shiny' : 'reroll-meta-text';
-      coatMetaEl.textContent = entry.isShiny
-        ? `✨ Shiny (+${SHINY_MAGIC_BONE_BONUS} ✨/drop)`
-        : 'Standard Coat';
+      if (entry.isShiny) {
+        coatMetaEl.innerHTML = `${uiIconHtml('spark')} <span>Shiny (+${SHINY_MAGIC_BONE_BONUS}</span> ${uiIconHtml('magicBone')}<span>/drop)</span>`;
+      } else {
+        coatMetaEl.textContent = 'Standard Coat';
+      }
 
       rerollDogSummary.replaceChildren(nameEl, breedMetaEl, coatMetaEl);
     }
 
     if (rerollCurrentStats) {
-      const statRows: Array<[string, string]> = [
-        ['Roll Grade', String(stats.rollGrade)],
-        ['Bone Yield', `+${stats.bonusPayout.toFixed(2)} (${stats.boneYield.toFixed(2)}x)`],
-        ['Pack Growth', `+${stats.bonusScaling.toFixed(2)} (${stats.packGrowth.toFixed(2)}x)`],
-        ['Quick Learner', `+${stats.bonusXp.toFixed(2)} (${stats.quickLearner.toFixed(2)}x)`]
+      const statRows: Array<{ label: string; text?: string; html?: string }> = [
+        { label: 'Roll Grade', html: formatRollGradeHtml(stats.rollGrade) },
+        { label: 'Bone Yield', text: `+${stats.bonusPayout.toFixed(2)} (${stats.boneYield.toFixed(2)}x)` },
+        { label: 'Pack Growth', text: `+${stats.bonusScaling.toFixed(2)} (${stats.packGrowth.toFixed(2)}x)` },
+        { label: 'Quick Learner', text: `+${stats.bonusXp.toFixed(2)} (${stats.quickLearner.toFixed(2)}x)` }
       ];
-      const statNodes = statRows.map(([label, value]) => {
+      const statNodes = statRows.map(row => {
         const line = document.createElement('div');
         line.className = 'reroll-stat-line';
         const labelEl = document.createElement('span');
-        labelEl.textContent = label;
+        labelEl.textContent = row.label;
         const valueEl = document.createElement('strong');
-        valueEl.textContent = value;
+        if (row.html !== undefined) {
+          valueEl.innerHTML = row.html;
+        } else {
+          valueEl.textContent = row.text || '';
+        }
         line.append(labelEl, valueEl);
         return line;
       });
@@ -4515,9 +4756,11 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         rerollResultBanner.style.display = 'block';
         rerollResultBanner.className = `reroll-result-banner ${resultInfo.keptPrevious ? 'kept' : 'upgraded'}${resultInfo.becameShiny ? ' shiny-hit' : ''}`;
 
+        const rolledGradeLabel = formatRollGradeText(resultInfo.rolledGrade);
+        const currentGradeLabel = formatRollGradeText(stats.rollGrade);
         const statMsg = resultInfo.keptPrevious
-          ? `Rolled ${resultInfo.rolledGrade} (+${resultInfo.rolledPayout.toFixed(2)} Yield / +${resultInfo.rolledScaling.toFixed(2)} Growth / +${resultInfo.rolledXp.toFixed(2)} XP) — previous higher-rated stats (${stats.rollGrade}) were kept!`
-          : `New roll applied! Now ${stats.rollGrade} (+${stats.bonusPayout.toFixed(2)} Yield / +${stats.bonusScaling.toFixed(2)} Growth / +${stats.bonusXp.toFixed(2)} XP).`;
+          ? `Rolled ${rolledGradeLabel} (+${resultInfo.rolledPayout.toFixed(2)} Yield / +${resultInfo.rolledScaling.toFixed(2)} Growth / +${resultInfo.rolledXp.toFixed(2)} XP) — previous higher-rated stats (${currentGradeLabel}) were kept!`
+          : `New roll applied! Now ${currentGradeLabel} (+${stats.bonusPayout.toFixed(2)} Yield / +${stats.bonusScaling.toFixed(2)} Growth / +${stats.bonusXp.toFixed(2)} XP).`;
 
         const statLine = document.createElement('div');
         statLine.textContent = statMsg;
@@ -4527,7 +4770,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
           const shinyCallout = document.createElement('div');
           shinyCallout.className = 'reroll-shiny-callout';
           const rollOddsLabel = formatRerollShinyOddsLabel(resultInfo.rolledShinyOdds);
-          shinyCallout.textContent = `✨ JACKPOT! ${rollOddsLabel} Shiny roll hit — ${entry.name} is now Shiny!`;
+          shinyCallout.innerHTML = `${uiIconHtml('spark')} <span>JACKPOT! ${rollOddsLabel} Shiny roll hit — ${entry.name} is now Shiny!</span>`;
           bannerNodes.push(shinyCallout);
         }
 
@@ -4536,7 +4779,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     }
 
     if (rerollCostLabel) {
-      rerollCostLabel.textContent = `${cost.toLocaleString()} ✨`;
+      setHtmlIfChanged(rerollCostLabel, magicInlineHtml(cost.toLocaleString()));
     }
 
     if (btnConfirmReroll) {
@@ -4578,6 +4821,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
     state.magicBones -= cost;
     entry.rerollCount = getDogRerollCount(entry) + 1;
+    state.totalRerollsCount = (Number(state.totalRerollsCount) || 0) + 1;
 
     if (
       typeof entry.bonusPayout !== 'number' ||
@@ -4807,7 +5051,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       const breedName = BREED_LABELS[entry.breed] || entry.breed;
       const isFav = Boolean(entry.isFavorite);
 
-      const gradeClass = stats.rollGrade === '★ Max Roll'
+      const gradeClass = isMaxRollGrade(stats.rollGrade)
         ? 'grade-max'
         : stats.rollGrade === 'Prime'
           ? 'grade-prime'
@@ -4876,15 +5120,15 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       const metaRow = document.createElement('div');
       metaRow.className = 'roster-meta-row';
       metaRow.innerHTML = `
-        <span>${breedName}${entry.isShiny ? ' ✨' : ''}</span>
+        <span>${breedName}${entry.isShiny ? ` ${uiIconHtml('spark')}` : ''}</span>
         <span class="roster-meta-sep" aria-hidden="true">|</span>
         <span>Lv. <strong>${entry.level}</strong>${entry.level >= MAX_DOG_LEVEL ? ' (MAX)' : ''}</span>
         <span class="roster-meta-sep" aria-hidden="true">|</span>
-        <strong class="${gradeClass}">${stats.rollGrade}</strong>
+        <strong class="${gradeClass}">${formatRollGradeHtml(stats.rollGrade)}</strong>
         <span class="roster-meta-sep" aria-hidden="true">|</span>
         <span><strong>${Math.floor(entry.digsCompleted || 0).toLocaleString()}</strong> Digs</span>
         <span class="roster-meta-sep" aria-hidden="true">|</span>
-        <span><strong>${Math.floor(entry.bonesEarned).toLocaleString()}</strong> 🦴</span>
+        <span>${boneInlineHtml(`<strong>${Math.floor(entry.bonesEarned).toLocaleString()}</strong>`)}</span>
       `;
 
       const bonusRow = document.createElement('div');
@@ -4893,7 +5137,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         <span>Bone Yield <strong>${stats.boneYield.toFixed(2)}x</strong> <em>(+${stats.bonusPayout.toFixed(2)})</em> <span class="lvl-bonus">(+${levelBonusPct}% Lv.)</span></span>
         <span>Pack Growth <strong>${stats.packGrowth.toFixed(2)}x</strong> <em>(+${stats.bonusScaling.toFixed(2)})</em></span>
         <span>XP <strong>${stats.quickLearner.toFixed(2)}x</strong> <em>(+${stats.bonusXp.toFixed(2)})</em></span>
-        ${entry.isShiny ? `<span class="lvl-bonus">Shiny <strong>+${SHINY_MAGIC_BONE_BONUS} ✨</strong></span>` : ''}
+        ${entry.isShiny ? `<span class="lvl-bonus">Shiny ${magicInlineHtml(`<strong>+${SHINY_MAGIC_BONE_BONUS}</strong>`)}</span>` : ''}
         <span>${isMaxLevel ? `<strong>Max Lv.</strong>` : `Next Lv. <strong>${Math.floor(entry.xp).toLocaleString()}/${xpNeeded.toLocaleString()}</strong>`}</span>
       `;
 
@@ -4914,7 +5158,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       favBtn.className = `fav-star-btn${isFav ? ' active' : ''}`;
       favBtn.setAttribute('aria-pressed', String(isFav));
       favBtn.setAttribute('aria-label', isFav ? `Unfavorite ${entry.name}` : `Favorite ${entry.name}`);
-      favBtn.textContent = isFav ? '★' : '☆';
+      favBtn.innerHTML = uiIconHtml(isFav ? 'starFilled' : 'starOutline');
       favBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         toggleFavoriteDog(entry.id);
@@ -4925,8 +5169,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       rerollBtn.type = 'button';
       rerollBtn.className = 'reroll-dice-btn';
       rerollBtn.setAttribute('aria-label', `Reroll stats for ${entry.name}`);
-      rerollBtn.title = `Reroll Stats & Shiny Chance (${getRerollCost(entry)} ✨)`;
-      rerollBtn.textContent = '🎲';
+      rerollBtn.title = `Reroll Stats & Shiny Chance (${getRerollCost(entry)} Magic Bones)`;
+      rerollBtn.innerHTML = uiIconHtml('dice');
       rerollBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         openRerollModal(entry.id);
@@ -4950,7 +5194,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         }
         retireBtn.innerHTML = `
           <span class="retire-line-top">Retire</span>
-          <span class="retire-line-sub">+${refundPreview.toLocaleString()} 🦴</span>
+          <span class="retire-line-sub">${boneInlineHtml(`+${refundPreview.toLocaleString()}`)}</span>
         `;
         retireBtn.addEventListener('click', (e) => {
           e.stopPropagation();
@@ -5788,10 +6032,21 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       activePlaySeconds: 0,
       lifetimeMagicBones: clampedMagic,
       totalDigsCount: 0,
+      totalTapsCount: 0,
       totalPetsCount: 0,
       totalTreatsCount: 0,
       totalWhistlesCount: 0,
+      totalRerollsCount: 0,
+      totalFreshToyBoosts: 0,
       totalShiniesFound: starterShinyRoll.isShiny ? 1 : 0,
+      totalCheckInsCount: 0,
+      totalCheckInDays: 0,
+      lastCheckInDateKey: '',
+      checkInStreak: 0,
+      bestCheckInStreak: 0,
+      totalDailyGoalsClaimed: 0,
+      totalDailyBonusesClaimed: 0,
+      uniqueBreedsOwned: ['aussie'],
       everFullPack: false,
       everJoyful: false,
       everEcstatic: false,
@@ -5800,6 +6055,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       lastSaveTime: resetNow
     };
 
+    recordCheckInIfEligible(resetNow);
     rebuildTileDetails();
     syncBreedCountsFromRoster();
     initDefaultCosts();
@@ -6705,6 +6961,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
           });
         }
         state.totalDigsCount = (Number(state.totalDigsCount) || 0) + 1;
+        state.totalTapsCount = (Number(state.totalTapsCount) || 0) + 1;
         recordDailyProgress('taps', 1);
         recordDailyProgress('digs', 1);
         refreshGoalBadges();
@@ -8000,23 +8257,30 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
           const petMsg = leveledUp
             ? 'Level Up!'
             : gaveHappiness
-              ? `♥ +${xpGain} XP • +${petMoodAmt} Mood`
-              : `♥ +${xpGain} XP`;
-          addFloatingText(pos.x, pos.y - (32 + this.slideElevation) * scale, petMsg, leveledUp ? '#ffeaa7' : '#ff9ff3');
+              ? `+${xpGain} XP • +${petMoodAmt} Mood`
+              : `+${xpGain} XP`;
+          addFloatingText(
+            pos.x,
+            pos.y - (32 + this.slideElevation) * scale,
+            petMsg,
+            leveledUp ? '#ffeaa7' : '#ff9ff3',
+            'center',
+            leveledUp ? 'spark' : 'heart'
+          );
           if (leveledUp) {
             sfx.upgrade();
           }
           requestSave();
         } else {
-          const petMsg = gaveHappiness ? `♥ +${petMoodAmt} Mood!` : '♥ Happy Pup!';
-          addFloatingText(pos.x, pos.y - (32 + this.slideElevation) * scale, petMsg, '#ff9ff3');
+          const petMsg = gaveHappiness ? `+${petMoodAmt} Mood!` : 'Happy Pup!';
+          addFloatingText(pos.x, pos.y - (32 + this.slideElevation) * scale, petMsg, '#ff9ff3', 'center', 'heart');
           if (gaveHappiness) {
             requestSave();
           }
         }
         updateUI();
       } else if (gaveHappiness) {
-        addFloatingText(pos.x, pos.y - (32 + this.slideElevation) * scale, `♥ +${petMoodAmt} Mood!`, '#ff9ff3');
+        addFloatingText(pos.x, pos.y - (32 + this.slideElevation) * scale, `+${petMoodAmt} Mood!`, '#ff9ff3', 'center', 'heart');
         requestSave();
         updateUI();
       }
@@ -8887,7 +9151,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
           isMagic: true,
           value: 1
         });
-        addFloatingText(pos.x, pos.y - 46 * scale, '+1 ✨ Bonus!', '#ffeaa7');
+        addFloatingText(pos.x, pos.y - 46 * scale, '+1 Bonus!', '#ffeaa7', 'center', 'magic');
         for (let i = 0; i < 4; i++) {
           particles.push({
             x: pos.x + (Math.random() - 0.5) * 14 * scale,
@@ -9175,20 +9439,20 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       jackpotCard.className = 'perk-jackpot-card';
       jackpotCard.innerHTML = `
         <h3>Master Collector Jackpot</h3>
-        <p>Your pack unearthed a golden vault chest overflowing with <strong>+${MAXED_TREASURE_JACKPOT_MAGIC.toLocaleString()} ✨ Magic Bones</strong>!</p>
+        <p>Your pack unearthed a golden vault chest overflowing with <strong>${magicInlineHtml(`+${MAXED_TREASURE_JACKPOT_MAGIC.toLocaleString()}`)} Magic Bones</strong>!</p>
       `;
       const claimBtn = document.createElement('button');
       claimBtn.type = 'button';
       claimBtn.className = 'action-btn';
       claimBtn.style.cssText = 'width: 100%; max-width: 240px; padding: 11px;';
-      claimBtn.textContent = `Claim +${MAXED_TREASURE_JACKPOT_MAGIC.toLocaleString()} ✨`;
+      claimBtn.innerHTML = `<span class="pp-inline-pair"><span>Claim +${MAXED_TREASURE_JACKPOT_MAGIC.toLocaleString()}</span>${uiIconHtml('magicBone')}</span>`;
       claimBtn.addEventListener('click', () => {
         stopDraftTreasureAnimations();
         state.magicBones += MAXED_TREASURE_JACKPOT_MAGIC;
         state.isDraftingPerk = false;
         modal.style.display = 'none';
         sfx.shiny();
-        addFloatingText(viewportW / 2, viewportH * 0.34, `+${MAXED_TREASURE_JACKPOT_MAGIC} ✨ Vault Jackpot!`, '#ffeaa7');
+        addFloatingText(viewportW / 2, viewportH * 0.34, `+${MAXED_TREASURE_JACKPOT_MAGIC} Vault Jackpot!`, '#ffeaa7', 'center', 'magic');
         updateUI();
         saveGame();
         flushQueuedAwayProgressIfReady();
@@ -11985,6 +12249,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
       const entry = createRosterEntry(normBreed, isShiny, chosenColor);
       state.roster.push(entry);
+      recordOwnedBreed(normBreed);
       syncBreedCountsFromRoster();
       const spawnPos = hasGrandDoghousePlaced() ? { gx: 2.22, gy: 2.22 } : { gx: 2.18, gy: 1.92 };
       dogs.push(new Dog(spawnPos.gx, spawnPos.gy, entry.id, normBreed, isShiny, chosenColor));
@@ -12045,7 +12310,11 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       const card = document.createElement('div');
       card.className = 'shop-card dog-breed-card';
       card.dataset.dogTier = breed.tier;
+      const portraitUrl = getDogPortraitDataUrl(breed.key, breed.tier);
       card.innerHTML = `
+        <div class="shop-art-thumb dog-portrait-thumb tier-${breed.tier}" aria-hidden="true">
+          <img class="shop-art-img" src="${portraitUrl}" alt="" />
+        </div>
         <div class="shop-info">
           <h3>${breed.name}</h3>
           <p class="breed-role">${breed.role}</p>
@@ -12072,7 +12341,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         </div>
         <button type="button" class="action-btn" id="btnSummon${capBreed}">
           <span class="btn-name">Recruit</span>
-          <span class="btn-cost" id="cost${capBreed}">${breed.cost.toLocaleString()} 🦴</span>
+          <span class="btn-cost" id="cost${capBreed}">${boneInlineHtml(breed.cost.toLocaleString())}</span>
         </button>
       `;
 
@@ -12156,8 +12425,8 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         });
       }
     });
-    const moodText = gainedMood > 0 ? `♥ +${gainedMood} Mood!` : '♥ Happy Pack!';
-    addFloatingText(viewportW / 2, Math.max(110, viewportH * 0.24), moodText, '#ff9ff3');
+    const moodText = gainedMood > 0 ? `+${gainedMood} Mood!` : 'Happy Pack!';
+    addFloatingText(viewportW / 2, Math.max(110, viewportH * 0.24), moodText, '#ff9ff3', 'center', 'heart');
     updateUI();
     saveGame();
   });
@@ -12171,6 +12440,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         spendRegularBones(FRESH_BALL_COST);
         state.freshBallUntil = now + FRESH_BALL_DURATION_MS;
         state.hasTennisBall = true;
+        state.totalFreshToyBoosts = (Number(state.totalFreshToyBoosts) || 0) + 1;
         addPackHappiness(FRESH_TOY_HAPPINESS_GAIN);
         sfx.upgrade();
         updateUI();
@@ -12200,6 +12470,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         spendRegularBones(FRESH_DUCK_COST);
         state.freshDuckUntil = now + FRESH_DUCK_DURATION_MS;
         state.hasDuck = true;
+        state.totalFreshToyBoosts = (Number(state.totalFreshToyBoosts) || 0) + 1;
         addPackHappiness(FRESH_TOY_HAPPINESS_GAIN);
         sfx.upgrade();
         updateUI();
@@ -12229,6 +12500,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         spendRegularBones(FRESH_FRISBEE_COST);
         state.freshFrisbeeUntil = now + FRESH_FRISBEE_DURATION_MS;
         state.hasFrisbee = true;
+        state.totalFreshToyBoosts = (Number(state.totalFreshToyBoosts) || 0) + 1;
         addPackHappiness(FRESH_TOY_HAPPINESS_GAIN);
         sfx.upgrade();
         updateUI();
@@ -12569,17 +12841,17 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     });
   }
 
-  function formatTimedTreatCostLabel(cost: number, timer: number, treatKey: string, configKey: string): string {
+  function formatTimedTreatCostHtml(cost: number, timer: number, treatKey: string, configKey: string): string {
     const flatCost = TREAT_CONFIG[configKey]?.baseCost || cost || 350;
     const secs = Math.ceil(Math.max(0, timer));
     if (isTreatAtMaxDuration(treatKey)) {
       return secs > 0 ? `MAX | ${secs}s` : 'MAX';
     }
-    const baseStr = `${flatCost.toLocaleString()} 🦴`;
+    const baseHtml = boneInlineHtml(flatCost.toLocaleString());
     if (secs > 0) {
-      return `${baseStr} | ${secs}s`;
+      return `${baseHtml} | ${secs}s`;
     }
-    return baseStr;
+    return baseHtml;
   }
 
   function refreshTreatButtonStates(nowMs = Date.now()): void {
@@ -12604,29 +12876,19 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
   function refreshTreatButtonTimers(nowMs = Date.now()): void {
     const costTreatXpEl = document.getElementById('costTreatXp');
-    if (costTreatXpEl) {
-      costTreatXpEl.textContent = formatTimedTreatCostLabel(TREAT_CONFIG.treatXp.baseCost, state.xpTreatTimer, 'xp', 'treatXp');
-    }
+    setHtmlIfChanged(costTreatXpEl, formatTimedTreatCostHtml(TREAT_CONFIG.treatXp.baseCost, state.xpTreatTimer, 'xp', 'treatXp'));
 
     const costTreatKongEl = document.getElementById('costTreatKong');
-    if (costTreatKongEl) {
-      costTreatKongEl.textContent = formatTimedTreatCostLabel(TREAT_CONFIG.treatKong.baseCost, state.kongTimer, 'kong', 'treatKong');
-    }
+    setHtmlIfChanged(costTreatKongEl, formatTimedTreatCostHtml(TREAT_CONFIG.treatKong.baseCost, state.kongTimer, 'kong', 'treatKong'));
 
     const costTreatCupEl = document.getElementById('costTreatCup');
-    if (costTreatCupEl) {
-      costTreatCupEl.textContent = formatTimedTreatCostLabel(TREAT_CONFIG.treatCup.baseCost, state.pupCupTimer, 'cup', 'treatCup');
-    }
+    setHtmlIfChanged(costTreatCupEl, formatTimedTreatCostHtml(TREAT_CONFIG.treatCup.baseCost, state.pupCupTimer, 'cup', 'treatCup'));
 
     const costTreatFeastEl = document.getElementById('costTreatFeast');
-    if (costTreatFeastEl) {
-      costTreatFeastEl.textContent = formatTimedTreatCostLabel(TREAT_CONFIG.treatFeast.baseCost, state.feastTimer, 'feast', 'treatFeast');
-    }
+    setHtmlIfChanged(costTreatFeastEl, formatTimedTreatCostHtml(TREAT_CONFIG.treatFeast.baseCost, state.feastTimer, 'feast', 'treatFeast'));
 
     const costTreatBaconEl = document.getElementById('costTreatBacon');
-    if (costTreatBaconEl) {
-      costTreatBaconEl.textContent = formatTimedTreatCostLabel(TREAT_CONFIG.treatBacon.baseCost, state.baconTimer, 'bacon', 'treatBacon');
-    }
+    setHtmlIfChanged(costTreatBaconEl, formatTimedTreatCostHtml(TREAT_CONFIG.treatBacon.baseCost, state.baconTimer, 'bacon', 'treatBacon'));
 
     refreshTreatButtonStates(nowMs);
 
@@ -12635,11 +12897,11 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       const chips: string[] = [];
       if (state.pupCupTimer > 0) chips.push(`Cup 1.35x | ${Math.ceil(state.pupCupTimer)}s`);
       if (state.xpTreatTimer > 0) chips.push(`2x XP | ${Math.ceil(state.xpTreatTimer)}s`);
-      if (state.kongTimer > 0) chips.push(`+1 ✨ Bonus | ${Math.ceil(state.kongTimer)}s`);
+      if (state.kongTimer > 0) chips.push(`${magicInlineHtml('+1')} Bonus | ${Math.ceil(state.kongTimer)}s`);
       if (state.feastTimer > 0) chips.push(`Feast 1.50x | ${Math.ceil(state.feastTimer)}s`);
       if (state.baconTimer > 0) chips.push(`Bacon Frenzy | ${Math.ceil(state.baconTimer)}s`);
 
-      activeBuffsBar.innerHTML = chips.map(c => `<span class="buff-chip">${c}</span>`).join('');
+      setHtmlIfChanged(activeBuffsBar, chips.map(c => `<span class="buff-chip">${c}</span>`).join(''));
     }
   }
 
@@ -12724,19 +12986,19 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     if (descToyBones) {
       descToyBones.textContent = atDigPowerCap
         ? `Maxed (${MAX_DIG_POWER})! Grab a Fresh Ball for +${FRESH_BALL_POWER_BONUS} Dig Power (${MAX_DIG_POWER + FRESH_BALL_POWER_BONUS} total) for 30m, +${FRESH_TOY_HAPPINESS_GAIN} Mood & +${FRESH_TOY_COZY_FLOOR_BONUS}% Cozy Floor. Counts toward offline digs too.`
-        : `+${TENNIS_BALL_FLAT_GAIN} Dig Power per buy, up to max ${MAX_DIG_POWER} (price caps at ${TOY_CONFIG.toyBones.priceCap.toLocaleString()} 🦴). Unlocks Fresh Ball boosts at max!`;
+        : `+${TENNIS_BALL_FLAT_GAIN} Dig Power per buy, up to max ${MAX_DIG_POWER} (price caps at ${TOY_CONFIG.toyBones.priceCap.toLocaleString()} Bones). Unlocks Fresh Ball boosts at max!`;
     }
     const descToyIdle = document.getElementById('descToyIdle');
     if (descToyIdle) {
       descToyIdle.textContent = atDuckCap
         ? `Maxed (+20%)! Grab a Fresh Duck for +10% Offline Yield (up to 75% cap) & +25% Offline Treasure odds for 12h, +${FRESH_TOY_HAPPINESS_GAIN} Mood & +${FRESH_TOY_COZY_FLOOR_BONUS}% Cozy Floor.`
-        : `Boosts base offline bone yield by +1% per buy, from 10% up to 30% (+20% max from toy; price caps at ${TOY_CONFIG.toyIdle.priceCap.toLocaleString()} 🦴). Dog abilities lift total offline yield up to 75%. Unlocks Fresh Duck boosts at max!`;
+        : `Boosts base offline bone yield by +1% per buy, from 10% up to 30% (+20% max from toy; price caps at ${TOY_CONFIG.toyIdle.priceCap.toLocaleString()} Bones). Dog abilities lift total offline yield up to 75%. Unlocks Fresh Duck boosts at max!`;
     }
     const descToySpeed = document.getElementById('descToySpeed');
     if (descToySpeed) {
       descToySpeed.textContent = atSpeedCap
         ? `Maxed (${MAX_SPEED_MULTIPLIER.toFixed(2)}x)! Grab a Fresh Frisbee for +${FRESH_FRISBEE_SPEED_BONUS.toFixed(2)}x Pack Dig Multiplier (${(MAX_SPEED_MULTIPLIER + FRESH_FRISBEE_SPEED_BONUS).toFixed(2)}x total) for 30m, +${FRESH_TOY_HAPPINESS_GAIN} Mood & +${FRESH_TOY_COZY_FLOOR_BONUS}% Cozy Floor. Counts toward offline digs too.`
-        : `Boosts the pack's dig multiplier by +3% per buy, up to ${MAX_SPEED_MULTIPLIER.toFixed(2)}x (price caps at ${TOY_CONFIG.toySpeed.priceCap.toLocaleString()} 🦴). Unlocks Fresh Frisbee boosts at max!`;
+        : `Boosts the pack's dig multiplier by +3% per buy, up to ${MAX_SPEED_MULTIPLIER.toFixed(2)}x (price caps at ${TOY_CONFIG.toySpeed.priceCap.toLocaleString()} Bones). Unlocks Fresh Frisbee boosts at max!`;
     }
 
     const nameToyBones = document.getElementById('nameToyBones');
@@ -12746,11 +13008,14 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       nameToyBones.textContent = ballFresh ? 'Fresh Active' : (atDigPowerCap ? 'Fresh Ball' : 'Get Toy');
     }
     if (costToyBonesEl) {
-      costToyBonesEl.textContent = ballFresh
-        ? `${formatFreshRemaining(ballRem)} left`
-        : atDigPowerCap
-          ? `${FRESH_BALL_COST.toLocaleString()} 🦴`
-          : `${state.costs.toyBones.toLocaleString()} 🦴`;
+      setHtmlIfChanged(
+        costToyBonesEl,
+        ballFresh
+          ? `${formatFreshRemaining(ballRem)} left`
+          : atDigPowerCap
+            ? boneInlineHtml(FRESH_BALL_COST.toLocaleString())
+            : boneInlineHtml(state.costs.toyBones.toLocaleString())
+      );
     }
     if (btnToyBones) {
       btnToyBones.classList.toggle('is-fresh-ready', atDigPowerCap && !ballFresh);
@@ -12769,11 +13034,14 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       nameToyIdle.textContent = duckFresh ? 'Fresh Active' : (atDuckCap ? 'Fresh Duck' : 'Get Toy');
     }
     if (costToyIdleEl) {
-      costToyIdleEl.textContent = duckFresh
-        ? `${formatFreshRemaining(duckRem)} left`
-        : atDuckCap
-          ? `${FRESH_DUCK_COST.toLocaleString()} 🦴`
-          : `${state.costs.toyIdle.toLocaleString()} 🦴`;
+      setHtmlIfChanged(
+        costToyIdleEl,
+        duckFresh
+          ? `${formatFreshRemaining(duckRem)} left`
+          : atDuckCap
+            ? boneInlineHtml(FRESH_DUCK_COST.toLocaleString())
+            : boneInlineHtml(state.costs.toyIdle.toLocaleString())
+      );
     }
     if (btnToyIdle) {
       btnToyIdle.classList.toggle('is-fresh-ready', atDuckCap && !duckFresh);
@@ -12792,11 +13060,14 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       nameToySpeed.textContent = frisbeeFresh ? 'Fresh Active' : (atSpeedCap ? 'Fresh Frisbee' : 'Get Toy');
     }
     if (costToySpeedEl) {
-      costToySpeedEl.textContent = frisbeeFresh
-        ? `${formatFreshRemaining(frisbeeRem)} left`
-        : atSpeedCap
-          ? `${FRESH_FRISBEE_COST.toLocaleString()} 🦴`
-          : `${state.costs.toySpeed.toLocaleString()} 🦴`;
+      setHtmlIfChanged(
+        costToySpeedEl,
+        frisbeeFresh
+          ? `${formatFreshRemaining(frisbeeRem)} left`
+          : atSpeedCap
+            ? boneInlineHtml(FRESH_FRISBEE_COST.toLocaleString())
+            : boneInlineHtml(state.costs.toySpeed.toLocaleString())
+      );
     }
     if (btnToySpeed) {
       btnToySpeed.classList.toggle('is-fresh-ready', atSpeedCap && !frisbeeFresh);
@@ -12851,7 +13122,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       }
       const costEl = document.getElementById(`cost${capBreed}`);
       if (costEl) {
-        costEl.textContent = `${state.costs[breed].toLocaleString()} 🦴`;
+        setHtmlIfChanged(costEl, boneInlineHtml(state.costs[breed].toLocaleString()));
       }
       const btnEl = document.getElementById(`btnSummon${capBreed}`) as HTMLButtonElement | null;
       if (btnEl) {
@@ -12922,9 +13193,12 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         btn.disabled = !isUnlocked && state.magicBones < MANOR_COLOR_COST;
         const tag = btn.querySelector('.manor-color-tag');
         if (tag) {
-          tag.textContent = isActive
-            ? 'Active'
-            : (isUnlocked ? 'Use' : `${MANOR_COLOR_COST} ✨`);
+          setHtmlIfChanged(
+            tag,
+            isActive
+              ? 'Active'
+              : (isUnlocked ? 'Use' : magicInlineHtml(String(MANOR_COLOR_COST)))
+          );
         }
       });
     }
@@ -12979,7 +13253,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
           if (nameSpan) nameSpan.textContent = 'Unlock';
           if (costSpan) {
             costSpan.style.display = '';
-            costSpan.textContent = `${TILE_UNLOCK_COST.toLocaleString()} ✨`;
+            setHtmlIfChanged(costSpan, magicInlineHtml(TILE_UNLOCK_COST.toLocaleString()));
           }
           btn.disabled = state.magicBones < TILE_UNLOCK_COST;
         }
@@ -13025,14 +13299,14 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       const formattedBpm = packRates.bonesPerMin >= 100
         ? Math.round(packRates.bonesPerMin).toLocaleString()
         : packRates.bonesPerMin.toFixed(1);
-      statBonesPerMinEl.textContent = `~${formattedBpm} 🦴`;
+      setHtmlIfChanged(statBonesPerMinEl, boneInlineHtml(`~${formattedBpm}`));
     }
     const statMagicPerHourEl = document.getElementById('statMagicPerHour');
     if (statMagicPerHourEl) {
       const formattedMph = packRates.magicPerHour >= 10
         ? Math.round(packRates.magicPerHour).toLocaleString()
         : packRates.magicPerHour.toFixed(1);
-      statMagicPerHourEl.textContent = `~${formattedMph} ✨`;
+      setHtmlIfChanged(statMagicPerHourEl, magicInlineHtml(`~${formattedMph}`));
     }
     const statDigPowerEl = document.getElementById('statDigPower');
     if (statDigPowerEl) statDigPowerEl.textContent = String(Number(getEffectiveDigPower().toFixed(1)));
@@ -13065,10 +13339,10 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     if (decorBonusEl) {
       const parts: string[] = [];
       if (decorBonuses.xpMult > 1) parts.push(`+${formatPctStat(decorBonuses.xpMult - 1)}% XP`);
-      if (decorBonuses.magicAdd > 0) parts.push(`+${formatPctStat(decorBonuses.magicAdd)}% ✨`);
-      if (decorBonuses.payoutMult > 1) parts.push(`+${formatPctStat(decorBonuses.payoutMult - 1)}% 🦴`);
+      if (decorBonuses.magicAdd > 0) parts.push(magicInlineHtml(`+${formatPctStat(decorBonuses.magicAdd)}%`));
+      if (decorBonuses.payoutMult > 1) parts.push(boneInlineHtml(`+${formatPctStat(decorBonuses.payoutMult - 1)}%`));
       if (decorBonuses.paceMult > 1) parts.push(`+${formatPctStat(decorBonuses.paceMult - 1)}% Pace`);
-      decorBonusEl.textContent = parts.length > 0 ? parts.join(' | ') : 'None yet';
+      setHtmlIfChanged(decorBonusEl, parts.length > 0 ? parts.join(' | ') : 'None yet');
     }
     const offlineRateEl = document.getElementById('statOfflineRate');
     if (offlineRateEl) {
@@ -13081,16 +13355,16 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     const packAurasEl = document.getElementById('statPackAuras');
     if (packAurasEl) {
       const auraParts: string[] = [];
-      if (packTraits.packBoneAura > 0) auraParts.push(`+${formatPctStat(packTraits.packBoneAura)}% 🦴`);
+      if (packTraits.packBoneAura > 0) auraParts.push(boneInlineHtml(`+${formatPctStat(packTraits.packBoneAura)}%`));
       if (packTraits.packPaceAura > 0) auraParts.push(`+${formatPctStat(packTraits.packPaceAura)}% Pace`);
       if (packTraits.packXpAura > 0) auraParts.push(`+${formatPctStat(packTraits.packXpAura)}% XP`);
-      if (packTraits.packMagicAura > 0) auraParts.push(`+${formatPctStat(packTraits.packMagicAura)}% ✨`);
+      if (packTraits.packMagicAura > 0) auraParts.push(magicInlineHtml(`+${formatPctStat(packTraits.packMagicAura)}%`));
       if (packTraits.packGrowthAura > 0) auraParts.push(`+${formatPctStat(packTraits.packGrowthAura)}% Growth`);
       if (packTraits.packTreasureAura > 0) auraParts.push(`+${formatPctStat(packTraits.packTreasureAura)}% Treasure`);
       if (packTraits.cozyFloorAdd > 0) auraParts.push(`+${packTraits.cozyFloorAdd} Cozy`);
       if (packTraits.moodDecayMult < 1) auraParts.push(`-${formatPctStat(1 - packTraits.moodDecayMult)}% Mood Decay`);
       if (packTraits.offlineBonus > 0) auraParts.push(`+${formatPctStat(packTraits.offlineBonus)}% Offline`);
-      packAurasEl.textContent = auraParts.length > 0 ? auraParts.join(' | ') : 'None active';
+      setHtmlIfChanged(packAurasEl, auraParts.length > 0 ? auraParts.join(' | ') : 'None active');
     }
     const startDateEl = document.getElementById('statStartDate');
     if (startDateEl) {
@@ -13120,7 +13394,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         rerollRulesText.textContent = formatRerollRulesText(activeRerollDog);
       }
       if (rerollCostLabel) {
-        rerollCostLabel.textContent = `${nextCost.toLocaleString()} ✨`;
+        setHtmlIfChanged(rerollCostLabel, magicInlineHtml(nextCost.toLocaleString()));
       }
       if (btnConfirmReroll) {
         btnConfirmReroll.disabled = (state.magicBones || 0) < nextCost;
@@ -13139,31 +13413,62 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
   function buildGoalSnapshot(): GoalSnapshot {
     const relicCounts = getTreasureCounts(state.perks);
     const completedSetsCount = TREASURE_SETS.filter(set => isSetCompleted(relicCounts, set.id)).length;
+    const totalRelicRanks = Array.from(relicCounts.values()).reduce(
+      (sum, c) => sum + Math.min(MAX_RELIC_RANK, Math.max(0, Number(c) || 0)),
+      0
+    );
     const hasMaxRankRelic = Array.from(relicCounts.values()).some(c => c >= MAX_RELIC_RANK);
     const shinyCountNow = state.roster.filter(e => e && e.isShiny).length;
     const maxDogLevel = state.roster.reduce((max, e) => Math.max(max, Number(e?.level) || 1), 1);
+    const totalPackLevels = state.roster.reduce((sum, e) => sum + Math.max(1, Number(e?.level) || 1), 0);
     const toysOwnedCount = (state.hasTennisBall ? 1 : 0) + (state.hasDuck ? 1 : 0) + (state.hasFrisbee ? 1 : 0);
-    const hasMaxedToy =
-      state.digPower >= MAX_DIG_POWER ||
-      state.idleMultiplier >= MAX_IDLE_MULTIPLIER ||
-      state.speedMultiplier >= MAX_SPEED_MULTIPLIER;
+    const maxedToysCount =
+      (state.digPower >= MAX_DIG_POWER ? 1 : 0) +
+      (state.idleMultiplier >= MAX_IDLE_MULTIPLIER ? 1 : 0) +
+      (state.speedMultiplier >= MAX_SPEED_MULTIPLIER ? 1 : 0);
+    const hasMaxedToy = maxedToysCount > 0;
+    const ownedBreedsSet = new Set<string>(Array.isArray(state.uniqueBreedsOwned) ? state.uniqueBreedsOwned : []);
+    state.roster.forEach(e => {
+      if (e && e.breed) ownedBreedsSet.add(normalizeBreedKey(e.breed));
+    });
+    const ownedBreedKeys = Array.from(ownedBreedsSet);
+    const hasFieldBreed = ownedBreedKeys.some(k => BREED_BY_KEY[k]?.tier === 'working');
+    const hasNobleBreed = ownedBreedKeys.some(k => BREED_BY_KEY[k]?.tier === 'athletic');
+    const hasLegendBreed = ownedBreedKeys.some(k => BREED_BY_KEY[k]?.tier === 'giant');
+    const hasKomondor = ownedBreedsSet.has('komondor');
+    const hasMaxRollPup = state.roster.some(e => e && isMaxRollGrade(e.rollGrade));
+    const unlockedTilesCount = Object.values(state.unlockedTiles || {}).filter(Boolean).length;
+    const unlockedManorColorsCount = Object.values(state.unlockedManorColors || {}).filter(Boolean).length;
+    const hasGoldenHydrant =
+      state.placedDecorations.some(d => d.type === 'goldenHydrant') || (state.decorInventory?.goldenHydrant || 0) > 0;
 
     return {
       lifetimeBones: Math.max(0, Number(state.lifetimeBones) || 0),
       lifetimeMagicBones: Math.max(0, Number(state.lifetimeMagicBones) || 0),
       bones: Math.max(0, Number(state.bones) || 0),
       boneCapReached: Boolean(state.boneCapEverShown) || (Number(state.bones) || 0) >= MAX_BONES,
+      totalDigs: Math.max(0, Number(state.totalDigsCount) || 0),
+      totalTaps: Math.max(0, Number(state.totalTapsCount) || 0),
       rosterCount: state.roster.length,
       everFullPack: Boolean(state.everFullPack) || state.roster.length >= MAX_DOGS,
       maxDogLevel,
+      totalPackLevels,
       shinyCountNow,
       totalShiniesFound: Math.max(shinyCountNow, Number(state.totalShiniesFound) || 0),
-      hasLegendBreed: state.roster.some(e => BREED_BY_KEY[e.breed]?.tier === 'giant'),
-      hasKomondor: state.roster.some(e => e.breed === 'komondor'),
+      hasFieldBreed,
+      hasNobleBreed,
+      hasLegendBreed,
+      hasKomondor,
+      uniqueBreedsCount: ownedBreedsSet.size,
       totalPets: Math.max(0, Number(state.totalPetsCount) || 0),
+      totalRerolls: Math.max(0, Number(state.totalRerollsCount) || 0),
+      hasMaxRollPup,
       totalTreats: Math.max(0, Number(state.totalTreatsCount) || 0),
+      totalWhistles: Math.max(0, Number(state.totalWhistlesCount) || 0),
       toysOwnedCount,
+      maxedToysCount,
       hasMaxedToy,
+      totalFreshToyBoosts: Math.max(0, Number(state.totalFreshToyBoosts) || 0),
       everJoyful: Boolean(state.everJoyful) || (Number(state.packHappiness) || 0) >= 70,
       everEcstatic: Boolean(state.everEcstatic) || ((Number(state.packHappiness) || 0) >= 90 && isEcstaticUnlocked()),
       placedDecorCount: state.placedDecorations.length,
@@ -13171,12 +13476,20 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       maxHappinessCap: getPackHappinessCap(),
       hasManor: state.placedDecorations.some(d => d.type === 'doghouseManor') || (state.decorInventory?.doghouseManor || 0) > 0,
       hasSlide: state.placedDecorations.some(d => d.type === 'slide'),
+      hasGoldenHydrant,
       parkExpanded: Boolean(state.parkExpanded),
+      unlockedTilesCount,
+      unlockedManorColorsCount,
       uniqueRelicsCount: relicCounts.size,
       completedSetsCount,
+      totalRelicRanks,
       hasDiamondBowl: hasDiamondBowl(),
       hasMaxRankRelic,
-      activePlaySeconds: Math.max(0, Number(state.activePlaySeconds) || 0)
+      activePlaySeconds: Math.max(0, Number(state.activePlaySeconds) || 0),
+      totalCheckIns: Math.max(0, Number(state.totalCheckInsCount) || 0),
+      bestCheckInStreak: Math.max(Number(state.bestCheckInStreak) || 0, Number(state.checkInStreak) || 0),
+      totalDailyGoalsClaimed: Math.max(0, Number(state.totalDailyGoalsClaimed) || 0),
+      totalDailyBonusesClaimed: Math.max(0, Number(state.totalDailyBonusesClaimed) || 0)
     };
   }
 
@@ -13228,7 +13541,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     addMagicBones(magicAmount, false);
     sfx.shiny();
     const anchor = getCurrencyPillAnchor(true);
-    addFloatingText(anchor.textX, anchor.textY, `+${magicAmount.toLocaleString()} ✨ ${label}`, '#ffeaa7', 'left');
+    addFloatingText(anchor.textX, anchor.textY, `+${magicAmount.toLocaleString()} ${label}`, '#ffeaa7', 'left', 'magic');
   }
 
   function claimDailyGoal(goalId: string): void {
@@ -13239,6 +13552,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     const cur = Number(dg.progress[goal.metric]) || 0;
     if (cur < goal.target) return;
     dg.claimed[goal.id] = true;
+    state.totalDailyGoalsClaimed = (Number(state.totalDailyGoalsClaimed) || 0) + 1;
     awardGoalMagicPopup(goal.rewardMagic, 'Daily!');
     updateUI();
     renderGoalsTab(true);
@@ -13253,6 +13567,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     const allDone = dailyList.every(g => (Number(dg.progress[g.metric]) || 0) >= g.target);
     if (!allDone) return;
     dg.bonusClaimed = true;
+    state.totalDailyBonusesClaimed = (Number(state.totalDailyBonusesClaimed) || 0) + 1;
     awardGoalMagicPopup(DAILY_BONUS_MAGIC, 'Daily Bonus!');
     updateUI();
     renderGoalsTab(true);
@@ -13287,6 +13602,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         completedCount += 1;
         if (!dg.claimed[goal.id]) {
           dg.claimed[goal.id] = true;
+          state.totalDailyGoalsClaimed = (Number(state.totalDailyGoalsClaimed) || 0) + 1;
           totalMagic += goal.rewardMagic;
         }
       }
@@ -13294,6 +13610,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
     if (completedCount >= dailyList.length && !dg.bonusClaimed) {
       dg.bonusClaimed = true;
+      state.totalDailyBonusesClaimed = (Number(state.totalDailyBonusesClaimed) || 0) + 1;
       totalMagic += DAILY_BONUS_MAGIC;
     }
 
@@ -13344,6 +13661,14 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       const isClaimed = Boolean(dg.claimed[goal.id]);
       if (isComplete) completedDailyCount += 1;
 
+      let goalDesc = goal.desc;
+      if (goal.id === 'daily_checkin_3' && rawVal > 0 && rawVal < goal.target) {
+        const nextReadyMs = (Number(dg.lastCheckInAt) || 0) + CHECKIN_COOLDOWN_MS - Date.now();
+        if (nextReadyMs > 0) {
+          goalDesc = `Check in 3 separate times today — next visit counts in ${formatCountdownToMidnight(nextReadyMs)}.`;
+        }
+      }
+
       const card = document.createElement('div');
       card.className = `goal-card${isClaimed ? ' is-claimed' : isComplete ? ' is-claimable' : ''}`;
       card.innerHTML = `
@@ -13354,14 +13679,14 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
               <span class="goal-title">${goal.title}</span>
               <span class="goal-progress-text">${formatGoalProgress(rawVal, goal.target, goal.format)}</span>
             </div>
-            <div class="goal-desc">${goal.desc}</div>
+            <div class="goal-desc">${goalDesc}</div>
             <div class="goal-progress-track">
               <div class="goal-progress-fill" style="width: ${pct.toFixed(1)}%;"></div>
             </div>
           </div>
         </div>
         <button type="button" class="goal-claim-btn${isClaimed ? ' is-done' : isComplete ? ' is-ready' : ''}" ${isClaimed || !isComplete ? 'disabled' : ''}>
-          ${isClaimed ? '<span>✓ Claimed</span>' : isComplete ? `<span>Claim</span><span class="goal-claim-sub">${renderRewardBadge(goal.rewardMagic)}</span>` : renderRewardBadge(goal.rewardMagic)}
+          ${isClaimed ? `<span class="goal-claimed-label">${uiIconHtml('check')} Claimed</span>` : isComplete ? `<span>Claim</span><span class="goal-claim-sub">${renderRewardBadge(goal.rewardMagic)}</span>` : renderRewardBadge(goal.rewardMagic)}
         </button>
       `;
       if (isComplete && !isClaimed) {
@@ -13382,16 +13707,16 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     }
     if (bonusSub) {
       bonusSub.textContent = bonusClaimed
-        ? 'All 4 Daily Goals complete — bonus claimed!'
+        ? `All ${dailyGoals.length} Daily Goals complete — bonus claimed!`
         : allDailyComplete
-          ? 'All 4 Daily Goals complete — ready to claim!'
-          : `Complete all 4 Daily Goals today (${completedDailyCount} / ${dailyGoals.length})`;
+          ? `All ${dailyGoals.length} Daily Goals complete — ready to claim!`
+          : `Complete all ${dailyGoals.length} Daily Goals today (${completedDailyCount} / ${dailyGoals.length})`;
     }
     if (btnBonus) {
       btnBonus.disabled = bonusClaimed || !allDailyComplete;
       btnBonus.className = `goal-claim-btn${bonusClaimed ? ' is-done' : allDailyComplete ? ' is-ready' : ''}`;
       btnBonus.innerHTML = bonusClaimed
-        ? '<span>✓ Claimed</span>'
+        ? `<span class="goal-claimed-label">${uiIconHtml('check')} Claimed</span>`
         : allDailyComplete
           ? `<span>Claim</span><span class="goal-claim-sub">${renderRewardBadge(DAILY_BONUS_MAGIC)}</span>`
           : renderRewardBadge(DAILY_BONUS_MAGIC);
@@ -13453,7 +13778,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
           </div>
         </div>
         <button type="button" class="goal-claim-btn${isClaimed ? ' is-done' : isComplete ? ' is-ready' : ''}" ${isClaimed || !isComplete ? 'disabled' : ''}>
-          ${isClaimed ? '<span>✓ Claimed</span>' : isComplete ? `<span>Claim</span><span class="goal-claim-sub">${renderRewardBadge(ach.rewardMagic)}</span>` : renderRewardBadge(ach.rewardMagic)}
+          ${isClaimed ? `<span class="goal-claimed-label">${uiIconHtml('check')} Claimed</span>` : isComplete ? `<span>Claim</span><span class="goal-claim-sub">${renderRewardBadge(ach.rewardMagic)}</span>` : renderRewardBadge(ach.rewardMagic)}
         </button>
       `;
       if (isComplete && !isClaimed) {
@@ -13517,7 +13842,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
     const moodIconEl = document.getElementById('moodBadgeIcon');
     const moodTextEl = document.getElementById('moodBadgeText');
-    if (moodIconEl) moodIconEl.textContent = info.icon;
+    setHtmlIfChanged(moodIconEl, uiIconHtml(info.icon));
     if (moodTextEl) moodTextEl.textContent = `${info.name} | ${info.shortBonus}`;
     if (moodBadgeBtn) {
       moodBadgeBtn.classList.remove('mood-cozy', 'mood-happy', 'mood-joyful', 'mood-ecstatic');
@@ -13529,7 +13854,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     const popFillEl = document.getElementById('moodPopoverFill');
     const popFloorEl = document.getElementById('moodPopoverFloor');
     const popFloorLabelEl = document.getElementById('moodPopoverFloorLabel');
-    if (popTitleEl) popTitleEl.textContent = `${info.icon} ${info.name} (${info.roundedPct}%)`;
+    setHtmlIfChanged(popTitleEl, `${uiIconHtml(info.icon)} <span>${info.name} (${info.roundedPct}%)</span>`);
     if (popBonusEl) popBonusEl.textContent = info.bonusSummary;
     if (popFillEl) popFillEl.style.width = `${info.value}%`;
     if (popFloorEl) popFloorEl.style.left = `${info.floor}%`;
@@ -13540,7 +13865,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     const rosterFillEl = document.getElementById('rosterMoodFill');
     const rosterFloorEl = document.getElementById('rosterMoodFloorMark');
     if (rosterTierEl) {
-      rosterTierEl.textContent = `${info.icon} ${info.name} | ${info.roundedPct}%`;
+      setHtmlIfChanged(rosterTierEl, `${uiIconHtml(info.icon)} <span>${info.name} | ${info.roundedPct}%</span>`);
       rosterTierEl.classList.remove('mood-cozy', 'mood-happy', 'mood-joyful', 'mood-ecstatic');
       rosterTierEl.classList.add(tierClass);
     }
@@ -13646,7 +13971,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
 
     const badgeIcon = document.getElementById('weatherBadgeIcon');
     const badgeText = document.getElementById('weatherBadgeText');
-    if (badgeIcon) badgeIcon.textContent = weather.icon;
+    setHtmlIfChanged(badgeIcon, uiIconHtml(weather.icon));
     if (badgeText) badgeText.textContent = `${weather.name} | ${weather.shortMod}`;
     if (weatherBadgeBtn) {
       weatherBadgeBtn.classList.remove('weather-sunny', 'weather-windy', 'weather-rain', 'weather-twilight');
@@ -13661,12 +13986,12 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
     const popNext = document.getElementById('weatherNextPreview');
     const tod = getTimeOfDayInfo();
     const moon = getMoonPhaseInfo();
-    if (popTitle) popTitle.textContent = `${weather.icon} ${weather.name}`;
+    setHtmlIfChanged(popTitle, `${uiIconHtml(weather.icon)} <span>${weather.name}</span>`);
     if (popMod) popMod.textContent = weather.modLabel;
     if (popDesc) popDesc.textContent = weather.desc;
-    if (popSky) popSky.textContent = `${tod.icon} ${tod.name} | ${moon.icon} ${moon.name}`;
+    setHtmlIfChanged(popSky, `${uiIconHtml(tod.icon)} <span>${tod.name}</span> <span>|</span> ${uiIconHtml(moon.icon)} <span>${moon.name}</span>`);
     if (popCount) popCount.textContent = formatWeatherCountdown(msRemaining);
-    if (popNext) popNext.textContent = `Next: ${next.icon} ${next.name}`;
+    setHtmlIfChanged(popNext, `<span>Next:</span> ${uiIconHtml(next.icon)} <span>${next.name}</span>`);
   }
 
   function closeWeatherPopover(): void {
@@ -13878,6 +14203,9 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
             activeTimeEl.textContent = formatActivePlayTime(state.activePlaySeconds);
           }
           if (nextActiveSec % 15 === 0 || nextDailyMin !== prevDailyMin) {
+            if (recordCheckInIfEligible()) {
+              requestSave();
+            }
             refreshDailyResetTimer();
             refreshGoalBadges();
             const goalsTabEl = document.getElementById('tab-goals');
@@ -14436,7 +14764,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
       if (liveHour !== currentWeatherHour) {
         currentWeatherHour = liveHour;
         const w = getCurrentWeather();
-        addFloatingText(viewportW / 2, Math.max(96, viewportH * 0.16), `${w.icon} ${w.name} (${w.shortMod})`, '#ffeaa7');
+        addFloatingText(viewportW / 2, Math.max(96, viewportH * 0.16), `${w.name} (${w.shortMod})`, '#ffeaa7');
         sfx.gather();
         updateAmbientBed();
         updateUI();
@@ -14449,7 +14777,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         if (popSky) {
           const tod = getTimeOfDayInfo(nowMs);
           const moon = getMoonPhaseInfo(nowMs);
-          popSky.textContent = `${tod.icon} ${tod.name} | ${moon.icon} ${moon.name}`;
+          setHtmlIfChanged(popSky, `${uiIconHtml(tod.icon)} <span>${tod.name}</span> <span>|</span> ${uiIconHtml(moon.icon)} <span>${moon.name}</span>`);
         }
       }
 
@@ -15211,9 +15539,10 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
               addFloatingText(
                 freshAnchor.textX,
                 freshAnchor.textY + (overlap ? 12 : 0),
-                `+${magicAmt} ✨`,
+                `+${magicAmt}`,
                 '#ffeaa7',
-                'left'
+                'left',
+                'magic'
               );
             } else {
               const added = addRegularBones(b.value);
@@ -15243,6 +15572,92 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
         drawBoneSprite(b.x, b.y, b.isMagic);
       }
 
+      const drawCanvasHeart = (cx: number, cy: number, radius: number, color: string): void => {
+        ctx.save();
+        ctx.translate(cx, cy);
+        const r = Math.max(3.5, radius);
+        ctx.beginPath();
+        ctx.moveTo(0, r * 0.88);
+        ctx.bezierCurveTo(-r * 1.25, r * 0.15, -r * 1.15, -r * 0.92, -r * 0.48, -r * 0.92);
+        ctx.bezierCurveTo(-r * 0.15, -r * 0.92, 0, -r * 0.62, 0, -r * 0.42);
+        ctx.bezierCurveTo(0, -r * 0.62, r * 0.15, -r * 0.92, r * 0.48, -r * 0.92);
+        ctx.bezierCurveTo(r * 1.15, -r * 0.92, r * 1.25, r * 0.15, 0, r * 0.88);
+        ctx.closePath();
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.lineWidth = 1.2;
+        ctx.strokeStyle = '#261738';
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.72)';
+        ctx.beginPath();
+        ctx.arc(-r * 0.36, -r * 0.36, r * 0.18, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      };
+
+      const drawInlineFloatingIcon = (
+        icon: FloatingTextIcon,
+        cx: number,
+        cy: number
+      ): void => {
+        if (icon === 'heart') {
+          drawCanvasHeart(cx, cy, 5.4, '#ff9ff3');
+          return;
+        }
+        if (icon === 'spark') {
+          ctx.save();
+          ctx.translate(cx, cy);
+          const r = 6.2;
+          const inner = r * 0.28;
+          ctx.beginPath();
+          ctx.moveTo(0, -r);
+          ctx.lineTo(inner, -inner);
+          ctx.lineTo(r, 0);
+          ctx.lineTo(inner, inner);
+          ctx.lineTo(0, r);
+          ctx.lineTo(-inner, inner);
+          ctx.lineTo(-r, 0);
+          ctx.lineTo(-inner, -inner);
+          ctx.closePath();
+          ctx.fillStyle = '#ffeaa7';
+          ctx.fill();
+          ctx.lineWidth = 1.2;
+          ctx.strokeStyle = '#261738';
+          ctx.stroke();
+          ctx.restore();
+          return;
+        }
+        // 'bone' or 'magic' — exact ground bone silhouette
+        const isMagic = icon === 'magic';
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.scale(0.68, 0.68);
+        if (isMagic) {
+          ctx.shadowColor = '#ffeaa7';
+          ctx.shadowBlur = 8;
+        }
+        ctx.fillStyle = isMagic ? '#ffeaa7' : '#f5f6fa';
+        ctx.strokeStyle = isMagic ? '#f39c12' : '#8e9aaf';
+        ctx.lineWidth = 2.0;
+        const drawParts = (strokeOnly: boolean) => {
+          if (strokeOnly) {
+            ctx.strokeRect(-7, -2.5, 14, 5);
+          } else {
+            ctx.fillRect(-7, -2.5, 14, 5);
+          }
+          const knobs: Array<[number, number]> = [[-7, -3], [-7, 3], [7, -3], [7, 3]];
+          knobs.forEach(([kx, ky]) => {
+            ctx.beginPath();
+            ctx.arc(kx, ky, 3, 0, Math.PI * 2);
+            if (strokeOnly) ctx.stroke();
+            else ctx.fill();
+          });
+        };
+        drawParts(true);
+        drawParts(false);
+        ctx.restore();
+      };
+
       for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
         if (!p) continue;
@@ -15266,10 +15681,7 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
           ctx.arc(p.x, p.y, (1 - p.life / p.maxLife) * 45, 0, Math.PI * 2);
           ctx.stroke();
         } else if (p.isHeart) {
-          ctx.fillStyle = p.color;
-          ctx.font = '700 13px system-ui, sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText('♥', p.x, p.y);
+          drawCanvasHeart(p.x, p.y - 4, Math.max(4.5, p.size * 1.15), p.color);
         } else {
           ctx.fillStyle = p.color;
           ctx.beginPath();
@@ -15287,15 +15699,41 @@ export function initPupperPark(options: InitPupperParkOptions = {}): PupperParkH
           continue;
         }
         const prog = ft.age / ft.duration;
+        const fy = ft.y - prog * 22;
         ctx.save();
         ctx.globalAlpha = 1 - prog;
         ctx.font = '800 13px "Outfit", system-ui, sans-serif';
-        ctx.textAlign = ft.align || 'center';
+        const align = ft.align || 'center';
         ctx.lineWidth = 3;
         ctx.strokeStyle = 'rgba(13, 11, 26, 0.85)';
-        ctx.strokeText(ft.text, ft.x, ft.y - prog * 22);
-        ctx.fillStyle = ft.color;
-        ctx.fillText(ft.text, ft.x, ft.y - prog * 22);
+
+        if (ft.icon) {
+          const textW = ctx.measureText(ft.text).width;
+          const iconSpan = ft.icon === 'bone' || ft.icon === 'magic' ? 16 : 13;
+          const gap = 5;
+          let iconCx: number;
+          let textX: number;
+          if (align === 'left') {
+            iconCx = ft.x + iconSpan * 0.5;
+            textX = ft.x + iconSpan + gap;
+            ctx.textAlign = 'left';
+          } else {
+            const totalW = iconSpan + gap + textW;
+            const startX = ft.x - totalW * 0.5;
+            iconCx = startX + iconSpan * 0.5;
+            textX = startX + iconSpan + gap;
+            ctx.textAlign = 'left';
+          }
+          drawInlineFloatingIcon(ft.icon, iconCx, fy - 4.2);
+          ctx.strokeText(ft.text, textX, fy);
+          ctx.fillStyle = ft.color;
+          ctx.fillText(ft.text, textX, fy);
+        } else {
+          ctx.textAlign = align;
+          ctx.strokeText(ft.text, ft.x, fy);
+          ctx.fillStyle = ft.color;
+          ctx.fillText(ft.text, ft.x, fy);
+        }
         ctx.restore();
       }
 

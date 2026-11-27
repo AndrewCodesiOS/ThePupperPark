@@ -36,13 +36,19 @@ export type GoalIconId =
   | 'shovel'
   | 'grassTap'
   | 'whistle'
-  | 'giftChest';
+  | 'giftChest'
+  | 'calendar'
+  | 'dice'
+  | 'paintBrush'
+  | 'level500Crest'
+  | 'level1000Crest';
+
+import { HUD_BONE_PRESETS, drawHudStyleBone, uiIconHtml } from './uiIcons';
 
 const INK = '#261738';
 const ICON_CACHE = new Map<GoalIconId, string>();
 
-export const MAGIC_SPARK_INLINE_SVG =
-  '<svg class="goal-magic-svg" width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.8C13.1 8.4 15.6 10.9 22.2 12C15.6 13.1 13.1 15.6 12 22.2C10.9 15.6 8.4 13.1 1.8 12C8.4 10.9 10.9 8.4 12 1.8Z" fill="#ffeaa7" stroke="#261738" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+export const MAGIC_SPARK_INLINE_SVG = uiIconHtml('magicBone', 'goal-magic-svg');
 
 function drawSparkle(
   ctx: CanvasRenderingContext2D,
@@ -74,52 +80,6 @@ function drawAura(ctx: CanvasRenderingContext2D, inner: string, outer: string): 
   ctx.beginPath();
   ctx.arc(32, 32, 28, 0, Math.PI * 2);
   ctx.fill();
-}
-
-function drawCartoonBone(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  len: number,
-  thick: number,
-  knob: number,
-  rot: number,
-  topCol: string,
-  botCol: string
-): void {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(rot);
-  const half = len * 0.5;
-  const h = thick * 0.5;
-  const grad = ctx.createLinearGradient(0, -h - knob, 0, h + knob);
-  grad.addColorStop(0, topCol);
-  grad.addColorStop(1, botCol);
-  ctx.fillStyle = grad;
-  ctx.strokeStyle = INK;
-  ctx.lineWidth = 2.4;
-  ctx.lineJoin = 'round';
-  ctx.beginPath();
-  ctx.moveTo(-half + knob * 0.3, -h);
-  ctx.lineTo(half - knob * 0.3, -h);
-  ctx.arc(half, -h - knob * 0.32, knob, Math.PI * 0.85, Math.PI * 0.12, false);
-  ctx.arc(half, h + knob * 0.32, knob, -Math.PI * 0.12, Math.PI * 1.15, false);
-  ctx.lineTo(-half + knob * 0.3, h);
-  ctx.arc(-half, h + knob * 0.32, knob, -Math.PI * 0.15, Math.PI * 1.12, false);
-  ctx.arc(-half, -h - knob * 0.32, knob, Math.PI * 0.88, Math.PI * 0.15, false);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-
-  // Soft glossy ridge
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.72)';
-  ctx.lineWidth = 1.6;
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.moveTo(-half * 0.55, -h * 0.4);
-  ctx.lineTo(half * 0.55, -h * 0.4);
-  ctx.stroke();
-  ctx.restore();
 }
 
 function drawPawPrint(
@@ -193,15 +153,15 @@ function drawGoalIconArt(ctx: CanvasRenderingContext2D, id: GoalIconId): void {
   switch (id) {
     case 'bone': {
       drawAura(ctx, 'rgba(255, 241, 198, 0.32)', 'rgba(255, 241, 198, 0)');
-      drawCartoonBone(ctx, 32, 33, 28, 10, 6.2, -0.52, '#fffdf7', '#e7d7b8');
+      drawHudStyleBone(ctx, { x: 32, y: 33, width: 42, rot: -0.48, ...HUD_BONE_PRESETS.regular });
       drawSparkle(ctx, 47, 17, 4.8, '#fff7cc', 0.9);
       break;
     }
 
     case 'bonePile': {
       drawAura(ctx, 'rgba(255, 224, 130, 0.34)', 'rgba(255, 224, 130, 0)');
-      drawCartoonBone(ctx, 32, 36, 26, 8.5, 5.2, 0.52, '#f9e7b2', '#d7b36a');
-      drawCartoonBone(ctx, 32, 31, 27, 9, 5.5, -0.52, '#fffef8', '#e5d4b0');
+      drawHudStyleBone(ctx, { x: 32, y: 36, width: 38, rot: 0.48, ...HUD_BONE_PRESETS.magic });
+      drawHudStyleBone(ctx, { x: 32, y: 31, width: 40, rot: -0.48, ...HUD_BONE_PRESETS.regular });
       drawSparkle(ctx, 16, 17, 4.5, '#ffeaa7', 0.95);
       drawSparkle(ctx, 49, 44, 3.8, '#ffffff', 0.85);
       break;
@@ -307,9 +267,9 @@ function drawGoalIconArt(ctx: CanvasRenderingContext2D, id: GoalIconId): void {
 
     case 'vault': {
       drawAura(ctx, 'rgba(255, 218, 108, 0.38)', 'rgba(255, 218, 108, 0)');
-      // Overflowing bones in lid
-      drawCartoonBone(ctx, 25, 25, 16, 5.5, 3.5, -0.35, '#fffdf4', '#e3d0a8');
-      drawCartoonBone(ctx, 39, 25, 16, 5.5, 3.5, 0.38, '#fff4c2', '#e4b754');
+      // Overflowing HUD bones in lid
+      drawHudStyleBone(ctx, { x: 24, y: 24, width: 25, rot: -0.35, ...HUD_BONE_PRESETS.regular });
+      drawHudStyleBone(ctx, { x: 40, y: 24, width: 25, rot: 0.38, ...HUD_BONE_PRESETS.magic });
       // Chest base
       const wood = ctx.createLinearGradient(12, 28, 52, 52);
       wood.addColorStop(0, '#a86432');
@@ -338,7 +298,7 @@ function drawGoalIconArt(ctx: CanvasRenderingContext2D, id: GoalIconId): void {
 
     case 'magicBone': {
       drawAura(ctx, 'rgba(255, 225, 115, 0.44)', 'rgba(155, 89, 246, 0)');
-      drawCartoonBone(ctx, 32, 33, 27, 10, 6.2, -0.48, '#fff7c2', '#f7b731');
+      drawHudStyleBone(ctx, { x: 32, y: 33, width: 42, rot: -0.48, ...HUD_BONE_PRESETS.magic });
       drawSparkle(ctx, 16, 18, 5.5, '#ffffff', 0.95);
       drawSparkle(ctx, 48, 45, 5.0, '#ffeaa7', 0.95);
       drawSparkle(ctx, 49, 18, 3.6, '#b8f7ff', 0.9);
@@ -741,8 +701,8 @@ function drawGoalIconArt(ctx: CanvasRenderingContext2D, id: GoalIconId): void {
 
     case 'treat': {
       drawAura(ctx, 'rgba(255, 195, 120, 0.34)', 'rgba(255, 195, 120, 0)');
-      // Baked golden dog biscuit
-      drawCartoonBone(ctx, 32, 33, 28, 12.5, 6.8, -0.32, '#f5ba69', '#b86824');
+      // Baked golden HUD-style dog biscuit
+      drawHudStyleBone(ctx, { x: 32, y: 33, width: 44, rot: -0.32, ...HUD_BONE_PRESETS.biscuit });
       // Baked speckle crumbs
       ctx.fillStyle = '#7c3e10';
       const dots: Array<[number, number]> = [
@@ -867,26 +827,120 @@ function drawGoalIconArt(ctx: CanvasRenderingContext2D, id: GoalIconId): void {
     }
 
     case 'parkTree': {
-      drawAura(ctx, 'rgba(100, 225, 145, 0.34)', 'rgba(100, 225, 145, 0)');
-      // Trunk
-      ctx.fillStyle = '#8b5732';
+      drawAura(ctx, 'rgba(100, 225, 145, 0.36)', 'rgba(100, 225, 145, 0)');
+
+      // Exact PupperPark in-park tree style with clean outer ink silhouette (zero overlapping internal circle lines)
+      ctx.save();
+      ctx.translate(32, 53);
+      ctx.scale(0.86, 0.86);
+
+      // Soft root moss tuft
+      ctx.fillStyle = '#2b8a3e';
       ctx.strokeStyle = INK;
       ctx.lineWidth = 2.2;
-      drawRoundedRect(ctx, 27.5, 34, 9, 18, 3);
-      ctx.fill();
-      ctx.stroke();
-      // Canopy puffs
-      const g = ctx.createRadialGradient(28, 20, 4, 32, 26, 20);
-      g.addColorStop(0, '#8ff7a4');
-      g.addColorStop(0.55, '#38c172');
-      g.addColorStop(1, '#1f7a4c');
-      ctx.fillStyle = g;
       ctx.beginPath();
-      ctx.arc(22, 29, 10, 0, Math.PI * 2);
-      ctx.arc(42, 29, 10, 0, Math.PI * 2);
-      ctx.arc(32, 21, 13, 0, Math.PI * 2);
+      ctx.ellipse(0, 2.2, 10.5, 4.0, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
+
+      // Tapered organic bark trunk with flared roots & forked boughs
+      const trunkGrad = ctx.createLinearGradient(-6, 0, 6, 0);
+      trunkGrad.addColorStop(0, '#5a3822');
+      trunkGrad.addColorStop(0.38, '#8d5b3a');
+      trunkGrad.addColorStop(0.75, '#724629');
+      trunkGrad.addColorStop(1, '#4c2e1b');
+      ctx.fillStyle = trunkGrad;
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.moveTo(-7.2, 2.6);
+      ctx.quadraticCurveTo(-4.4, -2.5, -4.0, -18.5);
+      ctx.lineTo(-8.5, -24.5);
+      ctx.lineTo(-5.2, -25.8);
+      ctx.lineTo(-1.2, -20.8);
+      ctx.lineTo(1.2, -20.8);
+      ctx.lineTo(6.2, -26.2);
+      ctx.lineTo(8.6, -24.2);
+      ctx.lineTo(4.0, -18.0);
+      ctx.quadraticCurveTo(4.5, -2.5, 7.2, 2.6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Subtle vertical bark grain lines
+      ctx.strokeStyle = 'rgba(48, 26, 12, 0.45)';
+      ctx.lineWidth = 1.0;
+      ctx.beginPath();
+      ctx.moveTo(-1.8, -1.5);
+      ctx.quadraticCurveTo(-1.4, -9, -2.0, -16);
+      ctx.moveTo(1.6, 0.5);
+      ctx.quadraticCurveTo(2.0, -7, 1.4, -14.5);
+      ctx.stroke();
+
+      // Layer 1: Unified outer ink contour behind entire canopy silhouette
+      const canopyHull: Array<[number, number, number]> = [
+        [-11.5, -25.5, 11.2],
+        [11.8, -25.0, 10.8],
+        [0, -23.5, 13.0],
+        [-10.5, -30.5, 11.5],
+        [10.5, -30.0, 11.2],
+        [0, -34.5, 13.8],
+        [0.5, -40.5, 10.5]
+      ];
+      ctx.fillStyle = INK;
+      for (const [cx, cy, r] of canopyHull) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, r + 2.1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Layer 2: Deep forest shaded underside foliage puffs
+      ctx.fillStyle = '#1b7a43';
+      ctx.beginPath();
+      ctx.arc(-11.5, -25.5, 11.2, 0, Math.PI * 2);
+      ctx.arc(11.8, -25.0, 10.8, 0, Math.PI * 2);
+      ctx.arc(0, -23.5, 13.0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Layer 3: Rich mid-emerald canopy body clusters
+      ctx.fillStyle = '#27ae60';
+      ctx.beginPath();
+      ctx.arc(-10.5, -30.5, 11.5, 0, Math.PI * 2);
+      ctx.arc(10.5, -30.0, 11.2, 0, Math.PI * 2);
+      ctx.arc(0, -34.5, 13.8, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Layer 4: Vibrant upper leaf puffs
+      ctx.fillStyle = '#2ecc71';
+      ctx.beginPath();
+      ctx.arc(-7.5, -35.8, 9.6, 0, Math.PI * 2);
+      ctx.arc(7.8, -35.0, 9.2, 0, Math.PI * 2);
+      ctx.arc(0.5, -40.5, 10.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Layer 5: Sunlit golden-lime crown highlights
+      ctx.fillStyle = '#7bed9f';
+      ctx.beginPath();
+      ctx.arc(-5.2, -39.5, 5.4, 0, Math.PI * 2);
+      ctx.arc(3.8, -42.5, 5.0, 0, Math.PI * 2);
+      ctx.arc(8.4, -36.8, 3.8, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Layer 6: Tiny sunlit leaf stipples
+      ctx.fillStyle = 'rgba(220, 255, 210, 0.62)';
+      const stipples: Array<[number, number, number]> = [
+        [-11, -33, 1.5],
+        [-2, -45, 1.7],
+        [9, -39, 1.5],
+        [2, -31, 1.4]
+      ];
+      for (const [sx, sy, sr] of stipples) {
+        ctx.beginPath();
+        ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.restore();
       break;
     }
 
@@ -1295,32 +1349,112 @@ function drawGoalIconArt(ctx: CanvasRenderingContext2D, id: GoalIconId): void {
     }
 
     case 'whistle': {
-      drawAura(ctx, 'rgba(255, 220, 110, 0.36)', 'rgba(255, 220, 110, 0)');
-      const g = ctx.createLinearGradient(12, 22, 50, 46);
-      g.addColorStop(0, '#fff5b5');
-      g.addColorStop(0.5, '#ffd04d');
-      g.addColorStop(1, '#cc7b14');
-      ctx.fillStyle = g;
+      drawAura(ctx, 'rgba(255, 220, 110, 0.38)', 'rgba(85, 239, 196, 0)');
+
+      ctx.save();
+      ctx.translate(32, 36);
+      ctx.rotate(-0.2);
+
+      // Lanyard jump-ring at the rear of the barrel
       ctx.strokeStyle = INK;
-      ctx.lineWidth = 2.2;
+      ctx.lineWidth = 5.4;
       ctx.beginPath();
-      ctx.moveTo(14, 29);
-      ctx.lineTo(32, 26);
-      ctx.arc(36, 36, 11.5, -Math.PI * 0.62, Math.PI * 0.95, false);
-      ctx.lineTo(26, 36);
-      ctx.lineTo(14, 36);
+      ctx.arc(20.5, 1.2, 4.4, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = '#ffe588';
+      ctx.lineWidth = 2.3;
+      ctx.beginPath();
+      ctx.arc(20.5, 1.2, 4.4, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Smooth classic coach-whistle silhouette (mouthpiece on left, tangent round chamber on right)
+      const bodyGrad = ctx.createLinearGradient(-18, -12, 16, 17);
+      bodyGrad.addColorStop(0, '#fff9cf');
+      bodyGrad.addColorStop(0.38, '#ffd452');
+      bodyGrad.addColorStop(0.75, '#e89c1e');
+      bodyGrad.addColorStop(1, '#b5630e');
+      ctx.fillStyle = bodyGrad;
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 2.3;
+      ctx.beginPath();
+      // Rounded mouthpiece tip
+      ctx.moveTo(-21, -7.6);
+      // Top mouthpiece edge leading into crisp sound-slot notch
+      ctx.lineTo(-7.2, -8.4);
+      ctx.lineTo(-6.2, -5.6);
+      ctx.lineTo(-1.0, -5.9);
+      ctx.lineTo(0.06, -8.56);
+      // Seamless sweep around the circular sound chamber
+      ctx.arc(5.6, 3.2, 13.0, -Math.PI * 0.64, Math.PI * 1.05, false);
+      // Smoothly tapered underside of mouthpiece
+      ctx.quadraticCurveTo(-13.5, 0.2, -21, -1.6);
+      ctx.quadraticCurveTo(-23.2, -4.6, -21, -7.6);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
-      // Sound waves
+
+      // Dark recessed fipple air slot inside the notch
+      ctx.fillStyle = '#261738';
+      ctx.beginPath();
+      ctx.moveTo(-6.8, -8.2);
+      ctx.lineTo(-0.3, -8.5);
+      ctx.lineTo(-1.2, -5.8);
+      ctx.lineTo(-6.0, -5.5);
+      ctx.closePath();
+      ctx.fill();
+
+      // Raised mouthpiece grip band
+      ctx.fillStyle = '#ffeaa7';
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 1.6;
+      drawRoundedRect(ctx, -21.8, -8.2, 4.2, 7.1, 1.6);
+      ctx.fill();
+      ctx.stroke();
+
+      // Inset circular side hub on the sound chamber
+      const hubGrad = ctx.createRadialGradient(3.5, 0.5, 1.5, 5.6, 3.2, 7.8);
+      hubGrad.addColorStop(0, '#fff4b8');
+      hubGrad.addColorStop(0.65, '#f0a624');
+      hubGrad.addColorStop(1, '#b86a12');
+      ctx.fillStyle = hubGrad;
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 1.7;
+      ctx.beginPath();
+      ctx.arc(5.6, 3.2, 7.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Subtle inner brass specular ring & top gloss highlight
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.78)';
+      ctx.beginPath();
+      ctx.ellipse(3.3, 0.6, 2.4, 1.4, -0.55, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.72)';
+      ctx.lineWidth = 1.7;
+      ctx.beginPath();
+      ctx.moveTo(-15.5, -6.2);
+      ctx.lineTo(-8.8, -6.9);
+      ctx.stroke();
+
+      // Vibrant mint-aqua acoustic sound waves radiating straight out of the top air slot
       ctx.strokeStyle = '#55efc4';
       ctx.lineWidth = 2.4;
+      ctx.lineCap = 'round';
       ctx.beginPath();
-      ctx.arc(44, 22, 5.5, -0.9, 0.4);
+      ctx.arc(-3.6, -11.8, 5.4, -Math.PI * 0.82, -Math.PI * 0.18);
       ctx.stroke();
+
+      ctx.strokeStyle = '#9effe2';
+      ctx.lineWidth = 2.1;
       ctx.beginPath();
-      ctx.arc(45, 20, 10, -0.95, 0.35);
+      ctx.arc(-3.6, -12.6, 10.0, -Math.PI * 0.8, -Math.PI * 0.2);
       ctx.stroke();
+
+      ctx.restore();
+
+      drawSparkle(ctx, 16, 16, 4.2, '#fff9c4', 0.95);
+      drawSparkle(ctx, 47, 15, 3.6, '#81ecec', 0.9);
       break;
     }
 
@@ -1350,6 +1484,202 @@ function drawGoalIconArt(ctx: CanvasRenderingContext2D, id: GoalIconId): void {
       ctx.fill();
       ctx.stroke();
       drawSparkle(ctx, 49, 14, 4.8, '#fff9c4', 0.98);
+      break;
+    }
+
+    case 'calendar': {
+      drawAura(ctx, 'rgba(130, 235, 220, 0.36)', 'rgba(130, 235, 220, 0)');
+      // Calendar card
+      ctx.fillStyle = '#fffdf7';
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 2.2;
+      drawRoundedRect(ctx, 13, 16, 38, 36, 6);
+      ctx.fill();
+      ctx.stroke();
+      // Header bar
+      const head = ctx.createLinearGradient(13, 16, 51, 28);
+      head.addColorStop(0, '#ff85a2');
+      head.addColorStop(1, '#e8436d');
+      ctx.fillStyle = head;
+      drawRoundedRect(ctx, 13, 16, 38, 12, 6);
+      ctx.fill();
+      ctx.fillRect(13, 22, 38, 6);
+      ctx.stroke();
+      // Spiral rings
+      ctx.fillStyle = '#ffd159';
+      drawRoundedRect(ctx, 21, 11, 5, 9, 2.5);
+      ctx.fill();
+      ctx.stroke();
+      drawRoundedRect(ctx, 38, 11, 5, 9, 2.5);
+      ctx.fill();
+      ctx.stroke();
+      // Paw stamp inside calendar
+      drawPawPrint(ctx, 32, 39.5, 0.72, '#6c5ce7', INK);
+      drawSparkle(ctx, 50, 14, 4.2, '#ffeaa7', 0.95);
+      break;
+    }
+
+    case 'dice': {
+      drawAura(ctx, 'rgba(178, 138, 255, 0.42)', 'rgba(108, 92, 231, 0)');
+      ctx.save();
+      ctx.translate(32, 32);
+      ctx.rotate(-0.18);
+      const die = ctx.createLinearGradient(-18, -18, 18, 18);
+      die.addColorStop(0, '#c6b7ff');
+      die.addColorStop(0.55, '#8068f0');
+      die.addColorStop(1, '#5037b8');
+      ctx.fillStyle = die;
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 2.3;
+      drawRoundedRect(ctx, -17, -17, 34, 34, 7);
+      ctx.fill();
+      ctx.stroke();
+      // Five golden pips
+      ctx.fillStyle = '#fff5b8';
+      const pips: Array<[number, number]> = [
+        [-8, -8],
+        [8, -8],
+        [0, 0],
+        [-8, 8],
+        [8, 8]
+      ];
+      for (const [px, py] of pips) {
+        ctx.beginPath();
+        ctx.arc(px, py, 3.1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+      drawSparkle(ctx, 49, 15, 4.8, '#fff9c4', 0.95);
+      break;
+    }
+
+    case 'paintBrush': {
+      drawAura(ctx, 'rgba(95, 235, 195, 0.36)', 'rgba(255, 182, 115, 0)');
+      ctx.save();
+      ctx.translate(32, 32);
+      ctx.rotate(-0.65);
+      // Wooden handle
+      ctx.fillStyle = '#d98a4a';
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 2.2;
+      drawRoundedRect(ctx, -4, -22, 8, 20, 4);
+      ctx.fill();
+      ctx.stroke();
+      // Metal ferrule
+      ctx.fillStyle = '#dce7f7';
+      drawRoundedRect(ctx, -8, -4, 16, 7, 2);
+      ctx.fill();
+      ctx.stroke();
+      // Bristles dipped in bright mint/gold paint
+      const bristle = ctx.createLinearGradient(0, 3, 0, 22);
+      bristle.addColorStop(0, '#f5d79b');
+      bristle.addColorStop(0.45, '#55efc4');
+      bristle.addColorStop(1, '#00b894');
+      ctx.fillStyle = bristle;
+      drawRoundedRect(ctx, -9.5, 3, 19, 18, 4);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+      drawSparkle(ctx, 47, 17, 4.4, '#ffeaa7', 0.95);
+      break;
+    }
+
+    case 'level500Crest': {
+      drawAura(ctx, 'rgba(116, 185, 255, 0.44)', 'rgba(108, 92, 231, 0)');
+      // Silver-mint laurel arcs
+      ctx.strokeStyle = '#74b9ff';
+      ctx.lineWidth = 3.2;
+      ctx.beginPath();
+      ctx.arc(32, 33, 22, Math.PI * 0.65, Math.PI * 1.25);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(32, 33, 22, -Math.PI * 0.25, Math.PI * 0.35);
+      ctx.stroke();
+
+      // Royal sapphire shield
+      const g = ctx.createLinearGradient(17, 13, 47, 53);
+      g.addColorStop(0, '#a8e6ff');
+      g.addColorStop(0.5, '#4b7bec');
+      g.addColorStop(1, '#341f97');
+      ctx.fillStyle = g;
+      ctx.strokeStyle = '#ffd159';
+      ctx.lineWidth = 2.6;
+      ctx.beginPath();
+      ctx.moveTo(17, 16);
+      ctx.lineTo(32, 12);
+      ctx.lineTo(47, 16);
+      ctx.lineTo(46, 35);
+      ctx.quadraticCurveTo(45, 47, 32, 53);
+      ctx.quadraticCurveTo(19, 47, 18, 35);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 1.4;
+      ctx.stroke();
+
+      ctx.fillStyle = '#fff9d6';
+      ctx.font = '900 12px "Outfit", system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('500', 32, 34);
+      drawSparkle(ctx, 32, 9, 4.6, '#fff9c4', 0.98);
+      break;
+    }
+
+    case 'level1000Crest': {
+      drawAura(ctx, 'rgba(255, 224, 102, 0.5)', 'rgba(195, 130, 255, 0)');
+      // Golden laurel arcs
+      ctx.strokeStyle = '#ffd159';
+      ctx.lineWidth = 3.4;
+      ctx.beginPath();
+      ctx.arc(32, 34, 23, Math.PI * 0.65, Math.PI * 1.25);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(32, 34, 23, -Math.PI * 0.25, Math.PI * 0.35);
+      ctx.stroke();
+
+      // Cosmic diamond-gold shield
+      const g = ctx.createLinearGradient(16, 14, 48, 54);
+      g.addColorStop(0, '#fff9c4');
+      g.addColorStop(0.45, '#ffd04d');
+      g.addColorStop(0.85, '#c471ed');
+      g.addColorStop(1, '#5f27cd');
+      ctx.fillStyle = g;
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 2.3;
+      ctx.beginPath();
+      ctx.moveTo(16, 18);
+      ctx.lineTo(32, 13);
+      ctx.lineTo(48, 18);
+      ctx.lineTo(46, 36);
+      ctx.quadraticCurveTo(45, 48, 32, 54);
+      ctx.quadraticCurveTo(19, 48, 18, 36);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Tiny crown perched atop shield
+      ctx.fillStyle = '#ffe066';
+      ctx.beginPath();
+      ctx.moveTo(23, 15);
+      ctx.lineTo(22, 8);
+      ctx.lineTo(28, 12);
+      ctx.lineTo(32, 6);
+      ctx.lineTo(36, 12);
+      ctx.lineTo(42, 8);
+      ctx.lineTo(41, 15);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#261738';
+      ctx.font = '900 11px "Outfit", system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('1000', 32, 35);
+      drawSparkle(ctx, 13, 15, 4.8, '#ffffff', 0.98);
+      drawSparkle(ctx, 51, 15, 4.8, '#fff9c4', 0.98);
       break;
     }
   }

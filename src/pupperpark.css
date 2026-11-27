@@ -1337,6 +1337,64 @@ html.pwa-standalone.ios-device .ios-top-edge-cap {
   gap: 12px;
 }
 
+.shop-card-lead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.shop-art-thumb {
+  width: 60px;
+  height: 60px;
+  border-radius: 14px;
+  flex-shrink: 0;
+  overflow: hidden;
+  background: rgba(16, 20, 42, 0.72);
+  border: 1.5px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+.shop-art-img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.dog-portrait-thumb {
+  width: 66px;
+  height: 66px;
+  border-radius: 15px;
+}
+
+.dog-portrait-thumb.tier-small {
+  border-color: rgba(116, 212, 232, 0.42);
+}
+
+.dog-portrait-thumb.tier-working {
+  border-color: rgba(116, 185, 255, 0.45);
+}
+
+.dog-portrait-thumb.tier-athletic {
+  border-color: rgba(177, 151, 252, 0.5);
+}
+
+.dog-portrait-thumb.tier-giant {
+  border-color: rgba(255, 214, 102, 0.58);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.38), 0 0 12px rgba(255, 214, 102, 0.18);
+}
+
+.shop-card-gold .shop-art-thumb {
+  border-color: rgba(255, 215, 0, 0.52);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.38), 0 0 12px rgba(255, 215, 0, 0.16);
+}
+
+.shop-card-slide .shop-art-thumb {
+  border-color: rgba(93, 173, 226, 0.55);
+}
+
 .dogs-tier-filters {
   display: flex;
   align-items: center;
@@ -1872,16 +1930,23 @@ html.pwa-standalone.ios-device .ios-top-edge-cap {
 
   .dog-breed-card {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: 60px minmax(0, 1fr) auto;
     grid-template-areas:
-      "title title"
-      "role role"
-      "trait trait"
-      "stats stats"
-      "owned action";
+      "art title title"
+      "art role role"
+      "trait trait trait"
+      "stats stats stats"
+      "owned owned action";
     align-items: center;
     gap: 6px 12px;
     padding: 13px 14px;
+  }
+
+  .dog-breed-card .dog-portrait-thumb {
+    grid-area: art;
+    width: 60px;
+    height: 60px;
+    align-self: start;
   }
 
   .dog-breed-card .shop-info {
@@ -1892,6 +1957,7 @@ html.pwa-standalone.ios-device .ios-top-edge-cap {
     grid-area: title;
     font-size: 0.98rem;
     line-height: 1.2;
+    align-self: end;
   }
 
   .dog-breed-card .breed-role {
@@ -1899,6 +1965,7 @@ html.pwa-standalone.ios-device .ios-top-edge-cap {
     margin: -2px 0 0;
     font-size: 0.78rem;
     line-height: 1.32;
+    align-self: start;
   }
 
   .dog-breed-card .breed-trait {
@@ -2000,6 +2067,25 @@ html.pwa-standalone.ios-device .ios-top-edge-cap {
 
   #tab-decor .decor-btn-group {
     width: 100%;
+  }
+
+  #tab-toys .shop-card,
+  #tab-treats .shop-card {
+    gap: 10px;
+    padding: 11px 12px;
+  }
+
+  #tab-toys .shop-art-thumb,
+  #tab-treats .shop-art-thumb {
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
+  }
+
+  #tab-treats .action-btn,
+  #tab-toys .action-btn {
+    min-width: 98px;
+    padding: 8px 10px;
   }
 }
 
@@ -4201,11 +4287,12 @@ html.pwa-resuming .pwa-snapshot-cover {
 }
 
 .goal-magic-svg {
-  width: 13px;
-  height: 13px;
+  width: 17px;
+  height: 11px;
   flex-shrink: 0;
   display: inline-block;
   vertical-align: middle;
+  filter: drop-shadow(0 0 3px rgba(255, 234, 167, 0.45));
 }
 
 .goal-claim-btn.is-ready {
@@ -4239,6 +4326,150 @@ html.pwa-resuming .pwa-snapshot-cover {
 
 .ach-category-filters {
   margin-bottom: 2px;
+}
+
+/* Custom PupperPark UI Icons */
+.pp-icon {
+  display: inline-block;
+  vertical-align: -0.18em;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.pp-icon-bone,
+.pp-icon-magic {
+  width: 17px;
+  height: 11px;
+  vertical-align: -0.1em;
+}
+
+.bone-hud-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  flex-shrink: 0;
+}
+
+.pp-icon-hud-bone,
+.pp-icon-hud-magic {
+  width: 26px;
+  height: 17px;
+  vertical-align: middle;
+}
+
+.pp-icon-pup {
+  width: 18px;
+  height: 18px;
+  vertical-align: middle;
+}
+
+.pp-icon-sq {
+  vertical-align: -0.2em;
+}
+
+.pp-inline-pair {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  vertical-align: baseline;
+}
+
+.hud-chip-icon,
+.mini-stat-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  flex-shrink: 0;
+}
+
+.mini-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.weather-popover-head strong,
+.weather-sky-status,
+#weatherNextPreview,
+.mood-summary-value,
+.pp-modal-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.pp-modal-heading-center {
+  justify-content: center;
+  width: 100%;
+}
+
+.btn-cost,
+.manor-color-tag,
+.retire-line-sub,
+.buff-chip,
+.goal-claimed-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.btn-cost.btn-cost-dual {
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fav-star-btn,
+.reroll-dice-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fav-star-btn .pp-icon,
+.reroll-dice-btn .pp-icon {
+  vertical-align: middle;
+}
+
+.offline-highlight > div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.offline-highlight .pp-icon-hud-bone,
+.offline-highlight .pp-icon-hud-magic {
+  width: 24px;
+  height: 16px;
+}
+
+.reroll-meta-text.is-shiny,
+.reroll-shiny-callout {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.roster-meta-row > span,
+.roster-meta-row > strong,
+.roster-bonus-row > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.stat-box strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
 }
 
 @media (prefers-reduced-motion: reduce) {

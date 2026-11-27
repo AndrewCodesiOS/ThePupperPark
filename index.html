@@ -303,12 +303,12 @@
     <div id="topHud">
       <div class="hud-counters">
         <div id="boneCurrencyPill" class="currency-pill">
-          <span class="bone-icon" aria-hidden="true">🦴</span>
+          <span class="bone-icon bone-hud-icon" data-pp-icon="hudBone" aria-hidden="true"></span>
           <span id="boneCount" class="hud-value">0</span>
           <span class="hud-rate" id="bpsCount">avg 1/dig</span>
         </div>
         <div id="magicCurrencyPill" class="currency-pill">
-          <span class="bone-icon" aria-hidden="true">✨</span>
+          <span class="bone-icon bone-hud-icon" data-pp-icon="hudMagicBone" aria-hidden="true"></span>
           <span id="magicBoneCount" class="hud-value">0</span>
         </div>
       </div>
@@ -375,19 +375,19 @@
   <div id="weatherTopBar" class="weather-top-bar">
     <div id="weatherPopover" class="weather-popover" style="display: none;" role="region" aria-label="Park Weather Forecast">
       <div class="weather-popover-head">
-        <strong id="weatherPopoverTitle">☀️ Sunny</strong>
+        <strong id="weatherPopoverTitle"><span data-pp-icon="weatherSunny"></span> Sunny</strong>
         <span id="weatherPopoverMod" class="weather-popover-mod">+12% Dig Speed</span>
       </div>
       <p id="weatherPopoverDesc" class="weather-popover-desc">Warm sunbeams energize the pack to dig 12% faster.</p>
-      <div id="weatherSkyStatus" class="weather-sky-status">🌅 Sunrise | 🌕 Full Moon</div>
+      <div id="weatherSkyStatus" class="weather-sky-status"><span data-pp-icon="skySunrise"></span> Sunrise | <span data-pp-icon="moonFull"></span> Full Moon</div>
       <div class="weather-popover-foot">
         <span id="weatherCountdown">Next change in --m</span>
-        <span id="weatherNextPreview">Next: 🍃 Windy</span>
+        <span id="weatherNextPreview">Next: <span data-pp-icon="weatherWindy"></span> Windy</span>
       </div>
     </div>
     <div id="moodPopover" class="weather-popover mood-popover" style="display: none;" role="region" aria-label="Pack Happiness Details">
       <div class="weather-popover-head">
-        <strong id="moodPopoverTitle">😌 Cozy (30%)</strong>
+        <strong id="moodPopoverTitle"><span data-pp-icon="moodCozy"></span> Cozy (30%)</strong>
         <span id="moodPopoverBonus" class="weather-popover-mod">Baseline</span>
       </div>
       <div class="mood-meter-track mood-meter-track-sm">
@@ -403,11 +403,11 @@
     </div>
     <div class="top-center-chips">
       <button type="button" id="moodBadge" class="mood-chip-btn mood-cozy" aria-expanded="false" aria-controls="moodPopover" title="Pack Happiness">
-        <span id="moodBadgeIcon" aria-hidden="true">😌</span>
+        <span id="moodBadgeIcon" class="hud-chip-icon" data-pp-icon="moodCozy" aria-hidden="true"></span>
         <span id="moodBadgeText">Cozy | 35%</span>
       </button>
       <button type="button" id="weatherBadge" class="weather-chip-btn" aria-expanded="false" aria-controls="weatherPopover" title="Current park weather">
-        <span id="weatherBadgeIcon" aria-hidden="true">☀️</span>
+        <span id="weatherBadgeIcon" class="hud-chip-icon" data-pp-icon="weatherSunny" aria-hidden="true"></span>
         <span id="weatherBadgeText">Sunny | +12% Speed</span>
       </button>
     </div>
@@ -415,7 +415,7 @@
 
   <!-- Bottom Right Mini Bar -->
   <div id="bottomBar">
-    <div class="mini-stat" title="Active pups in park">🐕 <span id="miniDogs">1/6</span></div>
+    <div class="mini-stat" title="Active pups in park"><span class="mini-stat-icon" data-pp-icon="pup" aria-hidden="true"></span><span id="miniDogs">1/6</span></div>
     <button type="button" id="btnWhistle" class="whistle-btn" aria-label="Whistle to gather pack" title="Call pack together">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
       <span>Call</span>
@@ -451,7 +451,7 @@
                 <h3 class="mood-summary-title">Pack Happiness</h3>
                 <div id="rosterMoodEffects" class="mood-summary-sub">Base cozy mood | Floor 35%</div>
               </div>
-              <div id="rosterMoodTier" class="mood-summary-value">😌 Cozy | 35%</div>
+              <div id="rosterMoodTier" class="mood-summary-value"><span data-pp-icon="moodCozy"></span> Cozy | 35%</div>
             </div>
             <div class="mood-meter-track">
               <div id="rosterMoodCap" class="mood-cap-locked" style="width: 20%;" title="Decorate park to raise Max Happiness"></div>
@@ -484,35 +484,38 @@
         <!-- Toys Tab -->
         <div class="tab-content" id="tab-toys">
           <div class="shop-card">
+            <div class="shop-art-thumb" data-pp-shop-art="toyBall" aria-hidden="true"></div>
             <div class="shop-info">
               <h3>Tennis Ball <span id="ballCurrentBoost" class="toy-live-badge">+0 | 1</span></h3>
-              <p id="descToyBones">+0.5 Dig Power per buy, up to max 15 (price caps at 25,000 🦴). Unlocks Fresh Ball boosts at max!</p>
+              <p id="descToyBones">+0.5 Dig Power per buy, up to max 15 (price caps at 25,000 Bones). Unlocks Fresh Ball boosts at max!</p>
             </div>
             <button type="button" class="action-btn" id="btnToyBones">
               <span class="btn-name" id="nameToyBones">Get Toy</span>
-              <span class="btn-cost" id="costToyBones">150 🦴</span>
+              <span class="btn-cost" id="costToyBones"><span class="pp-inline-pair"><span>150</span><span data-pp-icon="bone"></span></span></span>
             </button>
           </div>
 
           <div class="shop-card">
+            <div class="shop-art-thumb" data-pp-shop-art="toyDuck" aria-hidden="true"></div>
             <div class="shop-info">
               <h3>Rubber Duck <span id="duckCurrentBoost" class="toy-live-badge">+0% | 10%</span></h3>
-              <p id="descToyIdle">Boosts base offline bone yield by +1% per buy, from 10% up to 30% (+20% max from toy; price caps at 35,000 🦴). Dog abilities lift total offline yield up to 75%. Unlocks Fresh Duck boosts at max!</p>
+              <p id="descToyIdle">Boosts base offline bone yield by +1% per buy, from 10% up to 30% (+20% max from toy; price caps at 35,000 Bones). Dog abilities lift total offline yield up to 75%. Unlocks Fresh Duck boosts at max!</p>
             </div>
             <button type="button" class="action-btn" id="btnToyIdle">
               <span class="btn-name" id="nameToyIdle">Get Toy</span>
-              <span class="btn-cost" id="costToyIdle">600 🦴</span>
+              <span class="btn-cost" id="costToyIdle"><span class="pp-inline-pair"><span>600</span><span data-pp-icon="bone"></span></span></span>
             </button>
           </div>
 
           <div class="shop-card">
+            <div class="shop-art-thumb" data-pp-shop-art="toyFrisbee" aria-hidden="true"></div>
             <div class="shop-info">
               <h3>Frisbee <span id="frisbeeCurrentBoost" class="toy-live-badge">+0% | 100%</span></h3>
-              <p id="descToySpeed">Boosts the pack's dig multiplier by +3% per buy, up to 1.80x (price caps at 50,000 🦴). Unlocks Fresh Frisbee boosts at max!</p>
+              <p id="descToySpeed">Boosts the pack's dig multiplier by +3% per buy, up to 1.80x (price caps at 50,000 Bones). Unlocks Fresh Frisbee boosts at max!</p>
             </div>
             <button type="button" class="action-btn" id="btnToySpeed">
               <span class="btn-name" id="nameToySpeed">Get Toy</span>
-              <span class="btn-cost" id="costToySpeed">1,200 🦴</span>
+              <span class="btn-cost" id="costToySpeed"><span class="pp-inline-pair"><span>1,200</span><span data-pp-icon="bone"></span></span></span>
             </button>
           </div>
         </div>
@@ -520,6 +523,7 @@
         <!-- Treats Tab -->
         <div class="tab-content" id="tab-treats">
           <div class="shop-card">
+            <div class="shop-art-thumb" data-pp-shop-art="treatSnaps" aria-hidden="true"></div>
             <div class="shop-info">
               <h3>Happy Snaps</h3>
               <p>Free pack snack (10m cooldown) | Grants +10 Pack Happiness to cheer up your pups.</p>
@@ -531,57 +535,62 @@
           </div>
 
           <div class="shop-card">
+            <div class="shop-art-thumb" data-pp-shop-art="treatCup" aria-hidden="true"></div>
             <div class="shop-info">
               <h3>Pup Cups</h3>
               <p>90s per use (max 7.5m) | +35% Bone Value (1.35x) on all digs &amp; grass taps.</p>
             </div>
             <button type="button" class="action-btn" id="btnTreatCup">
               <span class="btn-name">Feed Pup Cups</span>
-              <span class="btn-cost" id="costTreatCup">1,000 🦴</span>
+              <span class="btn-cost" id="costTreatCup"><span class="pp-inline-pair"><span>1,000</span><span data-pp-icon="bone"></span></span></span>
             </button>
           </div>
 
           <div class="shop-card">
+            <div class="shop-art-thumb" data-pp-shop-art="treatXp" aria-hidden="true"></div>
             <div class="shop-info">
               <h3>XP Biscuits</h3>
               <p>60s per use (max 5m) | 2.0x XP (+100%) on all digs &amp; pets to level pups fast.</p>
             </div>
             <button type="button" class="action-btn" id="btnTreatXp">
               <span class="btn-name">Give Biscuits</span>
-              <span class="btn-cost" id="costTreatXp">1,200 🦴</span>
+              <span class="btn-cost" id="costTreatXp"><span class="pp-inline-pair"><span>1,200</span><span data-pp-icon="bone"></span></span></span>
             </button>
           </div>
 
           <div class="shop-card">
+            <div class="shop-art-thumb" data-pp-shop-art="treatKong" aria-hidden="true"></div>
             <div class="shop-info">
               <h3>Peanut Butter Kongs</h3>
-              <p>20s per use (max 100s) | Bonus +1 ✨ Magic Bone on every dig &amp; tap alongside regular bones.</p>
+              <p>20s per use (max 100s) | Bonus +1 Magic Bone on every dig &amp; tap alongside regular bones.</p>
             </div>
             <button type="button" class="action-btn" id="btnTreatKong">
               <span class="btn-name">Toss Kongs</span>
-              <span class="btn-cost" id="costTreatKong">3,000 🦴</span>
+              <span class="btn-cost" id="costTreatKong"><span class="pp-inline-pair"><span>3,000</span><span data-pp-icon="bone"></span></span></span>
             </button>
           </div>
 
           <div class="shop-card">
+            <div class="shop-art-thumb" data-pp-shop-art="treatFeast" aria-hidden="true"></div>
             <div class="shop-info">
               <h3>Jumbo Meaty Bones</h3>
               <p>90s per use (max 7.5m) | +50% Dig Payout (1.50x) + pack jump celebration.</p>
             </div>
             <button type="button" class="action-btn" id="btnTreatFeast">
               <span class="btn-name">Serve Feast</span>
-              <span class="btn-cost" id="costTreatFeast">4,000 🦴</span>
+              <span class="btn-cost" id="costTreatFeast"><span class="pp-inline-pair"><span>4,000</span><span data-pp-icon="bone"></span></span></span>
             </button>
           </div>
 
           <div class="shop-card">
+            <div class="shop-art-thumb" data-pp-shop-art="treatBacon" aria-hidden="true"></div>
             <div class="shop-info">
               <h3>Bacon Chew Stick</h3>
               <p>60s per use (max 5m) | Park Frenzy: +35% walk &amp; dig pace + 35% dig payout (1.82x rate).</p>
             </div>
             <button type="button" class="action-btn" id="btnTreatBacon">
               <span class="btn-name">Give Bacon</span>
-              <span class="btn-cost" id="costTreatBacon">8,500 🦴</span>
+              <span class="btn-cost" id="costTreatBacon"><span class="pp-inline-pair"><span>8,500</span><span data-pp-icon="bone"></span></span></span>
             </button>
           </div>
         </div>
@@ -620,15 +629,18 @@
 
           <div class="decor-subtab-panel active" id="decor-sub-items">
             <div class="shop-card">
-              <div class="shop-info">
-                <h3>Flower Patch</h3>
-                <p>Vibrant wildflowers. Each placed patch gives +1% ✨ Magic Bone chance | +0.5 Cozy Floor. (Max 5)</p>
-                <div class="shop-owned">Owned: <span id="ownedDecorFlowers">0</span> | Placed: <span id="countDecorFlowers">0</span> / 5</div>
+              <div class="shop-card-lead">
+                <div class="shop-art-thumb" data-pp-shop-art="decorFlowers" aria-hidden="true"></div>
+                <div class="shop-info">
+                  <h3>Flower Patch</h3>
+                  <p>Vibrant wildflowers. Each placed patch gives +1% Magic Bone chance | +0.5 Cozy Floor. (Max 5)</p>
+                  <div class="shop-owned">Owned: <span id="ownedDecorFlowers">0</span> | Placed: <span id="countDecorFlowers">0</span> / 5</div>
+                </div>
               </div>
               <div class="decor-btn-group">
                 <button type="button" class="action-btn decor-action-btn" id="btnBuyDecorFlowers">
                   <span class="btn-name">Buy Flowers</span>
-                  <span class="btn-cost">250 ✨</span>
+                  <span class="btn-cost"><span class="pp-inline-pair"><span>250</span><span data-pp-icon="magicBone"></span></span></span>
                 </button>
                 <button type="button" class="action-btn decor-action-btn" id="btnPlaceDecorFlowers">
                   <span class="btn-name">Place</span>
@@ -637,15 +649,18 @@
             </div>
 
             <div class="shop-card">
-              <div class="shop-info">
-                <h3>Fire Hydrant</h3>
-                <p>Classic neighborhood hydrant. Each placed hydrant gives +3% pack walk &amp; dig pace | +1 Cozy Floor. (Max 3)</p>
-                <div class="shop-owned">Owned: <span id="ownedDecorHydrant">0</span> | Placed: <span id="countDecorHydrant">0</span> / 3</div>
+              <div class="shop-card-lead">
+                <div class="shop-art-thumb" data-pp-shop-art="decorHydrant" aria-hidden="true"></div>
+                <div class="shop-info">
+                  <h3>Fire Hydrant</h3>
+                  <p>Classic neighborhood hydrant. Each placed hydrant gives +3% pack walk &amp; dig pace | +1 Cozy Floor. (Max 3)</p>
+                  <div class="shop-owned">Owned: <span id="ownedDecorHydrant">0</span> | Placed: <span id="countDecorHydrant">0</span> / 3</div>
+                </div>
               </div>
               <div class="decor-btn-group">
                 <button type="button" class="action-btn decor-action-btn" id="btnBuyDecorHydrant">
                   <span class="btn-name">Buy Hydrant</span>
-                  <span class="btn-cost">350 ✨</span>
+                  <span class="btn-cost"><span class="pp-inline-pair"><span>350</span><span data-pp-icon="magicBone"></span></span></span>
                 </button>
                 <button type="button" class="action-btn decor-action-btn" id="btnPlaceDecorHydrant">
                   <span class="btn-name">Place</span>
@@ -654,15 +669,18 @@
             </div>
 
             <div class="shop-card">
-              <div class="shop-info">
-                <h3>Park Tree</h3>
-                <p>Shady park tree. Each placed tree gives +3% pup XP | +1 Cozy Floor. (Max 3)</p>
-                <div class="shop-owned">Owned: <span id="ownedDecorTree">0</span> | Placed: <span id="countDecorTree">0</span> / 3</div>
+              <div class="shop-card-lead">
+                <div class="shop-art-thumb" data-pp-shop-art="decorTree" aria-hidden="true"></div>
+                <div class="shop-info">
+                  <h3>Park Tree</h3>
+                  <p>Shady park tree. Each placed tree gives +3% pup XP | +1 Cozy Floor. (Max 3)</p>
+                  <div class="shop-owned">Owned: <span id="ownedDecorTree">0</span> | Placed: <span id="countDecorTree">0</span> / 3</div>
+                </div>
               </div>
               <div class="decor-btn-group">
                 <button type="button" class="action-btn decor-action-btn" id="btnBuyDecorTree">
                   <span class="btn-name">Buy Tree</span>
-                  <span class="btn-cost">500 ✨</span>
+                  <span class="btn-cost"><span class="pp-inline-pair"><span>500</span><span data-pp-icon="magicBone"></span></span></span>
                 </button>
                 <button type="button" class="action-btn decor-action-btn" id="btnPlaceDecorTree">
                   <span class="btn-name">Place</span>
@@ -671,15 +689,18 @@
             </div>
 
             <div class="shop-card">
-              <div class="shop-info">
-                <h3>Warm Lamp Post</h3>
-                <p>Victorian lantern that glows warmly in Twilight &amp; Rain. +1% ✨ Magic chance | +2% bone payout | +1.5 Cozy Floor. (Max 4)</p>
-                <div class="shop-owned">Owned: <span id="ownedDecorLamp">0</span> | Placed: <span id="countDecorLamp">0</span> / 4</div>
+              <div class="shop-card-lead">
+                <div class="shop-art-thumb" data-pp-shop-art="decorLamp" aria-hidden="true"></div>
+                <div class="shop-info">
+                  <h3>Warm Lamp Post</h3>
+                  <p>Victorian lantern that glows warmly in Twilight &amp; Rain. +1% Magic chance | +2% bone payout | +1.5 Cozy Floor. (Max 4)</p>
+                  <div class="shop-owned">Owned: <span id="ownedDecorLamp">0</span> | Placed: <span id="countDecorLamp">0</span> / 4</div>
+                </div>
               </div>
               <div class="decor-btn-group">
                 <button type="button" class="action-btn decor-action-btn" id="btnBuyDecorLamp">
                   <span class="btn-name">Buy Lamp</span>
-                  <span class="btn-cost">800 ✨</span>
+                  <span class="btn-cost"><span class="pp-inline-pair"><span>800</span><span data-pp-icon="magicBone"></span></span></span>
                 </button>
                 <button type="button" class="action-btn decor-action-btn" id="btnPlaceDecorLamp">
                   <span class="btn-name">Place</span>
@@ -688,15 +709,18 @@
             </div>
 
             <div class="shop-card">
-              <div class="shop-info">
-                <h3>Water Fountain</h3>
-                <p>Sculpted 3-tier marble centerpiece. Each placed fountain gives +5% bone payout | +2 Cozy Floor. (Max 2)</p>
-                <div class="shop-owned">Owned: <span id="ownedDecorFountain">0</span> | Placed: <span id="countDecorFountain">0</span> / 2</div>
+              <div class="shop-card-lead">
+                <div class="shop-art-thumb" data-pp-shop-art="decorFountain" aria-hidden="true"></div>
+                <div class="shop-info">
+                  <h3>Water Fountain</h3>
+                  <p>Sculpted 3-tier marble centerpiece. Each placed fountain gives +5% bone payout | +2 Cozy Floor. (Max 2)</p>
+                  <div class="shop-owned">Owned: <span id="ownedDecorFountain">0</span> | Placed: <span id="countDecorFountain">0</span> / 2</div>
+                </div>
               </div>
               <div class="decor-btn-group">
                 <button type="button" class="action-btn decor-action-btn" id="btnBuyDecorFountain">
                   <span class="btn-name">Buy Fountain</span>
-                  <span class="btn-cost">1,000 ✨</span>
+                  <span class="btn-cost"><span class="pp-inline-pair"><span>1,000</span><span data-pp-icon="magicBone"></span></span></span>
                 </button>
                 <button type="button" class="action-btn decor-action-btn" id="btnPlaceDecorFountain">
                   <span class="btn-name">Place</span>
@@ -705,15 +729,18 @@
             </div>
 
             <div class="shop-card shop-card-slide">
-              <div class="shop-info">
-                <h3>Dog Slide</h3>
-                <p>Grand 2-tile playground slide! Pups climb &amp; zoom down for bonus XP &amp; mood. +8% pup XP | +4 Cozy Floor. (Max 1)</p>
-                <div class="shop-owned">Owned: <span id="ownedDecorSlide">0</span> | Placed: <span id="countDecorSlide">0</span> / 1</div>
+              <div class="shop-card-lead">
+                <div class="shop-art-thumb" data-pp-shop-art="decorSlide" aria-hidden="true"></div>
+                <div class="shop-info">
+                  <h3>Dog Slide</h3>
+                  <p>Grand 2-tile playground slide! Pups climb &amp; zoom down for bonus XP &amp; mood. +8% pup XP | +4 Cozy Floor. (Max 1)</p>
+                  <div class="shop-owned">Owned: <span id="ownedDecorSlide">0</span> | Placed: <span id="countDecorSlide">0</span> / 1</div>
+                </div>
               </div>
               <div class="decor-btn-group">
                 <button type="button" class="action-btn decor-action-btn" id="btnBuyDecorSlide">
                   <span class="btn-name">Buy Slide</span>
-                  <span class="btn-cost">1,500 ✨</span>
+                  <span class="btn-cost"><span class="pp-inline-pair"><span>1,500</span><span data-pp-icon="magicBone"></span></span></span>
                 </button>
                 <button type="button" class="action-btn decor-action-btn" id="btnPlaceDecorSlide">
                   <span class="btn-name">Place</span>
@@ -722,15 +749,18 @@
             </div>
 
             <div class="shop-card shop-card-gold">
-              <div class="shop-info">
-                <h3>Golden Fire Hydrant</h3>
-                <p>Prestige 24k gold park monument. Gives +10% bone payout | +5% pack pace | +2.5% ✨ Magic chance | +3 Cozy Floor. (Max 1)</p>
-                <div class="shop-owned">Owned: <span id="ownedDecorGoldenHydrant">0</span> | Placed: <span id="countDecorGoldenHydrant">0</span> / 1</div>
+              <div class="shop-card-lead">
+                <div class="shop-art-thumb" data-pp-shop-art="decorGoldenHydrant" aria-hidden="true"></div>
+                <div class="shop-info">
+                  <h3>Golden Fire Hydrant</h3>
+                  <p>Prestige 24k gold park monument. Gives +10% bone payout | +5% pack pace | +2.5% Magic chance | +3 Cozy Floor. (Max 1)</p>
+                  <div class="shop-owned">Owned: <span id="ownedDecorGoldenHydrant">0</span> | Placed: <span id="countDecorGoldenHydrant">0</span> / 1</div>
+                </div>
               </div>
               <div class="decor-btn-group">
                 <button type="button" class="action-btn decor-action-btn" id="btnBuyDecorGoldenHydrant">
                   <span class="btn-name">Buy Golden</span>
-                  <span class="btn-cost">2,500 ✨</span>
+                  <span class="btn-cost"><span class="pp-inline-pair"><span>2,500</span><span data-pp-icon="magicBone"></span></span></span>
                 </button>
                 <button type="button" class="action-btn decor-action-btn" id="btnPlaceDecorGoldenHydrant">
                   <span class="btn-name">Place</span>
@@ -740,15 +770,18 @@
 
             <div class="shop-card shop-card-gold shop-card-manor">
               <div class="manor-card-main">
-                <div class="shop-info">
-                  <h3>Grand Doghouse Manor</h3>
-                  <p>4-tile (2×2) storybook estate upgrading your doghouse &amp; the 3 tiles behind it (returns any placed decor there to inventory). +15% bone payout | +10% pup XP | +8% pack pace | +3.5% ✨ Magic chance | +6 Cozy Floor. (Max 1)</p>
-                  <div class="shop-owned">Owned: <span id="ownedDecorDoghouseManor">0</span> | Placed: <span id="countDecorDoghouseManor">0</span> / 1</div>
+                <div class="shop-card-lead">
+                  <div class="shop-art-thumb" data-pp-shop-art="decorDoghouseManor" aria-hidden="true"></div>
+                  <div class="shop-info">
+                    <h3>Grand Doghouse Manor</h3>
+                    <p>4-tile (2×2) storybook estate upgrading your doghouse &amp; the 3 tiles behind it (returns any placed decor there to inventory). +15% bone payout | +10% pup XP | +8% pack pace | +3.5% Magic chance | +6 Cozy Floor. (Max 1)</p>
+                    <div class="shop-owned">Owned: <span id="ownedDecorDoghouseManor">0</span> | Placed: <span id="countDecorDoghouseManor">0</span> / 1</div>
+                  </div>
                 </div>
                 <div class="decor-btn-group">
                   <button type="button" class="action-btn decor-action-btn" id="btnBuyDecorDoghouseManor">
                     <span class="btn-name">Buy Manor</span>
-                    <span class="btn-cost">10,000 ✨</span>
+                    <span class="btn-cost"><span class="pp-inline-pair"><span>10,000</span><span data-pp-icon="magicBone"></span></span></span>
                   </button>
                   <button type="button" class="action-btn decor-action-btn" id="btnPlaceDecorDoghouseManor">
                     <span class="btn-name">Place</span>
@@ -759,7 +792,7 @@
               <div id="manorColorSection" class="manor-color-section" style="display: none;">
                 <div class="manor-color-head">
                   <span class="manor-color-title">Manor Colors</span>
-                  <span class="manor-color-sub">200 ✨ to unlock | Switch freely anytime</span>
+                  <span class="manor-color-sub"><span class="pp-inline-pair"><span>200</span><span data-pp-icon="magicBone"></span></span> to unlock | Switch freely anytime</span>
                 </div>
                 <div class="manor-color-grid">
                   <button type="button" class="manor-color-btn is-active" id="btnManorColorClassic" data-manor-color="classic">
@@ -773,28 +806,28 @@
                     <span class="manor-swatch manor-swatch-ivory" aria-hidden="true"></span>
                     <span class="manor-color-meta">
                       <span class="manor-color-name">Royal Ivory</span>
-                      <span class="manor-color-tag">200 ✨</span>
+                      <span class="manor-color-tag"><span class="pp-inline-pair"><span>200</span><span data-pp-icon="magicBone"></span></span></span>
                     </span>
                   </button>
                   <button type="button" class="manor-color-btn" id="btnManorColorSage" data-manor-color="sage">
                     <span class="manor-swatch manor-swatch-sage" aria-hidden="true"></span>
                     <span class="manor-color-meta">
                       <span class="manor-color-name">Forest Sage</span>
-                      <span class="manor-color-tag">200 ✨</span>
+                      <span class="manor-color-tag"><span class="pp-inline-pair"><span>200</span><span data-pp-icon="magicBone"></span></span></span>
                     </span>
                   </button>
                   <button type="button" class="manor-color-btn" id="btnManorColorRose" data-manor-color="rose">
                     <span class="manor-swatch manor-swatch-rose" aria-hidden="true"></span>
                     <span class="manor-color-meta">
                       <span class="manor-color-name">Rose Cottage</span>
-                      <span class="manor-color-tag">200 ✨</span>
+                      <span class="manor-color-tag"><span class="pp-inline-pair"><span>200</span><span data-pp-icon="magicBone"></span></span></span>
                     </span>
                   </button>
                   <button type="button" class="manor-color-btn" id="btnManorColorMidnight" data-manor-color="midnight">
                     <span class="manor-swatch manor-swatch-midnight" aria-hidden="true"></span>
                     <span class="manor-color-meta">
                       <span class="manor-color-name">Midnight Gold</span>
-                      <span class="manor-color-tag">200 ✨</span>
+                      <span class="manor-color-tag"><span class="pp-inline-pair"><span>200</span><span data-pp-icon="magicBone"></span></span></span>
                     </span>
                   </button>
                 </div>
@@ -802,16 +835,19 @@
             </div>
 
             <div class="shop-card shop-card-gold shop-card-expansion">
-              <div class="shop-info">
-                <h3>Park Expansion (8×8)</h3>
-                <p>Permanently expand your park from 7×7 (49 tiles) to an 8×8 (64 tiles) layout — 15 new tiles for extra decor, ground paths, and room to roam.</p>
-                <div class="shop-owned">Park Size: <span id="parkGridSizeStatus">7×7 (49 tiles)</span></div>
+              <div class="shop-card-lead">
+                <div class="shop-art-thumb" data-pp-shop-art="decorExpansion" aria-hidden="true"></div>
+                <div class="shop-info">
+                  <h3>Park Expansion (8×8)</h3>
+                  <p>Permanently expand your park from 7×7 (49 tiles) to an 8×8 (64 tiles) layout — 15 new tiles for extra decor, ground paths, and room to roam.</p>
+                  <div class="shop-owned">Park Size: <span id="parkGridSizeStatus">7×7 (49 tiles)</span></div>
+                </div>
               </div>
               <button type="button" class="action-btn expansion-action-btn" id="btnExpandPark">
                 <span class="btn-name">Expand Park</span>
                 <span class="btn-cost btn-cost-dual" id="costExpandPark">
-                  <span>1,000,000 🦴</span>
-                  <span>+ 10,000 ✨</span>
+                  <span class="pp-inline-pair"><span>1,000,000</span><span data-pp-icon="bone"></span></span>
+                  <span class="pp-inline-pair"><span>+ 10,000</span><span data-pp-icon="magicBone"></span></span>
                 </span>
               </button>
             </div>
@@ -859,54 +895,62 @@
 
           <div class="decor-subtab-panel" id="decor-sub-tiles">
             <div class="tile-info-banner">
-              Purely cosmetic ground styles | Unlock once with ✨ Magic Bones and tap or drag to paint freely across your park.
+              Purely cosmetic ground styles | Unlock once with Magic Bones and tap or drag to paint freely across your park.
             </div>
 
             <div class="shop-card">
-              <div class="tile-swatch swatch-cobble" aria-hidden="true"></div>
-              <div class="shop-info">
-                <h3>Cobblestone Path</h3>
-                <p>Sunlit warm-slate flagstones for winding walkways and plaza squares.</p>
-                <div class="shop-owned" id="statusTileCobble">Locked | One-time unlock</div>
+              <div class="shop-card-lead">
+                <div class="shop-art-thumb" data-pp-shop-art="tileCobble" aria-hidden="true"></div>
+                <div class="shop-info">
+                  <h3>Cobblestone Path</h3>
+                  <p>Sunlit warm-slate flagstones for winding walkways and plaza squares.</p>
+                  <div class="shop-owned" id="statusTileCobble">Locked | One-time unlock</div>
+                </div>
               </div>
               <button type="button" class="action-btn" id="btnTileCobble">
                 <span class="btn-name">Unlock</span>
-                <span class="btn-cost">300 ✨</span>
+                <span class="btn-cost"><span class="pp-inline-pair"><span>300</span><span data-pp-icon="magicBone"></span></span></span>
               </button>
             </div>
 
             <div class="shop-card">
-              <div class="tile-swatch swatch-sand" aria-hidden="true"></div>
-              <div class="shop-info">
-                <h3>Sandy Dig Pit</h3>
-                <p>Soft wind-swept golden sand speckled with smooth beach pebbles.</p>
-                <div class="shop-owned" id="statusTileSand">Locked | One-time unlock</div>
+              <div class="shop-card-lead">
+                <div class="shop-art-thumb" data-pp-shop-art="tileSand" aria-hidden="true"></div>
+                <div class="shop-info">
+                  <h3>Sandy Dig Pit</h3>
+                  <p>Soft wind-swept golden sand speckled with smooth beach pebbles.</p>
+                  <div class="shop-owned" id="statusTileSand">Locked | One-time unlock</div>
+                </div>
               </div>
               <button type="button" class="action-btn" id="btnTileSand">
                 <span class="btn-name">Unlock</span>
-                <span class="btn-cost">300 ✨</span>
+                <span class="btn-cost"><span class="pp-inline-pair"><span>300</span><span data-pp-icon="magicBone"></span></span></span>
               </button>
             </div>
 
             <div class="shop-card">
-              <div class="tile-swatch swatch-clover" aria-hidden="true"></div>
-              <div class="shop-info">
-                <h3>Clover Meadow</h3>
-                <p>Lush deep-emerald clover turf dotted with tiny white blossoms.</p>
-                <div class="shop-owned" id="statusTileClover">Locked | One-time unlock</div>
+              <div class="shop-card-lead">
+                <div class="shop-art-thumb" data-pp-shop-art="tileClover" aria-hidden="true"></div>
+                <div class="shop-info">
+                  <h3>Clover Meadow</h3>
+                  <p>Lush deep-emerald clover turf dotted with tiny white blossoms.</p>
+                  <div class="shop-owned" id="statusTileClover">Locked | One-time unlock</div>
+                </div>
               </div>
               <button type="button" class="action-btn" id="btnTileClover">
                 <span class="btn-name">Unlock</span>
-                <span class="btn-cost">300 ✨</span>
+                <span class="btn-cost"><span class="pp-inline-pair"><span>300</span><span data-pp-icon="magicBone"></span></span></span>
               </button>
             </div>
 
             <div class="shop-card">
-              <div class="tile-swatch swatch-grass" aria-hidden="true"></div>
-              <div class="shop-info">
-                <h3>Lush Grass</h3>
-                <p>Classic park lawn with soft grass tufts. Always free to paint back over custom tiles.</p>
-                <div class="shop-owned" id="statusTileGrass">Unlocked | Free brush</div>
+              <div class="shop-card-lead">
+                <div class="shop-art-thumb" data-pp-shop-art="tileGrass" aria-hidden="true"></div>
+                <div class="shop-info">
+                  <h3>Lush Grass</h3>
+                  <p>Classic park lawn with soft grass tufts. Always free to paint back over custom tiles.</p>
+                  <div class="shop-owned" id="statusTileGrass">Unlocked | Free brush</div>
+                </div>
               </div>
               <button type="button" class="action-btn" id="btnTileGrass">
                 <span class="btn-name">Paint</span>
@@ -944,10 +988,10 @@
                 <div id="dailyBonusIcon" class="goal-icon goal-icon-bonus" aria-hidden="true"></div>
                 <div class="daily-bonus-info">
                   <div class="daily-bonus-title">Daily Completion Bonus</div>
-                  <div id="dailyBonusSub" class="daily-bonus-sub">Complete all 4 Daily Goals today (0 / 4)</div>
+                  <div id="dailyBonusSub" class="daily-bonus-sub">Complete all 6 Daily Goals today (0 / 6)</div>
                 </div>
               </div>
-              <button type="button" id="btnClaimDailyBonus" class="goal-claim-btn" disabled>+50</button>
+              <button type="button" id="btnClaimDailyBonus" class="goal-claim-btn" disabled>+40</button>
             </div>
 
             <div id="dailyGoalsList" class="goals-list"></div>
@@ -959,7 +1003,7 @@
                 <h3 class="goals-section-title">Achievements</h3>
                 <div class="goals-section-sub">Permanent park milestones &amp; rewards</div>
               </div>
-              <span id="achCompletedCount" class="goals-ach-count">0 / 34</span>
+              <span id="achCompletedCount" class="goals-ach-count">0 / 100</span>
             </div>
 
             <div class="dogs-tier-filters ach-category-filters" id="achCategoryFilters" role="tablist" aria-label="Filter achievements by category">
@@ -977,8 +1021,8 @@
         <!-- Stats Tab -->
         <div class="tab-content" id="tab-stats">
           <div class="stats-grid">
-            <div class="stat-box"><span>Est. Bones / min</span> <strong id="statBonesPerMin">~0 🦴</strong></div>
-            <div class="stat-box"><span>Est. Magic / hr</span> <strong id="statMagicPerHour">~0 ✨</strong></div>
+            <div class="stat-box"><span>Est. Bones / min</span> <strong id="statBonesPerMin"><span class="pp-inline-pair"><span>~0</span><span data-pp-icon="bone"></span></span></strong></div>
+            <div class="stat-box"><span>Est. Magic / hr</span> <strong id="statMagicPerHour"><span class="pp-inline-pair"><span>~0</span><span data-pp-icon="magicBone"></span></span></strong></div>
             <div class="stat-box"><span>Dig Power</span> <strong id="statDigPower">1</strong></div>
             <div class="stat-box"><span>Pack Dig Multiplier</span> <strong id="statSpeed">1.00x</strong></div>
             <div class="stat-box"><span>Magic Chance</span> <strong id="statChance">15%</strong></div>
@@ -1040,11 +1084,11 @@
           <div class="shop-card">
             <div class="shop-info">
               <h3>Testing Boost</h3>
-              <p>Fill Bones to 5,000,000 🦴 and add +30,000 ✨ Magic Bones for testing.</p>
+              <p>Fill Bones to 5,000,000 and add +30,000 Magic Bones for testing.</p>
             </div>
             <button type="button" id="btnTestBoost" class="action-btn">
               <span class="btn-name">Grant</span>
-              <span class="btn-cost">5M 🦴 | 30k ✨</span>
+              <span class="btn-cost"><span class="pp-inline-pair"><span>5M</span><span data-pp-icon="bone"></span></span> | <span class="pp-inline-pair"><span>30k</span><span data-pp-icon="magicBone"></span></span></span>
             </button>
           </div>
 
@@ -1070,7 +1114,7 @@
         <button type="button" id="btnCloseHelp" class="close-btn" aria-label="Close guide">✕</button>
       </div>
       <div class="help-list">
-        <div class="help-row"><strong>Tap Grass</strong><span>Drop extra Bones 🦴 or rare Magic Bones ✨ yourself.</span></div>
+        <div class="help-row"><strong>Tap Grass</strong><span>Drop extra Bones <span data-pp-icon="bone"></span> or rare Magic Bones <span data-pp-icon="magicBone"></span> yourself.</span></div>
         <div class="help-row"><strong>Tap a Pup</strong><span>Pet them for hearts, a happy bark, bonus XP, and +5 happiness (once every 20m per dog).</span></div>
         <div class="help-row"><strong>Swipe &amp; Pinch</strong><span>Drag left/right to rotate the park; pinch to zoom in or out.</span></div>
         <div class="help-row"><strong>Call Pack</strong><span>Hold on a tile (1s) or tap Call to gather your pups together.</span></div>
@@ -1087,7 +1131,7 @@
   <div id="rerollModal" class="modal" style="display: none;">
     <div class="modal-window reroll-modal-window">
       <div class="reroll-modal-header">
-        <h2>🎲 Stats &amp; Shiny Chance Reroll</h2>
+        <h2 class="pp-modal-heading"><span data-pp-icon="dice"></span> Stats &amp; Shiny Chance Reroll</h2>
         <button type="button" id="btnCloseRerollModal" class="close-btn" aria-label="Close reroll modal">✕</button>
       </div>
 
@@ -1100,7 +1144,7 @@
       <div class="reroll-actions">
         <button type="button" id="btnConfirmReroll" class="action-btn reroll-purchase-btn">
           <span class="btn-name">Reroll Stats &amp; Shiny</span>
-          <span class="btn-cost" id="rerollCostLabel">25 ✨</span>
+          <span class="btn-cost" id="rerollCostLabel"><span class="pp-inline-pair"><span>25</span><span data-pp-icon="magicBone"></span></span></span>
         </button>
       </div>
     </div>
@@ -1204,7 +1248,7 @@
   <!-- Bone Cap Congratulations Modal -->
   <div id="boneCapModal" class="modal" style="display: none;">
     <div class="modal-window offline-box" style="max-width: 380px;">
-      <h2 style="color: #ffeaa7;">🦴 Max Bone Cap Reached!</h2>
+      <h2 class="pp-modal-heading pp-modal-heading-center" style="color: #ffeaa7;"><span data-pp-icon="hudBone"></span> Max Bone Cap Reached!</h2>
       <p id="boneCapModalText">Congratulations! You reached the maximum cap of 5,000,000 Bones. Spend some bones on dogs, toys, or treats to collect more bones!</p>
       <button type="button" id="btnCloseBoneCap" class="action-btn" style="width:100%;">Got It!</button>
     </div>
@@ -1215,7 +1259,7 @@
     <div class="modal-window offline-box">
       <h2>Welcome Back!</h2>
       <p>While you were away, your pack kept digging in the magical park.</p>
-      <div id="offlineEarnings" class="offline-highlight">+0 🦴</div>
+      <div id="offlineEarnings" class="offline-highlight"><span class="pp-inline-pair"><span>+0</span><span data-pp-icon="hudBone"></span></span></div>
       <button type="button" id="btnCloseOffline" class="action-btn" style="width:100%;">Claim Bones</button>
     </div>
   </div>

@@ -611,7 +611,7 @@ export const BREED_LIST: readonly BreedDefinition[] = [
     highlights: ['walk', 'xp', 'magic', 'boneYield'],
     trait: {
       name: 'Aurora Runner',
-      summary: '+3% ✨ Magic chance & +20% Pup XP during Twilight.',
+      summary: '+3% Magic chance & +20% Pup XP during Twilight.',
       weatherAffinity: {
         weather: 'twilight',
         magicAdd: 0.03,
@@ -641,7 +641,7 @@ export const BREED_LIST: readonly BreedDefinition[] = [
     highlights: ['xp', 'magic', 'treasure', 'dig'],
     trait: {
       name: 'Arcane Scholar',
-      summary: '22% chance for +1 extra ✨ on Magic digs.',
+      summary: '22% chance for +1 extra Magic Bone on Magic digs.',
       extraMagicChance: 0.22
     }
   },
@@ -671,7 +671,7 @@ export const BREED_LIST: readonly BreedDefinition[] = [
     highlights: ['magic', 'treasure', 'boneYield', 'packGrowth'],
     trait: {
       name: 'Lucky Coin',
-      summary: '16% chance for a 2.5x Lucky Dig.\n+Offline ✨',
+      summary: '16% chance for a 2.5x Lucky Dig.\n+Offline Magic',
       luckyDigChance: 0.16,
       luckyDigMult: 2.5,
       offlineMagicPerDay: 50
@@ -809,7 +809,7 @@ export const BREED_LIST: readonly BreedDefinition[] = [
     highlights: ['walk', 'magic', 'xp', 'treasure'],
     trait: {
       name: 'Silken Glide',
-      summary: '+25% walk & dig pace & +4% ✨ Magic chance in Windy weather, plus 24% chance for +1 extra ✨ on digs.',
+      summary: '+25% walk & dig pace & +4% Magic chance in Windy weather, plus 24% chance for +1 extra Magic Bone on digs.',
       extraMagicChance: 0.24,
       weatherAffinity: {
         weather: 'windy',
@@ -921,7 +921,7 @@ export const BREED_LIST: readonly BreedDefinition[] = [
     highlights: ['walk', 'magic', 'treasure', 'boneYield'],
     trait: {
       name: 'Velvet Stride',
-      summary: 'Pack Aura: +1.5% ✨ Magic chance for all pups & +25% Bone Yield in Windy weather.\n+Offline ✨',
+      summary: 'Pack Aura: +1.5% Magic chance for all pups & +25% Bone Yield in Windy weather.\n+Offline Magic',
       packMagicAura: 0.015,
       offlineMagicPerDay: 50,
       weatherAffinity: {
@@ -1010,7 +1010,7 @@ export const BREED_LIST: readonly BreedDefinition[] = [
     highlights: ['boneYield', 'xp', 'magic', 'treasure'],
     trait: {
       name: 'Alpine Fortune',
-      summary: '30% chance for +1 extra ✨ on Magic digs & +4 Cozy Floor.',
+      summary: '30% chance for +1 extra Magic Bone on Magic digs & +4 Cozy Floor.',
       extraMagicChance: 0.30,
       cozyFloorAdd: 4
     }
@@ -1037,7 +1037,7 @@ export const BREED_LIST: readonly BreedDefinition[] = [
     highlights: ['boneYield', 'packGrowth', 'magic', 'xp'],
     trait: {
       name: 'Mountain Watch',
-      summary: 'Pack Aura: +5 Cozy Floor & 20% slower Mood decay, +30% Bone Yield & +4% ✨ Magic in Twilight, plus +14% Offline earnings.',
+      summary: 'Pack Aura: +5 Cozy Floor & 20% slower Mood decay, +30% Bone Yield & +4% Magic in Twilight, plus +14% Offline earnings.',
       cozyFloorAdd: 5,
       moodDecayMult: 0.80,
       offlineBonus: 0.14,
@@ -1070,7 +1070,7 @@ export const BREED_LIST: readonly BreedDefinition[] = [
     highlights: ['boneYield', 'packGrowth', 'magic', 'treasure'],
     trait: {
       name: 'Tidebringer',
-      summary: '+35% Bone Yield & +5% ✨ Magic chance in Rain, plus +12% Offline earnings.\n+Offline ✨',
+      summary: '+35% Bone Yield & +5% Magic chance in Rain, plus +12% Offline earnings.\n+Offline Magic',
       offlineBonus: 0.12,
       offlineMagicPerDay: 25,
       weatherAffinity: {
@@ -1188,7 +1188,7 @@ export const BREED_LIST: readonly BreedDefinition[] = [
     highlights: ['boneYield', 'packGrowth', 'magic', 'treasure'],
     trait: {
       name: 'Ancient Legend',
-      summary: 'Pack Aura: +30% Treasure odds & +2% ✨ Magic chance for all pups, plus 35% chance for +1 extra ✨ on digs.\n+Offline ✨',
+      summary: 'Pack Aura: +30% Treasure odds & +2% Magic chance for all pups, plus 35% chance for +1 extra Magic Bone on digs.\n+Offline Magic',
       packTreasureAura: 0.30,
       packMagicAura: 0.02,
       extraMagicChance: 0.35,
@@ -1217,7 +1217,7 @@ export const BREED_LIST: readonly BreedDefinition[] = [
     highlights: ['boneYield', 'packGrowth', 'magic', 'treasure'],
     trait: {
       name: 'Corded Crown',
-      summary: 'Pack Aura: +12% Bone Yield, +2.5% ✨ Magic, +35% Treasure, +6 Cozy Floor & 22% slower Mood decay, plus 40% chance for +1 extra ✨ on digs.\n+Offline ✨',
+      summary: 'Pack Aura: +12% Bone Yield, +2.5% Magic, +35% Treasure, +6 Cozy Floor & 22% slower Mood decay, plus 40% chance for +1 extra Magic Bone on digs.\n+Offline Magic',
       packBoneAura: 0.12,
       packMagicAura: 0.025,
       packTreasureAura: 0.35,

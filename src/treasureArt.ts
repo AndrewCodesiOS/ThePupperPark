@@ -1,4 +1,5 @@
 import type { TreasureRarity } from './treasures';
+import { HUD_BONE_PRESETS, drawHudStyleBone } from './uiIcons';
 
 const INK = '#261738';
 
@@ -90,68 +91,6 @@ function drawPaw(
     ctx.fill();
     if (stroke) ctx.stroke();
   }
-  ctx.restore();
-}
-
-function drawBoneShape(
-  ctx: CanvasRenderingContext2D,
-  len: number,
-  thick: number,
-  knob: number
-): void {
-  const half = len * 0.5;
-  const h = thick * 0.5;
-  ctx.beginPath();
-  ctx.moveTo(-half + knob * 0.3, -h);
-  ctx.lineTo(half - knob * 0.3, -h);
-  ctx.arc(half, -h - knob * 0.35, knob, Math.PI * 0.85, Math.PI * 0.12, false);
-  ctx.arc(half, h + knob * 0.35, knob, -Math.PI * 0.12, Math.PI * 1.15, false);
-  ctx.lineTo(-half + knob * 0.3, h);
-  ctx.arc(-half, h + knob * 0.35, knob, -Math.PI * 0.15, Math.PI * 1.12, false);
-  ctx.arc(-half, -h - knob * 0.35, knob, Math.PI * 0.88, Math.PI * 0.15, false);
-  ctx.closePath();
-}
-
-function drawCartoonBone(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  len: number,
-  thick: number,
-  knob: number,
-  angle: number,
-  topColor: string,
-  botColor: string,
-  outlineW = 3.2,
-  glowColor?: string
-): void {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(angle);
-  if (glowColor) {
-    ctx.shadowColor = glowColor;
-    ctx.shadowBlur = 12;
-  }
-  const grad = ctx.createLinearGradient(0, -thick - knob, 0, thick + knob);
-  grad.addColorStop(0, topColor);
-  grad.addColorStop(1, botColor);
-  drawBoneShape(ctx, len, thick, knob);
-  ctx.fillStyle = grad;
-  ctx.fill();
-  ctx.shadowBlur = 0;
-  ctx.strokeStyle = INK;
-  ctx.lineWidth = outlineW;
-  ctx.lineJoin = 'round';
-  ctx.stroke();
-
-  // Crisp glossy specular stroke
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
-  ctx.lineWidth = Math.max(1.5, thick * 0.18);
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.moveTo(-len * 0.28, -thick * 0.16);
-  ctx.lineTo(len * 0.22, -thick * 0.16);
-  ctx.stroke();
   ctx.restore();
 }
 
@@ -449,9 +388,19 @@ function drawLostCompass(ctx: CanvasRenderingContext2D, t: number): void {
     ctx.stroke();
   }
 
-  // Animated bone-shaped needle seeking buried treasure!
+  // Animated HUD-style bone-shaped needle seeking buried treasure!
   const needleAngle = -0.68 + Math.sin(t * 2.6) * 0.22 + Math.sin(t * 6.2) * 0.04;
-  drawCartoonBone(ctx, 0, 0, 34, 9.5, 6.2, needleAngle, '#ff7675', '#d63031', 3);
+  drawHudStyleBone(ctx, {
+    x: 0,
+    y: 0,
+    width: 50,
+    rot: needleAngle,
+    fill: '#ff7675',
+    fillBottom: '#d63031',
+    rim: '#a61c1c',
+    shade: '#b82525',
+    shine: '#ffd0d0'
+  });
 
   // Center golden pin
   ctx.beginPath();
@@ -485,11 +434,11 @@ function drawTreatPouch(ctx: CanvasRenderingContext2D, t: number): void {
   ctx.save();
   ctx.translate(100, 108 + bob);
 
-  // Biscuits peeking out the top (behind front lip)
-  drawCartoonBone(ctx, -22, -38, 28, 10, 6.5, -0.65, '#ffd884', '#d98a36', 3.2);
-  drawCartoonBone(ctx, 20, -39, 28, 10, 6.5, 0.52, '#ffd884', '#d98a36', 3.2);
-  drawCartoonBone(ctx, 0, -48, 32, 11, 7.2, 0.08, '#ffe69e', '#e1953c', 3.2);
-  drawCartoonBone(ctx, -7, -30, 26, 9.5, 6.2, -0.2, '#ffda82', '#d78432', 3.0);
+  // HUD-style biscuits peeking out the top (behind front lip)
+  drawHudStyleBone(ctx, { x: -22, y: -38, width: 44, rot: -0.65, ...HUD_BONE_PRESETS.biscuit });
+  drawHudStyleBone(ctx, { x: 20, y: -39, width: 44, rot: 0.52, ...HUD_BONE_PRESETS.biscuit });
+  drawHudStyleBone(ctx, { x: 0, y: -48, width: 48, rot: 0.08, ...HUD_BONE_PRESETS.biscuitLight });
+  drawHudStyleBone(ctx, { x: -7, y: -30, width: 40, rot: -0.2, ...HUD_BONE_PRESETS.biscuit });
 
   // Pouch ruffled collar
   ctx.fillStyle = '#c89b6e';
@@ -675,10 +624,10 @@ function drawBiscuitTin(ctx: CanvasRenderingContext2D, t: number): void {
   ctx.save();
   ctx.translate(100, 114);
 
-  // Peeking biscuits inside tin
-  drawCartoonBone(ctx, -28, -24, 28, 9.5, 6, -0.45, '#ffd884', '#d88a34', 3);
-  drawCartoonBone(ctx, 28, -24, 28, 9.5, 6, 0.45, '#ffd884', '#d88a34', 3);
-  drawCartoonBone(ctx, 0, -26, 26, 9, 5.8, 0.05, '#ffe69e', '#de9339', 2.8);
+  // Peeking HUD-style biscuits inside tin
+  drawHudStyleBone(ctx, { x: -28, y: -24, width: 42, rot: -0.45, ...HUD_BONE_PRESETS.biscuit });
+  drawHudStyleBone(ctx, { x: 28, y: -24, width: 42, rot: 0.45, ...HUD_BONE_PRESETS.biscuit });
+  drawHudStyleBone(ctx, { x: 0, y: -26, width: 40, rot: 0.05, ...HUD_BONE_PRESETS.biscuitLight });
 
   // Royal blue enameled tin body
   const tinGrad = ctx.createLinearGradient(-56, -10, 56, 48);
@@ -702,8 +651,8 @@ function drawBiscuitTin(ctx: CanvasRenderingContext2D, t: number): void {
   ctx.fill();
   ctx.stroke();
 
-  // Golden filigree swirls & bone emblem on front
-  drawCartoonBone(ctx, 0, 16, 30, 10, 6.2, 0, '#ffeaa7', '#e59f24', 3);
+  // Golden HUD-style bone emblem on front
+  drawHudStyleBone(ctx, { x: 0, y: 16, width: 46, rot: 0, ...HUD_BONE_PRESETS.magic });
 
   // Faceted ruby & turquoise gem studs
   const gems: Array<[number, number, string]> = [
@@ -1136,46 +1085,39 @@ function drawMysticToy(ctx: CanvasRenderingContext2D, t: number): void {
   ctx.fillStyle = aura;
   ctx.fillRect(-75, -75, 150, 150);
 
-  // Plump glowing lavender magic chew bone
+  // Plump glowing lavender HUD-style magic chew bone
   ctx.save();
   ctx.rotate(-0.68);
-  const boneGrad = ctx.createLinearGradient(-50, -24, 50, 24);
-  boneGrad.addColorStop(0, '#f3c4ff');
-  boneGrad.addColorStop(0.5, '#c378ff');
-  boneGrad.addColorStop(1, '#8446e0');
-  drawBoneShape(ctx, 84, 30, 21);
-  ctx.fillStyle = boneGrad;
-  ctx.fill();
-  ctx.strokeStyle = INK;
-  ctx.lineWidth = 4.2;
-  ctx.stroke();
+  drawHudStyleBone(ctx, {
+    x: 0,
+    y: 0,
+    width: 132,
+    rot: 0,
+    fill: '#f0bfff',
+    fillBottom: '#9347e0',
+    rim: '#6c2bd9',
+    shade: '#7c3aed',
+    shine: '#fceeff',
+    outlineScale: 0.46
+  });
 
   // Glowing mint-aqua runes & stars etched on bone
   const runeGlow = 0.72 + 0.28 * Math.sin(t * 3.5);
   ctx.save();
   ctx.globalAlpha = runeGlow;
-  drawSparkle(ctx, 0, 0, 12, '#7efce0', 1);
-  drawSparkle(ctx, -38, -11, 7, '#a8ffec', 0.95);
-  drawSparkle(ctx, 38, 11, 7, '#a8ffec', 0.95);
+  drawSparkle(ctx, 0, 0, 11.5, '#7efce0', 1);
+  drawSparkle(ctx, -45, -18, 6.5, '#a8ffec', 0.95);
+  drawSparkle(ctx, 45, 18, 6.5, '#a8ffec', 0.95);
   ctx.strokeStyle = '#7efce0';
   ctx.lineWidth = 3;
   ctx.lineCap = 'round';
   ctx.beginPath();
-  ctx.arc(-22, 6, 7, 0.2, Math.PI * 1.45);
+  ctx.arc(-22, 4, 6.5, 0.2, Math.PI * 1.45);
   ctx.stroke();
   ctx.beginPath();
-  ctx.arc(22, -6, 7, Math.PI + 0.2, Math.PI * 2.45);
+  ctx.arc(22, -4, 6.5, Math.PI + 0.2, Math.PI * 2.45);
   ctx.stroke();
   ctx.restore();
-
-  // Glossy highlight
-  ctx.strokeStyle = 'rgba(255,255,255,0.62)';
-  ctx.lineWidth = 4;
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.moveTo(-22, -9);
-  ctx.lineTo(14, -9);
-  ctx.stroke();
   ctx.restore();
 
   // Orbiting little stars
@@ -1331,21 +1273,17 @@ function drawBoneLantern(ctx: CanvasRenderingContext2D, t: number): void {
   ctx.fill();
   ctx.stroke();
 
-  // Glowing levitating golden bone flame inside!
+  // Glowing levitating HUD Magic Bone flame inside!
   const flameBob = Math.sin(t * 3.6) * 2.8;
-  drawCartoonBone(
-    ctx,
-    0,
-    8 + flameBob,
-    24,
-    9.5,
-    6,
-    -1.08 + Math.sin(t * 2.5) * 0.08,
-    '#fffef0',
-    '#ffbd3b',
-    2.6,
-    '#ffe066'
-  );
+  drawHudStyleBone(ctx, {
+    x: 0,
+    y: 8 + flameBob,
+    width: 40,
+    rot: -1.08 + Math.sin(t * 2.5) * 0.08,
+    ...HUD_BONE_PRESETS.magic,
+    glowColor: '#ffe066',
+    glowBlur: 12
+  });
 
   // Brass vertical cage ribs
   ctx.strokeStyle = INK;
@@ -1440,12 +1378,28 @@ function drawGoodBoyStash(ctx: CanvasRenderingContext2D, t: number): void {
   ctx.fillStyle = rad;
   ctx.fillRect(-66, -72, 132, 80);
 
-  // Overflowing golden bones & glowing pink-violet Magic Bones!
-  drawCartoonBone(ctx, -20, -24 + Math.sin(t * 2.8) * 1.8, 30, 10, 6.5, -1.05, '#ffcbff', '#c056ff', 3.2, '#e07bff');
-  drawCartoonBone(ctx, 18, -22 + Math.cos(t * 2.8) * 1.8, 30, 10, 6.5, 0.95, '#ffcbff', '#c056ff', 3.2, '#e07bff');
-  drawCartoonBone(ctx, -32, -8, 24, 8.5, 5.2, -0.35, '#fff099', '#e59f24', 2.8);
-  drawCartoonBone(ctx, 30, -8, 24, 8.5, 5.2, 0.35, '#fff099', '#e59f24', 2.8);
-  drawCartoonBone(ctx, 0, -10, 26, 9, 5.5, 0.05, '#fff3b0', '#e8a228', 2.8);
+  // Overflowing HUD Magic Bones & HUD Regular Bones!
+  drawHudStyleBone(ctx, {
+    x: -20,
+    y: -24 + Math.sin(t * 2.8) * 1.8,
+    width: 46,
+    rot: -1.05,
+    ...HUD_BONE_PRESETS.magic,
+    glowColor: '#ffe066',
+    glowBlur: 10
+  });
+  drawHudStyleBone(ctx, {
+    x: 18,
+    y: -22 + Math.cos(t * 2.8) * 1.8,
+    width: 46,
+    rot: 0.95,
+    ...HUD_BONE_PRESETS.magic,
+    glowColor: '#ffe066',
+    glowBlur: 10
+  });
+  drawHudStyleBone(ctx, { x: -32, y: -9, width: 38, rot: -0.35, ...HUD_BONE_PRESETS.regular });
+  drawHudStyleBone(ctx, { x: 30, y: -9, width: 38, rot: 0.35, ...HUD_BONE_PRESETS.regular });
+  drawHudStyleBone(ctx, { x: 0, y: -11, width: 42, rot: 0.05, ...HUD_BONE_PRESETS.magic });
 
   // Wooden chest front base
   const boxGrad = ctx.createLinearGradient(-56, -4, 56, 48);
@@ -1710,9 +1664,23 @@ function drawInfiniteChest(ctx: CanvasRenderingContext2D, t: number): void {
   ctx.stroke();
   ctx.restore();
 
-  // Glowing magic bones peeking behind the toys
-  drawCartoonBone(ctx, -20, -28, 28, 9, 5.8, -0.85, '#ffeaa7', '#f39c12', 2.8);
-  drawCartoonBone(ctx, 18, -32, 28, 9, 5.8, 0.72, '#ffcafc', '#e84393', 2.8, '#ff79c6');
+  // Glowing HUD Magic Bone & Regular Bone peeking behind the toys
+  drawHudStyleBone(ctx, {
+    x: -20,
+    y: -28,
+    width: 44,
+    rot: -0.85,
+    ...HUD_BONE_PRESETS.magic,
+    glowColor: '#ffe066',
+    glowBlur: 10
+  });
+  drawHudStyleBone(ctx, {
+    x: 18,
+    y: -32,
+    width: 44,
+    rot: 0.72,
+    ...HUD_BONE_PRESETS.regular
+  });
 
   // PupperPark's own Tennis Ball (left)
   ctx.save();
