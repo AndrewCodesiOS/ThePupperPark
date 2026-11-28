@@ -100,7 +100,7 @@ export interface DailyGoalsState {
 /** Minimum interval between separate visits for the 3x Daily Check-In goal (2 hours). */
 export const CHECKIN_COOLDOWN_MS = 2 * 60 * 60 * 1000;
 
-export const DAILY_BONUS_MAGIC = 40;
+export const DAILY_BONUS_MAGIC = 60;
 
 export const ACHIEVEMENT_CATEGORIES: Array<{ id: AchievementFilter; label: string }> = [
   { id: 'all', label: 'All' },
@@ -209,9 +209,9 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     category: 'bones',
     icon: 'crown',
     title: 'Mythic Bone Baron',
-    desc: 'Earn 500,000,000 lifetime bones.',
-    target: 500000000,
-    rewardMagic: 200,
+    desc: 'Earn 250,000,000 lifetime bones.',
+    target: 250000000,
+    rewardMagic: 225,
     getValue: s => Math.floor(s.lifetimeBones)
   },
   {
@@ -219,10 +219,10 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     category: 'bones',
     icon: 'vault',
     title: 'Vault Overflow',
-    desc: 'Fill your bone stash all the way to the 5,000,000 Bone Cap.',
+    desc: 'Fill your bone stash all the way to the 50,000,000 Bone Cap.',
     target: 1,
-    rewardMagic: 75,
-    getValue: s => (s.boneCapReached || s.bones >= 5000000 ? 1 : 0)
+    rewardMagic: 125,
+    getValue: s => (s.boneCapReached || s.bones >= 50000000 ? 1 : 0)
   },
   {
     id: 'ach_magic_50',
@@ -289,9 +289,9 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     category: 'bones',
     icon: 'arcaneStar',
     title: 'Grand Sorcerer Vault',
-    desc: 'Collect 100,000 lifetime Magic Bones.',
-    target: 100000,
-    rewardMagic: 175,
+    desc: 'Collect 50,000 lifetime Magic Bones.',
+    target: 50000,
+    rewardMagic: 200,
     getValue: s => Math.floor(s.lifetimeMagicBones)
   },
   {
@@ -383,9 +383,9 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     category: 'pack',
     icon: 'pawPack',
     title: 'First Full Pack',
-    desc: 'Recruit a full park of 6 active pups at once.',
+    desc: 'Recruit a full starter park of 6 active pups at once.',
     target: 6,
-    rewardMagic: 30,
+    rewardMagic: 35,
     getValue: s => (s.everFullPack ? 6 : Math.min(6, s.rosterCount))
   },
   {
@@ -839,9 +839,9 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     category: 'park',
     icon: 'parkMap',
     title: 'Wide Open Pastures',
-    desc: 'Expand your park from 7×7 to the grand 8×8 layout.',
+    desc: 'Expand your park to the grand 8×8 layout and unlock 8 active pup slots.',
     target: 1,
-    rewardMagic: 60,
+    rewardMagic: 100,
     getValue: s => (s.parkExpanded ? 1 : 0)
   },
   {
@@ -975,7 +975,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     title: 'Relic Sovereign',
     desc: 'Max out all 16 Treasure relics (80 total ranks).',
     target: 80,
-    rewardMagic: 200,
+    rewardMagic: 250,
     getValue: s => s.totalRelicRanks
   },
   {
@@ -993,7 +993,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     category: 'relics',
     icon: 'diamondBowl',
     title: 'Diamond Bowl',
-    desc: 'Uncover the mythic Diamond Bowl relic.',
+    desc: 'Uncover the Legendary Diamond Bowl relic.',
     target: 1,
     rewardMagic: 100,
     getValue: s => (s.hasDiamondBowl ? 1 : 0)
@@ -1142,7 +1142,7 @@ const FIXED_DAILY_GOALS: DailyGoalDef[] = [
     title: 'Daily Check-In',
     desc: 'Check in to PupperPark today.',
     target: 1,
-    rewardMagic: 5
+    rewardMagic: 10
   },
   {
     id: 'daily_checkin_3',
@@ -1151,7 +1151,7 @@ const FIXED_DAILY_GOALS: DailyGoalDef[] = [
     title: 'Triple Check-In',
     desc: 'Check in 3 separate times today (2h between visits).',
     target: 3,
-    rewardMagic: 15
+    rewardMagic: 20
   }
 ];
 
@@ -1165,7 +1165,7 @@ const DAILY_GOAL_POOLS: DailyGoalDef[][] = [
       title: 'Busy Paws',
       desc: 'Complete 45 digs (pups or grass taps).',
       target: 45,
-      rewardMagic: 10
+      rewardMagic: 15
     },
     {
       id: 'daily_digs_85',
@@ -1174,7 +1174,7 @@ const DAILY_GOAL_POOLS: DailyGoalDef[][] = [
       title: 'Digging Marathon',
       desc: 'Complete 85 digs (pups or grass taps).',
       target: 85,
-      rewardMagic: 15
+      rewardMagic: 25
     },
     {
       id: 'daily_magic_10',
@@ -1183,7 +1183,7 @@ const DAILY_GOAL_POOLS: DailyGoalDef[][] = [
       title: 'Sparkle Sniffer',
       desc: 'Collect 10 Magic Bones from digs or taps.',
       target: 10,
-      rewardMagic: 12
+      rewardMagic: 18
     },
     {
       id: 'daily_magic_20',
@@ -1192,7 +1192,7 @@ const DAILY_GOAL_POOLS: DailyGoalDef[][] = [
       title: 'Arcane Trail',
       desc: 'Collect 20 Magic Bones from digs or taps.',
       target: 20,
-      rewardMagic: 18
+      rewardMagic: 28
     }
   ],
   // Pool 2: Care & Bonding
@@ -1204,7 +1204,7 @@ const DAILY_GOAL_POOLS: DailyGoalDef[][] = [
       title: 'Belly Rub Time',
       desc: 'Pet your pups 15 times.',
       target: 15,
-      rewardMagic: 10
+      rewardMagic: 15
     },
     {
       id: 'daily_pets_30',
@@ -1213,7 +1213,7 @@ const DAILY_GOAL_POOLS: DailyGoalDef[][] = [
       title: 'Best Friends',
       desc: 'Pet your pups 30 times.',
       target: 30,
-      rewardMagic: 15
+      rewardMagic: 25
     },
     {
       id: 'daily_treats_4',
@@ -1222,7 +1222,7 @@ const DAILY_GOAL_POOLS: DailyGoalDef[][] = [
       title: "Snack O'Clock",
       desc: 'Give 4 treats (Happy Snaps or shop treats).',
       target: 4,
-      rewardMagic: 12
+      rewardMagic: 18
     },
     {
       id: 'daily_treats_6',
@@ -1231,7 +1231,7 @@ const DAILY_GOAL_POOLS: DailyGoalDef[][] = [
       title: 'Treat Feast',
       desc: 'Give 6 treats (Happy Snaps or shop treats).',
       target: 6,
-      rewardMagic: 16
+      rewardMagic: 25
     }
   ],
   // Pool 3: Active Park Interaction
@@ -1243,7 +1243,7 @@ const DAILY_GOAL_POOLS: DailyGoalDef[][] = [
       title: 'Helping Hand',
       desc: 'Tap the park grass 30 times to dig up bones.',
       target: 30,
-      rewardMagic: 10
+      rewardMagic: 15
     },
     {
       id: 'daily_taps_60',
@@ -1252,7 +1252,7 @@ const DAILY_GOAL_POOLS: DailyGoalDef[][] = [
       title: 'Green Thumb',
       desc: 'Tap the park grass 60 times to dig up bones.',
       target: 60,
-      rewardMagic: 15
+      rewardMagic: 25
     },
     {
       id: 'daily_whistles_6',
@@ -1261,7 +1261,7 @@ const DAILY_GOAL_POOLS: DailyGoalDef[][] = [
       title: 'Pack Leader',
       desc: 'Call your pack together 6 times with the Whistle.',
       target: 6,
-      rewardMagic: 10
+      rewardMagic: 15
     },
     {
       id: 'daily_whistles_10',
@@ -1270,7 +1270,7 @@ const DAILY_GOAL_POOLS: DailyGoalDef[][] = [
       title: 'Park Rally',
       desc: 'Call your pack together 10 times with the Whistle.',
       target: 10,
-      rewardMagic: 15
+      rewardMagic: 25
     }
   ],
   // Pool 4: Time & Harvest
@@ -1282,7 +1282,7 @@ const DAILY_GOAL_POOLS: DailyGoalDef[][] = [
       title: 'Park Stroll',
       desc: 'Spend 10 active minutes in PupperPark today.',
       target: 10,
-      rewardMagic: 12,
+      rewardMagic: 18,
       format: 'minutes'
     },
     {
@@ -1292,7 +1292,7 @@ const DAILY_GOAL_POOLS: DailyGoalDef[][] = [
       title: 'Quality Time',
       desc: 'Spend 20 active minutes in PupperPark today.',
       target: 20,
-      rewardMagic: 18,
+      rewardMagic: 28,
       format: 'minutes'
     },
     {
@@ -1302,7 +1302,7 @@ const DAILY_GOAL_POOLS: DailyGoalDef[][] = [
       title: 'Daily Haul',
       desc: 'Earn 1,500 Bones in the park today.',
       target: 1500,
-      rewardMagic: 12
+      rewardMagic: 18
     },
     {
       id: 'daily_bones_5000',
@@ -1311,7 +1311,7 @@ const DAILY_GOAL_POOLS: DailyGoalDef[][] = [
       title: 'Bone Harvest',
       desc: 'Earn 5,000 Bones in the park today.',
       target: 5000,
-      rewardMagic: 18
+      rewardMagic: 28
     }
   ]
 ];

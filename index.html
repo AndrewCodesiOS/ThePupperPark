@@ -542,7 +542,7 @@
             </div>
             <button type="button" class="action-btn" id="btnTreatCup">
               <span class="btn-name">Feed Pup Cups</span>
-              <span class="btn-cost" id="costTreatCup"><span class="pp-inline-pair"><span>1,000</span><span data-pp-icon="bone"></span></span></span>
+              <span class="btn-cost" id="costTreatCup"><span class="pp-inline-pair"><span>60</span><span data-pp-icon="bone"></span></span></span>
             </button>
           </div>
 
@@ -554,7 +554,7 @@
             </div>
             <button type="button" class="action-btn" id="btnTreatXp">
               <span class="btn-name">Give Biscuits</span>
-              <span class="btn-cost" id="costTreatXp"><span class="pp-inline-pair"><span>1,200</span><span data-pp-icon="bone"></span></span></span>
+              <span class="btn-cost" id="costTreatXp"><span class="pp-inline-pair"><span>120</span><span data-pp-icon="bone"></span></span></span>
             </button>
           </div>
 
@@ -562,11 +562,11 @@
             <div class="shop-art-thumb" data-pp-shop-art="treatKong" aria-hidden="true"></div>
             <div class="shop-info">
               <h3>Peanut Butter Kongs</h3>
-              <p>20s per use (max 100s) | Bonus +1 Magic Bone on every dig &amp; tap alongside regular bones.</p>
+              <p>20s per use (max 100s) | Bonus +1 Magic Bone on every pup dig (and grass taps every 2s) alongside regular bones.</p>
             </div>
             <button type="button" class="action-btn" id="btnTreatKong">
               <span class="btn-name">Toss Kongs</span>
-              <span class="btn-cost" id="costTreatKong"><span class="pp-inline-pair"><span>3,000</span><span data-pp-icon="bone"></span></span></span>
+              <span class="btn-cost" id="costTreatKong"><span class="pp-inline-pair"><span>500</span><span data-pp-icon="bone"></span></span></span>
             </button>
           </div>
 
@@ -578,7 +578,7 @@
             </div>
             <button type="button" class="action-btn" id="btnTreatFeast">
               <span class="btn-name">Serve Feast</span>
-              <span class="btn-cost" id="costTreatFeast"><span class="pp-inline-pair"><span>4,000</span><span data-pp-icon="bone"></span></span></span>
+              <span class="btn-cost" id="costTreatFeast"><span class="pp-inline-pair"><span>150</span><span data-pp-icon="bone"></span></span></span>
             </button>
           </div>
 
@@ -590,7 +590,7 @@
             </div>
             <button type="button" class="action-btn" id="btnTreatBacon">
               <span class="btn-name">Give Bacon</span>
-              <span class="btn-cost" id="costTreatBacon"><span class="pp-inline-pair"><span>8,500</span><span data-pp-icon="bone"></span></span></span>
+              <span class="btn-cost" id="costTreatBacon"><span class="pp-inline-pair"><span>250</span><span data-pp-icon="bone"></span></span></span>
             </button>
           </div>
         </div>
@@ -733,7 +733,7 @@
                 <div class="shop-art-thumb" data-pp-shop-art="decorSlide" aria-hidden="true"></div>
                 <div class="shop-info">
                   <h3>Dog Slide</h3>
-                  <p>Grand 2-tile playground slide! Pups climb &amp; zoom down for bonus XP &amp; mood. +8% pup XP | +4 Cozy Floor. (Max 1)</p>
+                  <p>Grand 2-tile playground slide! Pups zoom down for bonus XP, mood &amp; a 20s Slide Rush (+30% pace &amp; +25% bone yield). +8% pup XP | +4 Cozy Floor. (Max 1)</p>
                   <div class="shop-owned">Owned: <span id="ownedDecorSlide">0</span> | Placed: <span id="countDecorSlide">0</span> / 1</div>
                 </div>
               </div>
@@ -774,14 +774,14 @@
                   <div class="shop-art-thumb" data-pp-shop-art="decorDoghouseManor" aria-hidden="true"></div>
                   <div class="shop-info">
                     <h3>Grand Doghouse Manor</h3>
-                    <p>4-tile (2×2) storybook estate upgrading your doghouse &amp; the 3 tiles behind it (returns any placed decor there to inventory). +15% bone payout | +10% pup XP | +8% pack pace | +3.5% Magic chance | +6 Cozy Floor. (Max 1)</p>
+                    <p>4-tile (2×2) storybook estate upgrading your doghouse &amp; the 3 tiles behind it. Unlocks Manor Colors &amp; Daily Bone Offerings. +15% bone payout | +10% pup XP | +8% pack pace | +3.5% Magic chance | +6 Cozy Floor. (Max 1)</p>
                     <div class="shop-owned">Owned: <span id="ownedDecorDoghouseManor">0</span> | Placed: <span id="countDecorDoghouseManor">0</span> / 1</div>
                   </div>
                 </div>
                 <div class="decor-btn-group">
                   <button type="button" class="action-btn decor-action-btn" id="btnBuyDecorDoghouseManor">
                     <span class="btn-name">Buy Manor</span>
-                    <span class="btn-cost"><span class="pp-inline-pair"><span>10,000</span><span data-pp-icon="magicBone"></span></span></span>
+                    <span class="btn-cost"><span class="pp-inline-pair"><span>6,000</span><span data-pp-icon="magicBone"></span></span></span>
                   </button>
                   <button type="button" class="action-btn decor-action-btn" id="btnPlaceDecorDoghouseManor">
                     <span class="btn-name">Place</span>
@@ -832,6 +832,19 @@
                   </button>
                 </div>
               </div>
+              <div id="manorOfferingSection" class="manor-color-section manor-offering-section" style="display: none;">
+                <div class="manor-color-head">
+                  <span class="manor-color-title">Daily Manor Offering</span>
+                  <span class="manor-color-sub" id="manorOfferingStatus">0 / 3 offered today | Resets daily</span>
+                </div>
+                <div class="manor-offering-row">
+                  <div class="manor-offering-info" id="manorOfferingDesc">Trade surplus Bones at the Manor altar for Magic Bones.</div>
+                  <button type="button" class="action-btn manor-offering-btn" id="btnManorOffering">
+                    <span class="btn-name" id="manorOfferingRewardLabel">+125 Magic</span>
+                    <span class="btn-cost" id="manorOfferingCostLabel"><span class="pp-inline-pair"><span>250,000</span><span data-pp-icon="bone"></span></span></span>
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div class="shop-card shop-card-gold shop-card-expansion">
@@ -839,15 +852,15 @@
                 <div class="shop-art-thumb" data-pp-shop-art="decorExpansion" aria-hidden="true"></div>
                 <div class="shop-info">
                   <h3>Park Expansion (8×8)</h3>
-                  <p>Permanently expand your park from 7×7 (49 tiles) to an 8×8 (64 tiles) layout — 15 new tiles for extra decor, ground paths, and room to roam.</p>
-                  <div class="shop-owned">Park Size: <span id="parkGridSizeStatus">7×7 (49 tiles)</span></div>
+                  <p>Permanently expand your park to 8×8 (64 tiles) — adds 15 new tiles, +2 Active Pup Slots (up to 8 pups), and +15% Pup Walk Speed.</p>
+                  <div class="shop-owned">Park Size: <span id="parkGridSizeStatus">7×7 (49 tiles) | 6 Max Pups</span></div>
                 </div>
               </div>
               <button type="button" class="action-btn expansion-action-btn" id="btnExpandPark">
                 <span class="btn-name">Expand Park</span>
                 <span class="btn-cost btn-cost-dual" id="costExpandPark">
-                  <span class="pp-inline-pair"><span>1,000,000</span><span data-pp-icon="bone"></span></span>
-                  <span class="pp-inline-pair"><span>+ 10,000</span><span data-pp-icon="magicBone"></span></span>
+                  <span class="pp-inline-pair"><span>2,500,000</span><span data-pp-icon="bone"></span></span>
+                  <span class="pp-inline-pair"><span>+ 5,000</span><span data-pp-icon="magicBone"></span></span>
                 </span>
               </button>
             </div>
@@ -1081,17 +1094,6 @@
             </button>
           </div>
 
-          <div class="shop-card">
-            <div class="shop-info">
-              <h3>Testing Boost</h3>
-              <p>Fill Bones to 5,000,000 and add +30,000 Magic Bones for testing.</p>
-            </div>
-            <button type="button" id="btnTestBoost" class="action-btn">
-              <span class="btn-name">Grant</span>
-              <span class="btn-cost"><span class="pp-inline-pair"><span>5M</span><span data-pp-icon="bone"></span></span> | <span class="pp-inline-pair"><span>30k</span><span data-pp-icon="magicBone"></span></span></span>
-            </button>
-          </div>
-
           <div class="shop-card shop-card-vertical" style="border-color: rgba(255, 118, 117, 0.5);">
             <div class="shop-info">
               <h3 style="color: #ff7675;">Danger Zone</h3>
@@ -1249,7 +1251,7 @@
   <div id="boneCapModal" class="modal" style="display: none;">
     <div class="modal-window offline-box" style="max-width: 380px;">
       <h2 class="pp-modal-heading pp-modal-heading-center" style="color: #ffeaa7;"><span data-pp-icon="hudBone"></span> Max Bone Cap Reached!</h2>
-      <p id="boneCapModalText">Congratulations! You reached the maximum cap of 5,000,000 Bones. Spend some bones on dogs, toys, or treats to collect more bones!</p>
+      <p id="boneCapModalText">Congratulations! You reached the maximum cap of 50,000,000 Bones. Spend some bones on dogs, toys, or treats to collect more bones!</p>
       <button type="button" id="btnCloseBoneCap" class="action-btn" style="width:100%;">Got It!</button>
     </div>
   </div>
@@ -1261,6 +1263,23 @@
       <p>While you were away, your pack kept digging in the magical park.</p>
       <div id="offlineEarnings" class="offline-highlight"><span class="pp-inline-pair"><span>+0</span><span data-pp-icon="hudBone"></span></span></div>
       <button type="button" id="btnCloseOffline" class="action-btn" style="width:100%;">Claim Bones</button>
+    </div>
+  </div>
+
+  <!-- Grand Doghouse Manor Daily Offering Modal -->
+  <div id="manorOfferingModal" class="modal" style="display: none;">
+    <div class="modal-window manor-offering-modal-window">
+      <div class="manor-offering-modal-head">
+        <h2 class="pp-modal-heading" style="margin: 0; color: #ffeaa7;"><span data-pp-icon="hudMagic"></span> Manor Daily Offerings</h2>
+        <button type="button" id="btnCloseManorOffering" class="close-btn" aria-label="Close Manor Offerings">&times;</button>
+      </div>
+      <p class="manor-offering-modal-sub" id="manorOfferingModalStatus">0 / 3 offered today | Resets daily</p>
+      <div class="manor-offering-tiers" id="manorOfferingModalTiers"></div>
+      <div class="manor-offering-balance" id="manorOfferingModalBalance"></div>
+      <button type="button" id="btnManorOfferingModal" class="action-btn manor-offering-modal-btn">
+        <span class="btn-name" id="manorOfferingModalRewardLabel">+125 Magic</span>
+        <span class="btn-cost" id="manorOfferingModalCostLabel"><span class="pp-inline-pair"><span>250,000</span><span data-pp-icon="bone"></span></span></span>
+      </button>
     </div>
   </div>
 

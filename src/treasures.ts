@@ -69,7 +69,7 @@ export interface TreasureBonuses {
 export const MAX_RELIC_RANK = 5;
 export const MAXED_TREASURE_JACKPOT_MAGIC = 250;
 export const RANK_ROMAN = ['I', 'II', 'III', 'IV', 'V'] as const;
-export const RANK_CURVE = [1.0, 1.45, 1.95, 2.5, 3.2] as const;
+export const RANK_CURVE = [1.0, 1.35, 1.7, 2.05, 2.4] as const;
 
 export const RARITY_WEIGHTS: Record<TreasureRarity, number> = {
   Common: 54,
@@ -117,10 +117,10 @@ export const TREASURE_SETS: readonly TreasureSetDef[] = [
     id: 'explorer',
     name: "Park Explorer's Pack",
     shortName: "Explorer's Pack",
-    bonusLabel: '+25% Dig Scaling | +15% Treasure Odds',
+    bonusLabel: '+18% Dig Scaling | +15% Treasure Odds',
     relicIds: ['bp_1', 'bp_2', 'bp_3', 'sp_1'],
     bonus: {
-      scalingAdd: 0.25,
+      scalingAdd: 0.18,
       treasureOddsAdd: 0.15
     }
   },
@@ -128,10 +128,10 @@ export const TREASURE_SETS: readonly TreasureSetDef[] = [
     id: 'kennel',
     name: 'Gilded Kennel',
     shortName: 'Gilded Kennel',
-    bonusLabel: '+35% Dig Bones | +6 Cozy Floor',
+    bonusLabel: '+28% Dig Bones | +6 Cozy Floor',
     relicIds: ['gp_1', 'bp_4', 'bp_5', 'bp_6'],
     bonus: {
-      boneAdd: 0.35,
+      boneAdd: 0.28,
       cozyFloor: 6
     }
   },
@@ -150,10 +150,10 @@ export const TREASURE_SETS: readonly TreasureSetDef[] = [
     id: 'mythic',
     name: 'Mythic Vault',
     shortName: 'Mythic Vault',
-    bonusLabel: '1.5x Global Dig Multiplier | +25% Treasure Odds',
+    bonusLabel: '1.25x Global Dig Multiplier | +25% Treasure Odds',
     relicIds: ['sp_2', 'hp_1', 'myth_1', 'myth_2'],
     bonus: {
-      globalDigMult: 1.5,
+      globalDigMult: 1.25,
       treasureOddsAdd: 0.25
     }
   }
@@ -167,7 +167,7 @@ export const TREASURE_CATALOG: readonly TreasureDef[] = [
     setId: 'explorer',
     rarity: 'Common',
     lore: 'Paw-smudged parchment marking every secret burying spot beneath the park meadow.',
-    boneAdd: 0.12
+    boneAdd: 0.10
   },
   {
     id: 'bp_2',
@@ -175,7 +175,7 @@ export const TREASURE_CATALOG: readonly TreasureDef[] = [
     setId: 'explorer',
     rarity: 'Common',
     lore: 'Its brass needle ignores north completely and points straight toward buried bones.',
-    boneAdd: 0.15
+    boneAdd: 0.12
   },
   {
     id: 'bp_3',
@@ -183,7 +183,7 @@ export const TREASURE_CATALOG: readonly TreasureDef[] = [
     setId: 'explorer',
     rarity: 'Common',
     lore: 'Stitched from weathered trail cloth and perpetually dusted with crunchy biscuit crumbs.',
-    boneAdd: 0.18
+    boneAdd: 0.15
   },
   {
     id: 'sp_1',
@@ -191,7 +191,7 @@ export const TREASURE_CATALOG: readonly TreasureDef[] = [
     setId: 'explorer',
     rarity: 'Common',
     lore: 'An oak-handled garden spade worn smooth by generations of tireless digging paws.',
-    scalingAdd: 0.10
+    scalingAdd: 0.08
   },
 
   // Set 2: Gilded Kennel
@@ -209,7 +209,7 @@ export const TREASURE_CATALOG: readonly TreasureDef[] = [
     setId: 'kennel',
     rarity: 'Rare',
     lore: 'Hammered from warm sun-gold and engraved with the crest of a legendary park champion.',
-    boneAdd: 0.28
+    boneAdd: 0.22
   },
   {
     id: 'bp_5',
@@ -217,7 +217,7 @@ export const TREASURE_CATALOG: readonly TreasureDef[] = [
     setId: 'kennel',
     rarity: 'Rare',
     lore: 'A museum display keepsake forged in solid sun-gold and studded with polished royal rivets.',
-    boneAdd: 0.35
+    boneAdd: 0.28
   },
   {
     id: 'bp_6',
@@ -225,7 +225,7 @@ export const TREASURE_CATALOG: readonly TreasureDef[] = [
     setId: 'kennel',
     rarity: 'Legendary',
     lore: 'Carved from a single radiant crystal that refracts twilight lantern light across the lawn.',
-    boneAdd: 0.65
+    boneAdd: 0.45
   },
 
   // Set 3: Arcane Playbox
@@ -271,7 +271,7 @@ export const TREASURE_CATALOG: readonly TreasureDef[] = [
     rarity: 'Common',
     lore: 'Woven from sunlit leather and warm brass links that quicken every stride across the grass.',
     paceAdd: 0.06,
-    scalingAdd: 0.08
+    scalingAdd: 0.06
   },
   {
     id: 'hp_1',
@@ -288,8 +288,8 @@ export const TREASURE_CATALOG: readonly TreasureDef[] = [
     setId: 'mythic',
     rarity: 'Mythic',
     lore: 'A boundless storybook trunk overflowing with glittering relics from every park that ever was.',
-    boneMultRanks: [2.4, 2.95, 3.55, 4.15, 4.8],
-    scalingAdd: 0.40
+    boneMultRanks: [1.45, 1.62, 1.8, 1.98, 2.15],
+    scalingAdd: 0.14
   },
   {
     id: 'myth_2',
@@ -297,7 +297,7 @@ export const TREASURE_CATALOG: readonly TreasureDef[] = [
     setId: 'mythic',
     rarity: 'Mythic',
     lore: 'The ancient rose-gold circlet said to have crowned the very first pup who dug in PupperPark.',
-    boneMultRanks: [2.0, 2.4, 2.85, 3.3, 3.8],
+    boneMultRanks: [1.35, 1.5, 1.65, 1.8, 1.95],
     magicAdd: 0.03,
     xpAdd: 0.25
   }
